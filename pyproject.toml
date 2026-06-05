@@ -46,4 +46,3 @@ droneresearch = "droneresearch.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["droneresearch*", "core*", "data*", "control*", "swarm*", "ros*", "experiment*", "ui*", "cli*", "sdk*"]
