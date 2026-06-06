@@ -781,9 +781,22 @@ Window {
     }
 
     // ── Keyboard shortcuts ───────────────────────────────────────────────────────
-    // All shortcuts are Ctrl+Key so they don't interfere with text inputs.
-    // The command targets follow the same priority as InstrBar:
-    //   1. Mission-Target set (if non-empty)  2. selectedDroneId  3. first drone
+    // context: Qt.ApplicationShortcut fires even when a child item has focus.
+    //
+    // NOTE: Shortcuts that overlap with Chromium built-ins (Ctrl+A, Ctrl+T, …)
+    // are blocked by the WebEngineView while the Map tab is active. They work
+    // normally on every other tab. Workaround: switch to any other tab first.
+    //
+    // IMPORTANT: Shortcut items must NOT be placed inside a Repeater — the
+    // `index` binding is unreliable for non-visual delegates. Use explicit items.
+
+    // ── Helper displayed in the status bar when a shortcut fires ─────────────
+    function _scFeedback(msg) {
+        if (typeof swarm !== "undefined" && swarm)
+            swarm.logMessage("INFO", "[⌨] " + msg)
+    }
+
+    // ── Flight commands ──────────────────────────────────────────────────────
 
     // Ctrl+A — ARM
     Shortcut {
@@ -791,6 +804,8 @@ Window {
         context:  Qt.ApplicationShortcut
         onActivated: {
             var targets = root._shortcutTargets()
+            if (targets.length === 0) { root._scFeedback("ARM — keine Drohne verbunden"); return }
+            root._scFeedback("ARM → " + targets.join(", "))
             for (var i = 0; i < targets.length; i++) swarm.armDrone(targets[i])
         }
     }
@@ -801,16 +816,20 @@ Window {
         context:  Qt.ApplicationShortcut
         onActivated: {
             var targets = root._shortcutTargets()
+            if (targets.length === 0) { root._scFeedback("DISARM — keine Drohne verbunden"); return }
+            root._scFeedback("DISARM → " + targets.join(", "))
             for (var i = 0; i < targets.length; i++) swarm.disarmDrone(targets[i])
         }
     }
 
-    // Ctrl+T — TAKEOFF (10m)
+    // Ctrl+T — TAKEOFF 10 m
     Shortcut {
         sequence: "Ctrl+T"
         context:  Qt.ApplicationShortcut
         onActivated: {
             var targets = root._shortcutTargets()
+            if (targets.length === 0) { root._scFeedback("TAKEOFF — keine Drohne verbunden"); return }
+            root._scFeedback("TAKEOFF 10 m → " + targets.join(", "))
             for (var i = 0; i < targets.length; i++) swarm.takeoffDrone(targets[i], 10)
         }
     }
@@ -821,6 +840,8 @@ Window {
         context:  Qt.ApplicationShortcut
         onActivated: {
             var targets = root._shortcutTargets()
+            if (targets.length === 0) { root._scFeedback("LAND — keine Drohne verbunden"); return }
+            root._scFeedback("LAND → " + targets.join(", "))
             for (var i = 0; i < targets.length; i++) swarm.landDrone(targets[i])
         }
     }
@@ -831,6 +852,8 @@ Window {
         context:  Qt.ApplicationShortcut
         onActivated: {
             var targets = root._shortcutTargets()
+            if (targets.length === 0) { root._scFeedback("RTL — keine Drohne verbunden"); return }
+            root._scFeedback("RTL → " + targets.join(", "))
             for (var i = 0; i < targets.length; i++) swarm.rtlDrone(targets[i])
         }
     }
@@ -840,43 +863,52 @@ Window {
         sequence: "Ctrl+E"
         context:  Qt.ApplicationShortcut
         onActivated: {
-            if (typeof swarm !== "undefined" && swarm) {
+            if (typeof swarm !== "undefined" && swarm)
                 swarm.emergencyStopAll()
-            }
         }
     }
 
-    // Ctrl+1…Ctrl+9 — Switch to tab N (1-indexed, matches visible tab order)
-    Repeater {
-        model: 9
-        Shortcut {
-            sequence: "Ctrl+" + (index + 1)
-            context:  Qt.ApplicationShortcut
-            onActivated: if (index < root.tabs.length) root.selectTab(index)
-        }
-    }
+    // ── Navigation (tab switching) ────────────────────────────────────────────
+    // Explicit items instead of Repeater — Shortcut inside Repeater does not
+    // work reliably because the `sequence` binding cannot reference `index`.
 
-    // Ctrl+M — Map tab
+    Shortcut { sequence: "Ctrl+1"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(0) }
+    Shortcut { sequence: "Ctrl+2"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(1) }
+    Shortcut { sequence: "Ctrl+3"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(2) }
+    Shortcut { sequence: "Ctrl+4"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(3) }
+    Shortcut { sequence: "Ctrl+5"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(4) }
+    Shortcut { sequence: "Ctrl+6"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(5) }
+    Shortcut { sequence: "Ctrl+7"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(6) }
+    Shortcut { sequence: "Ctrl+8"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(7) }
+    Shortcut { sequence: "Ctrl+9"; context: Qt.ApplicationShortcut; onActivated: root.selectTab(8) }
+
     Shortcut {
         sequence: "Ctrl+M"
         context:  Qt.ApplicationShortcut
         onActivated: root.selectTabById("map")
     }
 
-    // Ctrl+W — Waypoint-Modus togglen (auf Map-Tab)
+    // ── Map / Mission ─────────────────────────────────────────────────────────
+
     Shortcut {
         sequence: "Ctrl+W"
         context:  Qt.ApplicationShortcut
-        onActivated: root.toggleMapWaypointMode()
+        onActivated: {
+            root.toggleMapWaypointMode()
+            root._scFeedback("Waypoint-Modus: " + (root.mapWaypointMode ? "AN" : "AUS"))
+        }
     }
 
-    // F5 — Refresh serial ports
+    // ── System ────────────────────────────────────────────────────────────────
+
     Shortcut {
         sequence: "F5"
         context:  Qt.ApplicationShortcut
         onActivated: {
-            if (headerLoader.item && typeof headerLoader.item.refreshPorts === "function")
+            if (headerLoader.item && typeof headerLoader.item.refreshPorts === "function") {
                 headerLoader.item.refreshPorts()
+                root._scFeedback("Serial-Ports aktualisiert")
+            }
         }
     }
 

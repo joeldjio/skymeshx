@@ -569,7 +569,10 @@ Item {
                     // ─── Hinweis ─────────────────────────────────────────────
                     "<br><span style='color:#475569;font-style:italic;font-size:10px;'>" +
                     "Alle Strg+-Shortcuts wirken auf die aktiven Mission-Targets (Häkchen-Set im Swarm-Tab). " +
-                    "Leeres Set: fällt auf Selected Drone zurück. Leere Selection: erste Drohne in der Liste." +
+                    "Leeres Set: fällt auf Selected Drone zurück. Leere Selection: erste Drohne in der Liste.<br>" +
+                    "<b style='color:#f59e0b'>Einschränkung:</b> Strg+A/D/T/L werden vom Chromium-Renderer blockiert, " +
+                    "solange der Map-Tab aktiv ist (WebEngineView konsumiert diese Tasten intern). " +
+                    "Wechsle zuerst auf einen anderen Tab (z. B. Strg+3 für Swarm), dann funktionieren alle Shortcuts." +
                     "</span>"
             }
 
