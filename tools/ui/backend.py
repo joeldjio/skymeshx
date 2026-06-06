@@ -11,20 +11,21 @@ DroneBackend  — one instance per physical/simulated drone.
 SwarmBackend  — owns all DroneBackends, aggregates snapshots at 5 Hz,
                and exposes bulk swarm commands.
 """
+
 import threading
 from typing import Callable, Dict, List, Optional
 
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 # ── DroneResearch SDK — TRULY lazy ────────────────────────────────────
 # These imports were previously eager. They pull in MAVLink, asyncio
 # event loops and a lot of model code (~300-800ms). We now defer them
 # until the first DroneBackend.connect() call.
-_DroneSDK       = None  # type: ignore
-_GenericUAV     = None  # type: ignore
+_DroneSDK = None  # type: ignore
+_GenericUAV = None  # type: ignore
 _ObservationUAV = None  # type: ignore
-_DroneState     = None  # type: ignore
-_sdk_loaded     = False
+_DroneState = None  # type: ignore
+_sdk_loaded = False
 
 
 def _ensure_sdk_loaded() -> None:
@@ -35,21 +36,24 @@ def _ensure_sdk_loaded() -> None:
     _sdk_loaded = True
     try:
         from droneresearch.sdk.drone import Drone as _D
+
         _DroneSDK = _D
     except ImportError:
         pass
     try:
+        from droneresearch.core.fsm import DroneState as _S
         from droneresearch.models.generic_uav import GenericUAVModel as _G
         from droneresearch.models.observation_uav import ObservationUAVModel as _O
-        from droneresearch.core.fsm import DroneState as _S
+
         _GenericUAV = _G
         _ObservationUAV = _O
         _DroneState = _S
     except ImportError:
         pass
 
+
 # Drone types
-DRONE_TYPE_GENERIC     = "generic"
+DRONE_TYPE_GENERIC = "generic"
 DRONE_TYPE_OBSERVATION = "observation"
 
 
@@ -66,31 +70,37 @@ class DroneBackend(QObject):
     crosses the thread boundary back to the main (UI) thread.
     """
 
-    telemetry_updated = pyqtSignal(dict)   # full TelemetryState snapshot
-    state_changed     = pyqtSignal(str)    # flight_mode string
+    telemetry_updated = pyqtSignal(dict)  # full TelemetryState snapshot
+    state_changed = pyqtSignal(str)  # flight_mode string
     connected_changed = pyqtSignal(bool)
-    log_message       = pyqtSignal(str, str)  # (level, text)
+    log_message = pyqtSignal(str, str)  # (level, text)
     fsm_state_changed = pyqtSignal(str, str)  # (drone_id, fsm_state_name)
-    _start_poll       = pyqtSignal()       # internal: start timer from main thread
+    _start_poll = pyqtSignal()  # internal: start timer from main thread
 
     _POLL_INTERVAL_MS = 100  # 10 Hz telemetry polling
 
-    def __init__(self, drone_id: str, connection_string: str,
-                 drone_type: str = DRONE_TYPE_GENERIC, parent=None):
+    def __init__(
+        self,
+        drone_id: str,
+        connection_string: str,
+        drone_type: str = DRONE_TYPE_GENERIC,
+        parent=None,
+    ):
         super().__init__(parent)
-        self.drone_id:          str = drone_id
+        self.drone_id: str = drone_id
         self.connection_string: str = connection_string
-        self.drone_type:        str = drone_type
+        self.drone_type: str = drone_type
         self._drone: Optional[_DroneSDK] = None
         self._fsm_state: str = "DISCONNECTED"
         # Swarm role state
-        self.swarm_role:        str = "none"
-        self.leader_id:         str = ""
+        self.swarm_role: str = "none"
+        self.leader_id: str = ""
         self.formation_offset: tuple = (0.0, 0.0, 0.0)
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(self._POLL_INTERVAL_MS)
         self._poll_timer.timeout.connect(self._poll)
         self._start_poll.connect(self._poll_timer.start)
+        self._last_snap: Optional[dict] = None
 
     @property
     def fsm_state(self) -> str:
@@ -114,14 +124,25 @@ class DroneBackend(QObject):
         _ensure_sdk_loaded()
         try:
             # Prefer typed models (FSM-aware) if available
-            if self.drone_type == DRONE_TYPE_OBSERVATION and _ObservationUAV is not None:
-                self._drone = _ObservationUAV(self.drone_id, self.connection_string, log_dir="logs")
+            if (
+                self.drone_type == DRONE_TYPE_OBSERVATION
+                and _ObservationUAV is not None
+            ):
+                self._drone = _ObservationUAV(
+                    self.drone_id, self.connection_string, log_dir="logs"
+                )
             elif _GenericUAV is not None:
-                self._drone = _GenericUAV(self.drone_id, self.connection_string, log_dir="logs")
+                self._drone = _GenericUAV(
+                    self.drone_id, self.connection_string, log_dir="logs"
+                )
             elif _DroneSDK is not None:
-                self._drone = _DroneSDK(self.connection_string, drone_id=self.drone_id, log_dir="logs")
+                self._drone = _DroneSDK(
+                    self.connection_string, drone_id=self.drone_id, log_dir="logs"
+                )
             else:
-                self._safe_emit(self.log_message, "ERROR", "droneresearch SDK not installed.")
+                self._safe_emit(
+                    self.log_message, "ERROR", "droneresearch SDK not installed."
+                )
                 self._safe_emit(self.connected_changed, False)
                 return
 
@@ -146,11 +167,17 @@ class DroneBackend(QObject):
             if ok:
                 self._fsm_state = "IDLE"
                 self._safe_emit(self.fsm_state_changed, self.drone_id, "IDLE")
-                self._safe_emit(self.log_message, "INFO", f"[{self.drone_id}] Connected ({self.drone_type})")
+                self._safe_emit(
+                    self.log_message,
+                    "INFO",
+                    f"[{self.drone_id}] Connected ({self.drone_type})",
+                )
                 self._safe_emit(self._start_poll)
             else:
                 self._fsm_state = "DISCONNECTED"
-                self._safe_emit(self.log_message, "ERROR", f"[{self.drone_id}] Connection timed out")
+                self._safe_emit(
+                    self.log_message, "ERROR", f"[{self.drone_id}] Connection timed out"
+                )
         except Exception as exc:
             self._safe_emit(self.log_message, "ERROR", f"[{self.drone_id}] {exc}")
             self._safe_emit(self.connected_changed, False)
@@ -196,7 +223,9 @@ class DroneBackend(QObject):
 
     def rtl(self) -> None:
         if self._drone:
-            self.log_message.emit("INFO", f"[{self.drone_id}] 🏠 RTL (Return to Launch)")
+            self.log_message.emit(
+                "INFO", f"[{self.drone_id}] 🏠 RTL (Return to Launch)"
+            )
             _run_async(self._drone.rtl)
 
     def set_mode(self, mode: str) -> None:
@@ -206,20 +235,25 @@ class DroneBackend(QObject):
 
     def goto(self, lat: float, lon: float, alt: float) -> None:
         if self._drone:
-            self.log_message.emit("INFO", f"[{self.drone_id}] 🎯 GOTO lat={lat:.6f} lon={lon:.6f} alt={alt}m")
+            self.log_message.emit(
+                "INFO",
+                f"[{self.drone_id}] 🎯 GOTO lat={lat:.6f} lon={lon:.6f} alt={alt}m",
+            )
             _run_async(self._drone.goto, lat, lon, alt)
 
     def change_altitude(self, alt: float) -> None:
         if self._drone:
             self.log_message.emit("INFO", f"[{self.drone_id}] ↕ CHANGE ALT to {alt}m")
-            _run_async(self._drone.goto,
-                       self._drone.lat, self._drone.lon, alt)
+            _run_async(self._drone.goto, self._drone.lat, self._drone.lon, alt)
 
     # ── Gimbal control (ObservationUAVModel only) ─────────────────────────
 
     def gimbal_point(self, pitch: float, roll: float = 0.0, yaw: float = 0.0) -> None:
         if self._drone and hasattr(self._drone, "gimbal_point"):
-            self.log_message.emit("INFO", f"[{self.drone_id}] 📷 GIMBAL pitch={pitch} roll={roll} yaw={yaw}")
+            self.log_message.emit(
+                "INFO",
+                f"[{self.drone_id}] 📷 GIMBAL pitch={pitch} roll={roll} yaw={yaw}",
+            )
             _run_async(self._drone.gimbal_point, pitch, roll, yaw)
 
     def gimbal_home(self) -> None:
@@ -233,10 +267,12 @@ class DroneBackend(QObject):
 
     def set_swarm_role(self, role: str, leader_id: str = "") -> None:
         self.swarm_role = role
-        self.leader_id  = leader_id
+        self.leader_id = leader_id
         if self._drone and hasattr(self._drone, "set_role"):
             self._drone.set_role(role, leader_id if leader_id else None)
-        self.log_message.emit("INFO", f"[{self.drone_id}] ROLE={role} leader={leader_id or '—'}")
+        self.log_message.emit(
+            "INFO", f"[{self.drone_id}] ROLE={role} leader={leader_id or '—'}"
+        )
 
     def set_formation_offset(self, north: float, east: float, alt: float) -> None:
         self.formation_offset = (north, east, alt)
@@ -255,11 +291,11 @@ class DroneBackend(QObject):
             return None
         snap = self._drone.telemetry.snapshot()
         snap["connectionString"] = self.connection_string
-        snap["connected"]        = self.is_connected
-        snap["droneType"]        = self.drone_type
-        snap["fsmState"]         = self._fsm_state
-        snap["swarmRole"]        = self.swarm_role
-        snap["leaderId"]         = self.leader_id
+        snap["connected"] = self.is_connected
+        snap["droneType"] = self.drone_type
+        snap["fsmState"] = self._fsm_state
+        snap["swarmRole"] = self.swarm_role
+        snap["leaderId"] = self.leader_id
         return snap
 
     # ── Internal ──────────────────────────────────────────────────────────
@@ -270,21 +306,30 @@ class DroneBackend(QObject):
         self._fsm_state = name
         self._safe_emit(self.fsm_state_changed, self.drone_id, name)
         lvl = "WARN" if name == "EMERGENCY" else "INFO"
-        self._safe_emit(self.log_message, lvl,
-                        f"[{self.drone_id}] FSM: {old.name if hasattr(old,'name') else old} → {name}")
+        self._safe_emit(
+            self.log_message,
+            lvl,
+            f"[{self.drone_id}] FSM: {old.name if hasattr(old, 'name') else old} → {name}",
+        )
 
     def _poll(self) -> None:
-        if self._drone and self._drone.connected:
-            snap = self._drone.telemetry.snapshot()
+        if not (self._drone and self._drone.connected):
+            return
+        snap = self._drone.telemetry.snapshot()
+        # Only emit telemetry_updated if the snapshot actually changed.
+        # Always emit state_changed (cheap string comparison in QML).
+        if snap != self._last_snap:
+            self._last_snap = snap
             self._safe_emit(self.telemetry_updated, snap)
-            self._safe_emit(self.state_changed, snap.get("flight_mode", "UNKNOWN"))
+        self._safe_emit(self.state_changed, snap.get("flight_mode", "UNKNOWN"))
 
     def _on_statustext(self, text: str, severity: int) -> None:
         level = "WARN" if severity > 3 else "INFO"
         self._safe_emit(self.log_message, level, f"[{self.drone_id}] {text}")
 
-    def _on_command_ack(self, cmd_name: str, result_code: int,
-                        result_name: str, success: bool) -> None:
+    def _on_command_ack(
+        self, cmd_name: str, result_code: int, result_name: str, success: bool
+    ) -> None:
         """Surface MAVLink COMMAND_ACK results in the UI log.
 
         ACCEPTED is logged at INFO (debug-grade), everything else is WARN/ERROR
@@ -330,11 +375,11 @@ class SwarmBackend(QObject):
     log_message(level, text)        — forwarded from every DroneBackend
     """
 
-    drone_added             = pyqtSignal(str)
-    drone_removed           = pyqtSignal(str)
+    drone_added = pyqtSignal(str)
+    drone_removed = pyqtSignal(str)
     swarm_telemetry_updated = pyqtSignal(dict)
-    log_message             = pyqtSignal(str, str)
-    fsm_state_changed       = pyqtSignal(str, str)  # (drone_id, fsm_state_name)
+    log_message = pyqtSignal(str, str)
+    fsm_state_changed = pyqtSignal(str, str)  # (drone_id, fsm_state_name)
 
     _AGG_INTERVAL_MS = 200  # 5 Hz aggregation
 
@@ -359,9 +404,15 @@ class SwarmBackend(QObject):
 
     # ── Fleet management ──────────────────────────────────────────────────
 
-    def add_drone(self, drone_id: str, connection_string: str,
-                  drone_type: str = DRONE_TYPE_GENERIC) -> DroneBackend:
-        backend = DroneBackend(drone_id, connection_string, drone_type=drone_type, parent=self)
+    def add_drone(
+        self,
+        drone_id: str,
+        connection_string: str,
+        drone_type: str = DRONE_TYPE_GENERIC,
+    ) -> DroneBackend:
+        backend = DroneBackend(
+            drone_id, connection_string, drone_type=drone_type, parent=self
+        )
         backend.log_message.connect(self.log_message)
         backend.fsm_state_changed.connect(self.fsm_state_changed)
         self._backends[drone_id] = backend
@@ -374,12 +425,16 @@ class SwarmBackend(QObject):
         if b:
             b.set_swarm_role(role, leader_id)
 
-    def set_drone_formation_offset(self, drone_id: str, north: float, east: float, alt: float) -> None:
+    def set_drone_formation_offset(
+        self, drone_id: str, north: float, east: float, alt: float
+    ) -> None:
         b = self._backends.get(drone_id)
         if b:
             b.set_formation_offset(north, east, alt)
 
-    def gimbal_point(self, drone_id: str, pitch: float, roll: float = 0.0, yaw: float = 0.0) -> None:
+    def gimbal_point(
+        self, drone_id: str, pitch: float, roll: float = 0.0, yaw: float = 0.0
+    ) -> None:
         b = self._backends.get(drone_id)
         if b:
             b.gimbal_point(pitch, roll, yaw)
@@ -430,19 +485,25 @@ class SwarmBackend(QObject):
 
     def arm_all(self, force: bool = False) -> None:
         count = len(self._backends)
-        self.log_message.emit("INFO", f"[SWARM] ▶ ARM ALL ({count} drones, force={force})")
+        self.log_message.emit(
+            "INFO", f"[SWARM] ▶ ARM ALL ({count} drones, force={force})"
+        )
         for b in self._backends.values():
             b.arm(force=force)
 
     def disarm_all(self, force: bool = False) -> None:
         count = len(self._backends)
-        self.log_message.emit("INFO", f"[SWARM] ■ DISARM ALL ({count} drones, force={force})")
+        self.log_message.emit(
+            "INFO", f"[SWARM] ■ DISARM ALL ({count} drones, force={force})"
+        )
         for b in self._backends.values():
             b.disarm(force=force)
 
     def takeoff_all(self, altitude: float) -> None:
         count = len(self._backends)
-        self.log_message.emit("INFO", f"[SWARM] ⬆ TAKEOFF ALL ({count} drones to {altitude}m)")
+        self.log_message.emit(
+            "INFO", f"[SWARM] ⬆ TAKEOFF ALL ({count} drones to {altitude}m)"
+        )
         for b in self._backends.values():
             b.takeoff(altitude)
 
@@ -468,9 +529,17 @@ class SwarmBackend(QObject):
                 result[did] = snap
             else:
                 # Drone added but never connected or disconnected — keep it visible
-                result[did] = {"connected": False, "flight_mode": "OFFLINE",
-                               "armed": False, "battery_pct": -1.0, "alt_rel": 0.0,
-                               "groundspeed": 0.0, "lat": 0.0, "lon": 0.0, "yaw": 0.0}
+                result[did] = {
+                    "connected": False,
+                    "flight_mode": "OFFLINE",
+                    "armed": False,
+                    "battery_pct": -1.0,
+                    "alt_rel": 0.0,
+                    "groundspeed": 0.0,
+                    "lat": 0.0,
+                    "lon": 0.0,
+                    "yaw": 0.0,
+                }
         if not result:
             return
         # Skip emit if nothing changed since last tick — common case

@@ -5,14 +5,19 @@ Registered as context property 'swarm' in the QML engine.
 QML can call: swarm.addDrone(id, conn), swarm.armAll(), etc.
 Signals: droneAdded, droneRemoved, telemetryUpdated, logMessage
 """
+
+import math
 import threading
 from typing import Dict
 
-from PyQt6.QtCore import (
-    QObject, pyqtSignal, pyqtSlot, pyqtProperty, QTimer
-)
+from PyQt6.QtCore import QObject, QTimer, pyqtProperty, pyqtSignal, pyqtSlot
 
-from tools.ui.backend import SwarmBackend, DroneBackend, DRONE_TYPE_GENERIC, DRONE_TYPE_OBSERVATION
+from tools.ui.backend import (
+    DRONE_TYPE_GENERIC,
+    DRONE_TYPE_OBSERVATION,
+    DroneBackend,
+    SwarmBackend,
+)
 
 
 class SwarmContext(QObject):
@@ -24,19 +29,21 @@ class SwarmContext(QObject):
     """
 
     # ── Signals forwarded to QML ──────────────────────────────────────────
-    droneAdded       = pyqtSignal(str,        arguments=["droneId"])
-    droneRemoved     = pyqtSignal(str,        arguments=["droneId"])
+    droneAdded = pyqtSignal(str, arguments=["droneId"])
+    droneRemoved = pyqtSignal(str, arguments=["droneId"])
     telemetryUpdated = pyqtSignal("QVariant", arguments=["snapshot"])
-    logMessage       = pyqtSignal(str, str,   arguments=["level", "text"])
-    connectedChanged = pyqtSignal(str, bool,  arguments=["droneId", "connected"])
-    fsmStateChanged  = pyqtSignal(str, str,   arguments=["droneId", "fsmState"])
-    countsChanged    = pyqtSignal()
-    
+    logMessage = pyqtSignal(str, str, arguments=["level", "text"])
+    connectedChanged = pyqtSignal(str, bool, arguments=["droneId", "connected"])
+    fsmStateChanged = pyqtSignal(str, str, arguments=["droneId", "fsmState"])
+    countsChanged = pyqtSignal()
+
     # Swarm Algorithms signals
     formationUpdated = pyqtSignal(str, "QVariant", arguments=["leaderId", "positions"])
     consensusReached = pyqtSignal(str, str, arguments=["type", "result"])
     missionStatusChanged = pyqtSignal(str, arguments=["status"])
-    missionFinished = pyqtSignal(str, bool, str, arguments=["droneId", "success", "reason"])
+    missionFinished = pyqtSignal(
+        str, bool, str, arguments=["droneId", "success", "reason"]
+    )
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,10 +74,17 @@ class SwarmContext(QObject):
         self.addDroneTyped(drone_id, connection_string, DRONE_TYPE_GENERIC)
 
     @pyqtSlot(str, str, str)
-    def addDroneTyped(self, drone_id: str, connection_string: str, drone_type: str) -> None:
-        self.logMessage.emit("INFO", f"[{drone_id}] 🔄 Connecting ({drone_type}) to {connection_string}...")
+    def addDroneTyped(
+        self, drone_id: str, connection_string: str, drone_type: str
+    ) -> None:
+        self.logMessage.emit(
+            "INFO",
+            f"[{drone_id}] 🔄 Connecting ({drone_type}) to {connection_string}...",
+        )
         b = self._backend.add_drone(drone_id, connection_string, drone_type=drone_type)
-        b.connected_changed.connect(lambda ok, did=drone_id: self._on_connection_changed(did, ok))
+        b.connected_changed.connect(
+            lambda ok, did=drone_id: self._on_connection_changed(did, ok)
+        )
         threading.Thread(target=b.connect, daemon=True).start()
 
     def _on_connection_changed(self, drone_id: str, connected: bool) -> None:
@@ -91,14 +105,18 @@ class SwarmContext(QObject):
         if b:
             self.logMessage.emit("INFO", f"[{drone_id}] ⏏ Disconnecting...")
             import threading
+
             threading.Thread(target=b.disconnect, daemon=True).start()
 
     @pyqtSlot(str)
     def reconnectDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
-            self.logMessage.emit("INFO", f"[{drone_id}] 🔄 Reconnecting to {b.connection_string}...")
+            self.logMessage.emit(
+                "INFO", f"[{drone_id}] 🔄 Reconnecting to {b.connection_string}..."
+            )
             import threading
+
             threading.Thread(target=b.connect, daemon=True).start()
 
     @pyqtSlot()
@@ -160,7 +178,8 @@ class SwarmContext(QObject):
     @pyqtSlot(str, float, float, float)
     def smartGotoDrone(self, drone_id: str, lat: float, lon: float, alt: float) -> None:
         """Arm + takeoff if needed, then goto. Safe to call in any FSM state."""
-        import time, threading
+        import threading
+        import time
 
         b = self._backend.get_backend(drone_id)
         if not b:
@@ -168,34 +187,58 @@ class SwarmContext(QObject):
             return
 
         def _run():
-            telem = b.get_telemetry_snapshot() if hasattr(b, "get_telemetry_snapshot") else {}
+            telem = (
+                b.get_telemetry_snapshot()
+                if hasattr(b, "get_telemetry_snapshot")
+                else {}
+            )
             armed = telem.get("armed", False) if telem else False
 
             if not armed:
-                self.logMessage.emit("INFO", f"[{drone_id}] smartGoto: not armed — arming...")
+                self.logMessage.emit(
+                    "INFO", f"[{drone_id}] smartGoto: not armed — arming..."
+                )
                 b.arm()
                 # Wait for arm (up to 5s)
                 for _ in range(50):
                     time.sleep(0.1)
-                    t = b.get_telemetry_snapshot() if hasattr(b, "get_telemetry_snapshot") else {}
+                    t = (
+                        b.get_telemetry_snapshot()
+                        if hasattr(b, "get_telemetry_snapshot")
+                        else {}
+                    )
                     if t and t.get("armed", False):
                         break
                 else:
-                    self.logMessage.emit("ERROR", f"[{drone_id}] smartGoto: arm timeout")
+                    self.logMessage.emit(
+                        "ERROR", f"[{drone_id}] smartGoto: arm timeout"
+                    )
                     return
 
-                self.logMessage.emit("INFO", f"[{drone_id}] smartGoto: armed — taking off to {alt}m...")
+                self.logMessage.emit(
+                    "INFO", f"[{drone_id}] smartGoto: armed — taking off to {alt}m..."
+                )
                 b.takeoff(alt)
                 # Wait until airborne (alt_rel > 0.5m, up to 15s)
                 for _ in range(150):
                     time.sleep(0.1)
-                    t = b.get_telemetry_snapshot() if hasattr(b, "get_telemetry_snapshot") else {}
+                    t = (
+                        b.get_telemetry_snapshot()
+                        if hasattr(b, "get_telemetry_snapshot")
+                        else {}
+                    )
                     if t and t.get("alt_rel", 0) > 0.5:
                         break
                 else:
-                    self.logMessage.emit("WARN", f"[{drone_id}] smartGoto: takeoff timeout — trying goto anyway")
+                    self.logMessage.emit(
+                        "WARN",
+                        f"[{drone_id}] smartGoto: takeoff timeout — trying goto anyway",
+                    )
 
-            self.logMessage.emit("INFO", f"[{drone_id}] smartGoto: flying to {lat:.6f}, {lon:.6f}, {alt}m")
+            self.logMessage.emit(
+                "INFO",
+                f"[{drone_id}] smartGoto: flying to {lat:.6f}, {lon:.6f}, {alt}m",
+            )
             b.goto(lat, lon, alt)
 
         threading.Thread(target=_run, daemon=True).start()
@@ -211,7 +254,11 @@ class SwarmContext(QObject):
         If the SDK has no ``upload_mission``/``set_waypoints``, fall back to
         sequential ``goto`` commands (waypoint-by-waypoint, polling distance).
         """
-        import json, threading, time, math
+        import json
+        import math
+        import threading
+        import time
+
         b = self._backend.get_backend(drone_id)
         if not b:
             self.logMessage.emit("WARN", f"[{drone_id}] runMission: drone not found")
@@ -219,10 +266,14 @@ class SwarmContext(QObject):
         try:
             wps = json.loads(waypoints_json)
         except Exception as exc:
-            self.logMessage.emit("ERROR", f"[{drone_id}] runMission: invalid JSON — {exc}")
+            self.logMessage.emit(
+                "ERROR", f"[{drone_id}] runMission: invalid JSON — {exc}"
+            )
             return
         if not wps:
-            self.logMessage.emit("WARN", f"[{drone_id}] runMission: empty waypoint list")
+            self.logMessage.emit(
+                "WARN", f"[{drone_id}] runMission: empty waypoint list"
+            )
             return
 
         # Cancel any prior mission for this drone before starting a new one.
@@ -254,7 +305,9 @@ class SwarmContext(QObject):
                 self.logMessage.emit("ERROR", f"[{drone_id}] runMission: not connected")
                 _finish(False, "not connected")
                 return
-            self.logMessage.emit("INFO", f"[{drone_id}] runMission: starting {len(wps)} waypoints…")
+            self.logMessage.emit(
+                "INFO", f"[{drone_id}] runMission: starting {len(wps)} waypoints…"
+            )
 
             # Path 1: native mission upload
             if hasattr(drone, "upload_mission"):
@@ -264,11 +317,16 @@ class SwarmContext(QObject):
                         drone.start_mission()
                     else:
                         b.set_mode("AUTO")
-                    self.logMessage.emit("INFO", f"[{drone_id}] runMission: native mission started")
+                    self.logMessage.emit(
+                        "INFO", f"[{drone_id}] runMission: native mission started"
+                    )
                     _finish(True, "native mission dispatched")
                     return
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] runMission: upload_mission failed ({exc}) — falling back to sequential GOTO")
+                    self.logMessage.emit(
+                        "WARN",
+                        f"[{drone_id}] runMission: upload_mission failed ({exc}) — falling back to sequential GOTO",
+                    )
 
             # Path 2: legacy set_waypoints
             if hasattr(drone, "set_waypoints"):
@@ -278,15 +336,23 @@ class SwarmContext(QObject):
                         drone.start_mission()
                     else:
                         b.set_mode("AUTO")
-                    self.logMessage.emit("INFO", f"[{drone_id}] runMission: legacy mission started")
+                    self.logMessage.emit(
+                        "INFO", f"[{drone_id}] runMission: legacy mission started"
+                    )
                     _finish(True, "legacy mission dispatched")
                     return
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] runMission: set_waypoints failed ({exc}) — falling back to sequential GOTO")
+                    self.logMessage.emit(
+                        "WARN",
+                        f"[{drone_id}] runMission: set_waypoints failed ({exc}) — falling back to sequential GOTO",
+                    )
 
             # Path 3: sequential goto fallback (works on every SDK with .goto())
             if not hasattr(b, "goto"):
-                self.logMessage.emit("ERROR", f"[{drone_id}] runMission: backend has no goto() — cannot fly mission")
+                self.logMessage.emit(
+                    "ERROR",
+                    f"[{drone_id}] runMission: backend has no goto() — cannot fly mission",
+                )
                 _finish(False, "no goto support")
                 return
 
@@ -295,66 +361,103 @@ class SwarmContext(QObject):
                 if hasattr(b, "get_telemetry_snapshot"):
                     t = b.get_telemetry_snapshot() or {}
                     if not t.get("armed", False):
-                        self.logMessage.emit("INFO", f"[{drone_id}] runMission: arming…")
-                        if hasattr(b, "arm"): b.arm()
+                        self.logMessage.emit(
+                            "INFO", f"[{drone_id}] runMission: arming…"
+                        )
+                        if hasattr(b, "arm"):
+                            b.arm()
                         # cancel-aware wait (3 s)
                         for _ in range(30):
                             if cancel_event.wait(0.1):
-                                self.logMessage.emit("INFO", f"[{drone_id}] runMission: cancelled before arm")
+                                self.logMessage.emit(
+                                    "INFO",
+                                    f"[{drone_id}] runMission: cancelled before arm",
+                                )
                                 _finish(False, "cancelled")
                                 return
                             t = b.get_telemetry_snapshot() or {}
-                            if t.get("armed", False): break
+                            if t.get("armed", False):
+                                break
                     if t.get("alt_rel", 0) < 1.0:
                         target_alt = max(float(wps[0].get("alt", 10.0)), 5.0)
-                        self.logMessage.emit("INFO", f"[{drone_id}] runMission: takeoff to {target_alt}m…")
-                        if hasattr(b, "takeoff"): b.takeoff(target_alt)
+                        self.logMessage.emit(
+                            "INFO",
+                            f"[{drone_id}] runMission: takeoff to {target_alt}m…",
+                        )
+                        if hasattr(b, "takeoff"):
+                            b.takeoff(target_alt)
                         for _ in range(80):
                             if cancel_event.wait(0.25):
-                                self.logMessage.emit("INFO", f"[{drone_id}] runMission: cancelled during takeoff")
+                                self.logMessage.emit(
+                                    "INFO",
+                                    f"[{drone_id}] runMission: cancelled during takeoff",
+                                )
                                 _finish(False, "cancelled")
                                 return
                             t = b.get_telemetry_snapshot() or {}
-                            if t.get("alt_rel", 0) >= target_alt * 0.9: break
+                            if t.get("alt_rel", 0) >= target_alt * 0.9:
+                                break
             except Exception as exc:
-                self.logMessage.emit("WARN", f"[{drone_id}] runMission: pre-flight check failed ({exc})")
+                self.logMessage.emit(
+                    "WARN", f"[{drone_id}] runMission: pre-flight check failed ({exc})"
+                )
 
             # Fly waypoints in order — per-WP timeout enforced by Event.wait
             WP_TIMEOUT_S = 60.0
-            WP_POLL_S    = 0.25
-            WP_RADIUS_M  = 3.0
+            WP_POLL_S = 0.25
+            WP_RADIUS_M = 3.0
             for i, wp in enumerate(wps):
                 if _is_cancelled():
-                    self.logMessage.emit("INFO", f"[{drone_id}] runMission: cancelled at WP {i+1}")
+                    self.logMessage.emit(
+                        "INFO", f"[{drone_id}] runMission: cancelled at WP {i + 1}"
+                    )
                     _finish(False, "cancelled")
                     return
-                lat = float(wp["lat"]); lon = float(wp["lon"]); alt = float(wp.get("alt", 10.0))
-                self.logMessage.emit("INFO", f"[{drone_id}] runMission: WP {i+1}/{len(wps)} → {lat:.5f}, {lon:.5f} @ {alt}m")
+                lat = float(wp["lat"])
+                lon = float(wp["lon"])
+                alt = float(wp.get("alt", 10.0))
+                self.logMessage.emit(
+                    "INFO",
+                    f"[{drone_id}] runMission: WP {i + 1}/{len(wps)} → {lat:.5f}, {lon:.5f} @ {alt}m",
+                )
                 try:
                     b.goto(lat, lon, alt)
                 except Exception as exc:
-                    self.logMessage.emit("ERROR", f"[{drone_id}] runMission: goto failed at WP {i+1} ({exc})")
-                    _finish(False, f"goto failed @WP{i+1}: {exc}")
+                    self.logMessage.emit(
+                        "ERROR",
+                        f"[{drone_id}] runMission: goto failed at WP {i + 1} ({exc})",
+                    )
+                    _finish(False, f"goto failed @WP{i + 1}: {exc}")
                     return
                 # cancel-aware poll until reached or per-WP timeout
                 t_start = time.monotonic()
                 reached = False
                 while time.monotonic() - t_start < WP_TIMEOUT_S:
                     if cancel_event.wait(WP_POLL_S):
-                        self.logMessage.emit("INFO", f"[{drone_id}] runMission: cancelled at WP {i+1}")
+                        self.logMessage.emit(
+                            "INFO", f"[{drone_id}] runMission: cancelled at WP {i + 1}"
+                        )
                         _finish(False, "cancelled")
                         return
-                    snap = b.get_telemetry_snapshot() if hasattr(b, "get_telemetry_snapshot") else {}
+                    snap = (
+                        b.get_telemetry_snapshot()
+                        if hasattr(b, "get_telemetry_snapshot")
+                        else {}
+                    )
                     if not snap:
                         continue
-                    cur_lat = snap.get("lat", 0.0); cur_lon = snap.get("lon", 0.0)
+                    cur_lat = snap.get("lat", 0.0)
+                    cur_lon = snap.get("lon", 0.0)
                     dlat = (lat - cur_lat) * 111320.0
                     dlon = (lon - cur_lon) * 111320.0 * math.cos(math.radians(cur_lat))
                     if math.sqrt(dlat * dlat + dlon * dlon) < WP_RADIUS_M:
                         reached = True
                         break
                 if not reached:
-                    self.logMessage.emit("WARN", f"[{drone_id}] runMission: WP {i+1} timeout after {WP_TIMEOUT_S:.0f}s — advancing")
+                    self.logMessage.emit(
+                        "WARN",
+                        f"[{drone_id}] runMission: WP {i + 1} timeout after {WP_TIMEOUT_S:.0f}s — advancing",
+                    )
             self.logMessage.emit("INFO", f"[{drone_id}] runMission: mission complete")
             _finish(True, "complete")
 
@@ -372,7 +475,9 @@ class SwarmContext(QObject):
             ev.set()
             self.logMessage.emit("INFO", f"[{drone_id}] cancelMission: requested")
         else:
-            self.logMessage.emit("INFO", f"[{drone_id}] cancelMission: no active mission")
+            self.logMessage.emit(
+                "INFO", f"[{drone_id}] cancelMission: no active mission"
+            )
 
     @pyqtSlot()
     def cancelAllMissions(self) -> None:
@@ -381,21 +486,29 @@ class SwarmContext(QObject):
             for ev in self._mission_active.values():
                 ev.set()
         if ids:
-            self.logMessage.emit("INFO", f"cancelAllMissions: cancelled {len(ids)} mission(s)")
+            self.logMessage.emit(
+                "INFO", f"cancelAllMissions: cancelled {len(ids)} mission(s)"
+            )
 
     @pyqtSlot(str, str)
     def runMissionMulti(self, drone_ids_json: str, waypoints_json: str) -> None:
         """Run the same waypoint mission on multiple drones in parallel."""
         import json
+
         try:
             ids = json.loads(drone_ids_json)
         except Exception as exc:
-            self.logMessage.emit("ERROR", f"runMissionMulti: invalid drone list — {exc}")
+            self.logMessage.emit(
+                "ERROR", f"runMissionMulti: invalid drone list — {exc}"
+            )
             return
         if not ids:
             self.logMessage.emit("WARN", "runMissionMulti: no drones selected")
             return
-        self.logMessage.emit("INFO", f"runMissionMulti: dispatching to {len(ids)} drone(s): {', '.join(ids)}")
+        self.logMessage.emit(
+            "INFO",
+            f"runMissionMulti: dispatching to {len(ids)} drone(s): {', '.join(ids)}",
+        )
         for did in ids:
             self.runMission(did, waypoints_json)
 
@@ -468,7 +581,9 @@ class SwarmContext(QObject):
         self._backend.set_drone_role(drone_id, role, leader_id)
 
     @pyqtSlot(str, float, float, float)
-    def setFormationOffset(self, drone_id: str, north: float, east: float, alt: float) -> None:
+    def setFormationOffset(
+        self, drone_id: str, north: float, east: float, alt: float
+    ) -> None:
         self._backend.set_drone_formation_offset(drone_id, north, east, alt)
 
     @pyqtSlot(str, float, float, float)
@@ -491,6 +606,7 @@ class SwarmContext(QObject):
     def availableSerialPorts(self) -> list:
         try:
             import serial.tools.list_ports
+
             return [p.device for p in serial.tools.list_ports.comports()]
         except Exception:
             return []
@@ -520,6 +636,7 @@ class SwarmContext(QObject):
         """Write content to a local file (for log export from QML)."""
         try:
             import os
+
             clean = path
             if clean.startswith("file:///"):
                 clean = clean[8:]
@@ -559,14 +676,15 @@ class SwarmContext(QObject):
     def _init_swarm_algorithms(self):
         """Initialize swarm algorithms state and timers"""
         import math
+
         from PyQt6.QtCore import QTimer
-        
+
         # Algorithm state
         self._swarm_algorithms_active = False
         self._algorithms_timer = QTimer()
         self._algorithms_timer.timeout.connect(self._update_swarm_algorithms)
         self._algorithms_update_rate = 100  # ms
-        
+
         # Boids parameters
         self._boids_enabled = False
         self._separation_weight = 1.5
@@ -574,7 +692,7 @@ class SwarmContext(QObject):
         self._cohesion_weight = 1.0
         self._perception_radius = 50
         self._boids_velocities = {}
-        
+
         # Leader-Follower parameters
         self._leader_follower_enabled = False
         self._leader_drone_id = ""
@@ -589,13 +707,13 @@ class SwarmContext(QObject):
         # made multi-drone swarms (e.g. 13 sims) look broken because 8 of them
         # never received any goto command.
         self._formation_size = 0
-        
+
         # Consensus parameters
         self._consensus_enabled = False
         self._consensus_algorithm = 0  # Basic
         self._byzantine_tolerance = 1
         self._consensus_state = "Idle"
-        
+
         # Behavior Trees parameters
         self._behavior_trees_enabled = False
         self._mission_type = 0  # Surveillance
@@ -604,67 +722,67 @@ class SwarmContext(QObject):
         self._behavior_tree_active = False
 
     # ── Swarm Algorithms Properties ───────────────────────────────────────
-    
+
     @pyqtProperty(bool, notify=countsChanged)
     def swarmAlgorithmsActive(self):
         return self._swarm_algorithms_active
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def algorithmsUpdateRate(self):
         return self._algorithms_update_rate
-    
+
     @algorithmsUpdateRate.setter
     def algorithmsUpdateRate(self, value):
         self._algorithms_update_rate = value
         if self._swarm_algorithms_active:
             self._algorithms_timer.setInterval(value)
-    
+
     # Boids properties
     @pyqtProperty(bool, notify=countsChanged)
     def boidsEnabled(self):
         return self._boids_enabled
-    
+
     @boidsEnabled.setter
     def boidsEnabled(self, value):
         self._boids_enabled = value
-    
+
     @pyqtProperty(float, notify=countsChanged)
     def separationWeight(self):
         return self._separation_weight
-    
+
     @separationWeight.setter
     def separationWeight(self, value):
         self._separation_weight = value
-    
+
     @pyqtProperty(float, notify=countsChanged)
     def alignmentWeight(self):
         return self._alignment_weight
-    
+
     @alignmentWeight.setter
     def alignmentWeight(self, value):
         self._alignment_weight = value
-    
+
     @pyqtProperty(float, notify=countsChanged)
     def cohesionWeight(self):
         return self._cohesion_weight
-    
+
     @cohesionWeight.setter
     def cohesionWeight(self, value):
         self._cohesion_weight = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def perceptionRadius(self):
         return self._perception_radius
-    
+
     @perceptionRadius.setter
     def perceptionRadius(self, value):
         self._perception_radius = value
-    
+
     # Leader-Follower properties
     @pyqtProperty(bool, notify=countsChanged)
     def leaderFollowerEnabled(self):
         return self._leader_follower_enabled
-    
+
     @leaderFollowerEnabled.setter
     def leaderFollowerEnabled(self, value):
         new_val = bool(value)
@@ -678,38 +796,38 @@ class SwarmContext(QObject):
                 self._formation_launched.clear()
                 self._formation_cmd_ts.clear()
         self.countsChanged.emit()
-    
+
     @pyqtProperty(str, notify=countsChanged)
     def leaderDroneId(self):
         return self._leader_drone_id
-    
+
     @leaderDroneId.setter
     def leaderDroneId(self, value):
         self._leader_drone_id = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def followDistance(self):
         return self._follow_distance
-    
+
     @followDistance.setter
     def followDistance(self, value):
         self._follow_distance = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def formationType(self):
         return self._formation_type
-    
+
     @formationType.setter
     def formationType(self, value):
         if int(value) == int(self._formation_type):
             return
         self._formation_type = int(value)
         self.countsChanged.emit()
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def formationSize(self):
         return self._formation_size
-    
+
     @formationSize.setter
     def formationSize(self, value):
         v = max(0, int(value))
@@ -718,70 +836,69 @@ class SwarmContext(QObject):
         self._formation_size = v
         self.countsChanged.emit()
         self.logMessage.emit(
-            "INFO",
-            f"[SWARM] Formation size set to {v if v > 0 else 'ALL'}"
+            "INFO", f"[SWARM] Formation size set to {v if v > 0 else 'ALL'}"
         )
-    
+
     # Consensus properties
     @pyqtProperty(bool, notify=countsChanged)
     def consensusEnabled(self):
         return self._consensus_enabled
-    
+
     @consensusEnabled.setter
     def consensusEnabled(self, value):
         self._consensus_enabled = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def consensusAlgorithm(self):
         return self._consensus_algorithm
-    
+
     @consensusAlgorithm.setter
     def consensusAlgorithm(self, value):
         self._consensus_algorithm = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def byzantineTolerance(self):
         return self._byzantine_tolerance
-    
+
     @byzantineTolerance.setter
     def byzantineTolerance(self, value):
         self._byzantine_tolerance = value
-    
+
     @pyqtProperty(str, notify=countsChanged)
     def consensusState(self):
         return self._consensus_state
-    
+
     # Behavior Trees properties
     @pyqtProperty(bool, notify=countsChanged)
     def behaviorTreesEnabled(self):
         return self._behavior_trees_enabled
-    
+
     @behaviorTreesEnabled.setter
     def behaviorTreesEnabled(self, value):
         self._behavior_trees_enabled = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def missionType(self):
         return self._mission_type
-    
+
     @missionType.setter
     def missionType(self, value):
         self._mission_type = value
-    
+
     @pyqtProperty(int, notify=countsChanged)
     def missionPriority(self):
         return self._mission_priority
-    
+
     @missionPriority.setter
     def missionPriority(self, value):
         self._mission_priority = value
-    
+
     @pyqtProperty(str, notify=missionStatusChanged)
     def missionStatus(self):
         return self._mission_status
-    
+
     # ── Swarm Algorithms Slots ─────────────────────────────────────────────
-    
+
     @pyqtSlot()
     def startSwarmAlgorithms(self):
         """Start all enabled swarm algorithms.
@@ -799,8 +916,7 @@ class SwarmContext(QObject):
         # Auto-pick a leader if Leader-Follower is on but no leader was set
         if self._leader_follower_enabled:
             connected = [
-                did for did, b in self._backend.all_backends().items()
-                if b.is_connected
+                did for did, b in self._backend.all_backends().items() if b.is_connected
             ]
             if not self._leader_drone_id or self._leader_drone_id not in connected:
                 if connected:
@@ -816,8 +932,20 @@ class SwarmContext(QObject):
                     )
                     return
 
-            ftypes = ["Line", "V-Shape", "Circle", "Grid", "RZ Logo", "Letter R", "Letter Z"]
-            ft_name = ftypes[self._formation_type] if 0 <= self._formation_type < len(ftypes) else "?"
+            ftypes = [
+                "Line",
+                "V-Shape",
+                "Circle",
+                "Grid",
+                "RZ Logo",
+                "Letter R",
+                "Letter Z",
+            ]
+            ft_name = (
+                ftypes[self._formation_type]
+                if 0 <= self._formation_type < len(ftypes)
+                else "?"
+            )
             self.logMessage.emit(
                 "INFO",
                 f"[SWARM] Formation: {ft_name} · leader={self._leader_drone_id} · "
@@ -828,7 +956,7 @@ class SwarmContext(QObject):
         self._algorithms_timer.start(self._algorithms_update_rate)
         self.logMessage.emit("INFO", "[SWARM] Starting swarm algorithms...")
         self.countsChanged.emit()
-    
+
     @pyqtSlot()
     def stopSwarmAlgorithms(self):
         """Stop all swarm algorithms"""
@@ -836,7 +964,7 @@ class SwarmContext(QObject):
         self._algorithms_timer.stop()
         self.logMessage.emit("INFO", "[SWARM] Stopping swarm algorithms...")
         self.countsChanged.emit()
-    
+
     @pyqtSlot()
     def resetSwarmAlgorithms(self):
         """Reset all swarm algorithms"""
@@ -847,45 +975,52 @@ class SwarmContext(QObject):
         self._consensus_state = "Idle"
         self.logMessage.emit("INFO", "[SWARM] Algorithms reset")
         self.countsChanged.emit()
-    
+
     @pyqtSlot()
     def startConsensusVote(self):
         """Start consensus voting"""
         if not self._consensus_enabled:
             return
-        
+
         self._consensus_state = "Voting"
         self.logMessage.emit("INFO", "[SWARM] Starting consensus vote...")
         self.countsChanged.emit()
-        
+
         # Simulate voting result
         import threading
         import time
+
         def _vote():
             time.sleep(2)
             self._consensus_state = "Consensus Reached"
             self.consensusReached.emit("target", "approved")
             self.logMessage.emit("INFO", "[SWARM] Consensus reached")
             self.countsChanged.emit()
-        
+
         threading.Thread(target=_vote, daemon=True).start()
-    
+
     @pyqtSlot()
     def executeBehaviorTreeMission(self):
         """Execute behavior tree mission"""
         if not self._behavior_trees_enabled:
             return
-        
+
         self._mission_status = "Executing"
         self._behavior_tree_active = True
         self.missionStatusChanged.emit(self._mission_status)
-        
-        mission_types = ["Surveillance", "Search & Rescue", "Formation Flight", "Area Coverage"]
+
+        mission_types = [
+            "Surveillance",
+            "Search & Rescue",
+            "Formation Flight",
+            "Area Coverage",
+        ]
         mission = mission_types[self._mission_type]
         self.logMessage.emit("INFO", f"[SWARM] Starting mission: {mission}")
-        
+
         import threading
         import time
+
         def _execute():
             steps = ["Planning", "Takeoff", "Execution", "Landing"]
             for step in steps:
@@ -894,63 +1029,135 @@ class SwarmContext(QObject):
                 self._mission_status = step
                 self.missionStatusChanged.emit(self._mission_status)
                 time.sleep(2)
-            
+
             if self._behavior_tree_active:
                 self._mission_status = "Completed"
                 self._behavior_tree_active = False
                 self.logMessage.emit("INFO", "[SWARM] Mission completed")
-            
+
             self.missionStatusChanged.emit(self._mission_status)
-        
+
         threading.Thread(target=_execute, daemon=True).start()
-    
+
     # ── Swarm Algorithms Internal Methods ───────────────────────────────────
-    
+
     def _update_swarm_algorithms(self):
         """Main update loop for swarm algorithms"""
         if not self._swarm_algorithms_active:
             return
-        
+
         # Get current drone positions
         drone_positions = {}
         for drone_id, backend in self._backend.all_backends().items():
             if backend.is_connected:
                 snap = backend.get_telemetry_snapshot()
-                if snap and snap.get('lat') and snap.get('lon'):
-                    drone_positions[drone_id] = (snap['lat'], snap['lon'], snap.get('alt', 0))
-        
+                if snap and snap.get("lat") and snap.get("lon"):
+                    drone_positions[drone_id] = (
+                        snap["lat"],
+                        snap["lon"],
+                        snap.get("alt", 0),
+                    )
+
         if len(drone_positions) < 2:
             return
-        
+
         # Run enabled algorithms
         if self._boids_enabled:
             self._update_boids(drone_positions)
-        
+
         if self._leader_follower_enabled:
             self._update_leader_follower(drone_positions)
-    
-    def _update_boids(self, drone_positions):
-        """Update boids algorithm"""
-        # Simplified boids implementation
-        for drone_id in drone_positions:
-            if drone_id not in self._boids_velocities:
-                self._boids_velocities[drone_id] = [0.0, 0.0, 0.0]
-            
-            # Simple cohesion towards center
-            center_lat = sum(pos[0] for pos in drone_positions.values()) / len(drone_positions)
-            center_lon = sum(pos[1] for pos in drone_positions.values()) / len(drone_positions)
-            
-            my_lat, my_lon, _ = drone_positions[drone_id]
-            vel_lat = (center_lat - my_lat) * 0.0001 * self._cohesion_weight
-            vel_lon = (center_lon - my_lon) * 0.0001 * self._cohesion_weight
-            
-            self._boids_velocities[drone_id] = [vel_lat, vel_lon, 0]
-            
-            # Send velocity command
+
+    def _update_boids(self, drone_positions: dict):
+        """Reynolds Boids flocking in local NED metres.
+
+        drone_positions: {drone_id: (lat, lon, alt)}
+        Uses the centroid of all drones as the local NED origin for this tick.
+        """
+        if len(drone_positions) < 2:
+            return
+
+        ids = list(drone_positions.keys())
+
+        # Convert all GPS positions to local NED metres relative to centroid
+        ref_lat = sum(p[0] for p in drone_positions.values()) / len(drone_positions)
+        ref_lon = sum(p[1] for p in drone_positions.values()) / len(drone_positions)
+
+        def gps_to_ned(lat, lon):
+            north = (lat - ref_lat) * 111_320.0
+            east = (lon - ref_lon) * 111_320.0 * math.cos(math.radians(ref_lat))
+            return north, east
+
+        ned = {
+            did: gps_to_ned(p[0], p[1]) + (p[2],) for did, p in drone_positions.items()
+        }
+
+        for drone_id in ids:
+            my_n, my_e, my_alt = ned[drone_id]
+            sep_n, sep_e = 0.0, 0.0
+            ali_n, ali_e = 0.0, 0.0
+            coh_n, coh_e = 0.0, 0.0
+            neighbours = 0
+
+            for other_id in ids:
+                if other_id == drone_id:
+                    continue
+                on, oe, _ = ned[other_id]
+                dist = math.sqrt((my_n - on) ** 2 + (my_e - oe) ** 2)
+                if dist > self._perception_radius or dist < 1e-3:
+                    continue
+                neighbours += 1
+                # Separation: steer away
+                sep_n += (my_n - on) / max(dist, 0.1)
+                sep_e += (my_e - oe) / max(dist, 0.1)
+                # Alignment: match velocity (use NED velocity if available, else zero)
+                snap = self._backend.get_backend(other_id)
+                if snap:
+                    t = snap.get_telemetry_snapshot() or {}
+                    ali_n += t.get("vx", 0.0)
+                    ali_e += t.get("vy", 0.0)
+                # Cohesion: steer toward centre
+                coh_n += on
+                coh_e += oe
+
+            if neighbours == 0:
+                continue
+
+            # Normalise cohesion to direction
+            coh_n = coh_n / neighbours - my_n
+            coh_e = coh_e / neighbours - my_e
+
+            # Weighted sum
+            vel_n = (
+                sep_n * self._separation_weight
+                + ali_n / neighbours * self._alignment_weight
+                + coh_n * self._cohesion_weight
+            )
+            vel_e = (
+                sep_e * self._separation_weight
+                + ali_e / neighbours * self._alignment_weight
+                + coh_e * self._cohesion_weight
+            )
+
+            # Clamp to max speed (3 m/s default)
+            speed = math.sqrt(vel_n**2 + vel_e**2)
+            max_speed = 3.0
+            if speed > max_speed:
+                vel_n = vel_n / speed * max_speed
+                vel_e = vel_e / speed * max_speed
+
+            # Convert velocity to target position (0.1s lookahead = 10Hz update)
+            dt = self._algorithms_update_rate / 1000.0
+            tgt_n = my_n + vel_n * dt
+            tgt_e = my_e + vel_e * dt
+            tgt_lat = ref_lat + tgt_n / 111_320.0
+            tgt_lon = ref_lon + tgt_e / (111_320.0 * math.cos(math.radians(ref_lat)))
+
             backend = self._backend.get_backend(drone_id)
-            if backend and hasattr(backend, 'send_velocity'):
-                backend.send_velocity(vel_lat, vel_lon, 0)
-    
+            if backend and hasattr(backend, "goto"):
+                my_pos = drone_positions[drone_id]
+                backend.goto(tgt_lat, tgt_lon, my_pos[2])
+
     def _update_leader_follower(self, drone_positions):
         """Update leader-follower algorithm.
 
@@ -958,12 +1165,16 @@ class SwarmContext(QObject):
         currently selected formation type and dispatches a ``goto`` command
         via the drone backend (rate-limited to once per second per drone).
         """
-        import time, math
+        import math
+        import time
+
         if not self._leader_drone_id or self._leader_drone_id not in drone_positions:
             return
 
         leader_pos = drone_positions[self._leader_drone_id]
-        formation_positions = self._calculate_formation_positions(leader_pos, drone_positions)
+        formation_positions = self._calculate_formation_positions(
+            leader_pos, drone_positions
+        )
 
         # Emit formation update for visualization. Convert tuples → plain
         # lists so JS sees a real array (`pos[0]`/`pos[1]` would otherwise be
@@ -999,7 +1210,11 @@ class SwarmContext(QObject):
             target_lat, target_lon, target_alt = target_pos
 
             # Decide between smartGoto (arm+takeoff+goto) and plain goto.
-            snap = backend.get_telemetry_snapshot() if hasattr(backend, "get_telemetry_snapshot") else {}
+            snap = (
+                backend.get_telemetry_snapshot()
+                if hasattr(backend, "get_telemetry_snapshot")
+                else {}
+            )
             armed = bool(snap.get("armed", False)) if snap else False
             airborne = (snap.get("alt_rel", 0) or 0) > 0.5 if snap else False
 
@@ -1017,7 +1232,9 @@ class SwarmContext(QObject):
                         self._formation_launched.add(drone_id)
                     sent = True
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] formation smartGoto failed: {exc}")
+                    self.logMessage.emit(
+                        "WARN", f"[{drone_id}] formation smartGoto failed: {exc}"
+                    )
             elif not armed or not airborne:
                 # Already launched once but currently grounded — let smartGoto
                 # re-engage (e.g. after a landing). Throttle still applies.
@@ -1025,19 +1242,25 @@ class SwarmContext(QObject):
                     self.smartGotoDrone(drone_id, target_lat, target_lon, target_alt)
                     sent = True
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] formation re-launch failed: {exc}")
+                    self.logMessage.emit(
+                        "WARN", f"[{drone_id}] formation re-launch failed: {exc}"
+                    )
             elif hasattr(backend, "goto"):
                 try:
                     backend.goto(target_lat, target_lon, target_alt)
                     sent = True
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] formation goto failed: {exc}")
+                    self.logMessage.emit(
+                        "WARN", f"[{drone_id}] formation goto failed: {exc}"
+                    )
             elif hasattr(backend, "send_position"):
                 try:
                     backend.send_position(target_lat, target_lon, target_alt)
                     sent = True
                 except Exception as exc:
-                    self.logMessage.emit("WARN", f"[{drone_id}] formation send_position failed: {exc}")
+                    self.logMessage.emit(
+                        "WARN", f"[{drone_id}] formation send_position failed: {exc}"
+                    )
             if sent:
                 with self._state_lock:
                     self._formation_cmd_ts[drone_id] = now
@@ -1052,7 +1275,7 @@ class SwarmContext(QObject):
                 self.logMessage.emit(
                     "WARN",
                     f"[SWARM] Formation: {len(skipped_disconnected)} follower(s) "
-                    f"without telemetry (skipped): {', '.join(skipped_disconnected)}"
+                    f"without telemetry (skipped): {', '.join(skipped_disconnected)}",
                 )
 
     # ── Formation Geometry ───────────────────────────────────────────────
@@ -1061,23 +1284,39 @@ class SwarmContext(QObject):
     # The leader sits at the geometric origin (0, 0).
     _LETTER_R_OFFSETS = [
         # Vertical spine (top to bottom)
-        (1.0, -0.6), (0.5, -0.6), (0.0, -0.6), (-0.5, -0.6), (-1.0, -0.6),
+        (1.0, -0.6),
+        (0.5, -0.6),
+        (0.0, -0.6),
+        (-0.5, -0.6),
+        (-1.0, -0.6),
         # Top curve / horizontal of the bowl
-        (1.0, -0.2), (1.0, 0.2),
+        (1.0, -0.2),
+        (1.0, 0.2),
         # Right edge of bowl
-        (0.7, 0.4), (0.3, 0.4),
+        (0.7, 0.4),
+        (0.3, 0.4),
         # Bowl bottom (joins spine)
-        (0.0, -0.2), (0.0, 0.2),
+        (0.0, -0.2),
+        (0.0, 0.2),
         # Diagonal leg
-        (-0.5, 0.0), (-1.0, 0.4),
+        (-0.5, 0.0),
+        (-1.0, 0.4),
     ]
     _LETTER_Z_OFFSETS = [
         # Top horizontal (left to right)
-        (1.0, -0.6), (1.0, -0.2), (1.0, 0.2), (1.0, 0.6),
+        (1.0, -0.6),
+        (1.0, -0.2),
+        (1.0, 0.2),
+        (1.0, 0.6),
         # Diagonal (top-right → bottom-left)
-        (0.5, 0.3), (0.0, 0.0), (-0.5, -0.3),
+        (0.5, 0.3),
+        (0.0, 0.0),
+        (-0.5, -0.3),
         # Bottom horizontal
-        (-1.0, -0.6), (-1.0, -0.2), (-1.0, 0.2), (-1.0, 0.6),
+        (-1.0, -0.6),
+        (-1.0, -0.2),
+        (-1.0, 0.2),
+        (-1.0, 0.6),
     ]
 
     def _formation_offsets(self, n_followers: int):
@@ -1089,6 +1328,7 @@ class SwarmContext(QObject):
             4 = RZ (R+Z combined), 5 = R, 6 = Z
         """
         import math
+
         d = float(self._follow_distance)
         ftype = int(self._formation_type)
 
@@ -1141,13 +1381,16 @@ class SwarmContext(QObject):
     def _calculate_formation_positions(self, leader_pos, drone_positions):
         """Calculate target lat/lon/alt for every drone in the formation."""
         import math
+
         positions = {self._leader_drone_id: leader_pos}
 
         # Eligible followers (deterministic ordering).
         # ``_formation_size`` semantics:
         #   <= 0  → no cap, every connected non-leader drone joins the formation
         #   > 0   → leader + (size-1) followers (legacy behaviour)
-        followers = sorted(d for d in drone_positions.keys() if d != self._leader_drone_id)
+        followers = sorted(
+            d for d in drone_positions.keys() if d != self._leader_drone_id
+        )
         if int(self._formation_size) > 0:
             followers = followers[: max(0, int(self._formation_size) - 1)]
         if not followers:
