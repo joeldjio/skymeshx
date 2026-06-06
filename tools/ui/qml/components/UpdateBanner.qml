@@ -17,6 +17,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "." as Cmp
 
 Rectangle {
     id: root
@@ -33,7 +34,7 @@ Rectangle {
         st === "downloading" ? "#3b82f6" :
         st === "ready"       ? "#22c55e" :
                                "#334155"
-    color:        "#0d1117"
+    color:        Cmp.Theme.bg
     border.color: accent
     implicitHeight: row.implicitHeight + 24
 
@@ -82,7 +83,7 @@ Rectangle {
                         root.st === "downloading" ? "Lade Update herunter…" :
                         root.st === "ready"       ? "Installer wird gestartet…" :
                                                     "Software-Updates"
-                    color: "#e2e8f0"
+                    color: Cmp.Theme.textPrimary
                     font.pixelSize: 13; font.weight: Font.Bold
                 }
             }
@@ -93,7 +94,7 @@ Rectangle {
                     (root.st === "error" && updater
                         ? "  ·  " + updater.errorMessage
                         : "")
-                color: "#94a3b8"
+                color: Cmp.Theme.textSecondary
                 font.pixelSize: 10
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -135,7 +136,7 @@ Rectangle {
                 }
                 contentItem: Text {
                     text: parent.text
-                    color: "#0d1117"
+                    color: Cmp.Theme.bg
                     font.pixelSize: 11; font.bold: true
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
@@ -160,8 +161,8 @@ Rectangle {
                 }
                 background: Rectangle {
                     radius: 6
-                    color: parent.hovered ? "#1f2937" : "#161b27"
-                    border.color: "#334155"; border.width: 1
+                    color: parent.hovered ? "#1f2937" : Cmp.Theme.bgPanel
+                    border.color: Cmp.Theme.borderStrong; border.width: 1
                 }
                 contentItem: Text {
                     text: parent.text

@@ -50,6 +50,16 @@ Window {
             if (tabs[i].id === tid) { currentTab = i; return }
     }
 
+    // Returns the command-target drone IDs for keyboard shortcuts.
+    // Priority: 1. Mission-Target set (if non-empty)  2. selectedDroneId  3. first drone
+    function _shortcutTargets() {
+        if (typeof swarm === "undefined" || !swarm) return []
+        var ids = Cmp.AppState.effectiveMissionTargets()
+        if (ids && ids.length > 0) return ids
+        var all = swarm.droneIds()
+        return (all && all.length > 0) ? [all[0]] : []
+    }
+
     // ── Global selected drone (mirrored from Cmp.AppState singleton) ─────────
     // selectedDroneId is the single source of truth used by Telemetry, HUDs
     // and the InstrBar. It is bound one-way from the AppState singleton so
@@ -767,6 +777,106 @@ Window {
                     color: "#2d3748"; font.pixelSize: 9
                 }
             }
+        }
+    }
+
+    // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+    // All shortcuts are Ctrl+Key so they don't interfere with text inputs.
+    // The command targets follow the same priority as InstrBar:
+    //   1. Mission-Target set (if non-empty)  2. selectedDroneId  3. first drone
+
+    // Ctrl+A — ARM
+    Shortcut {
+        sequence: "Ctrl+A"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            var targets = root._shortcutTargets()
+            for (var i = 0; i < targets.length; i++) swarm.armDrone(targets[i])
+        }
+    }
+
+    // Ctrl+D — DISARM
+    Shortcut {
+        sequence: "Ctrl+D"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            var targets = root._shortcutTargets()
+            for (var i = 0; i < targets.length; i++) swarm.disarmDrone(targets[i])
+        }
+    }
+
+    // Ctrl+T — TAKEOFF (10m)
+    Shortcut {
+        sequence: "Ctrl+T"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            var targets = root._shortcutTargets()
+            for (var i = 0; i < targets.length; i++) swarm.takeoffDrone(targets[i], 10)
+        }
+    }
+
+    // Ctrl+L — LAND
+    Shortcut {
+        sequence: "Ctrl+L"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            var targets = root._shortcutTargets()
+            for (var i = 0; i < targets.length; i++) swarm.landDrone(targets[i])
+        }
+    }
+
+    // Ctrl+Home — RTL
+    Shortcut {
+        sequence: "Ctrl+Home"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            var targets = root._shortcutTargets()
+            for (var i = 0; i < targets.length; i++) swarm.rtlDrone(targets[i])
+        }
+    }
+
+    // Ctrl+E — Emergency Stop ALL
+    Shortcut {
+        sequence: "Ctrl+E"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            if (typeof swarm !== "undefined" && swarm) {
+                swarm.emergencyStopAll()
+            }
+        }
+    }
+
+    // Ctrl+1…Ctrl+9 — Switch to tab N (1-indexed, matches visible tab order)
+    Repeater {
+        model: 9
+        Shortcut {
+            sequence: "Ctrl+" + (index + 1)
+            context:  Qt.ApplicationShortcut
+            onActivated: if (index < root.tabs.length) root.selectTab(index)
+        }
+    }
+
+    // Ctrl+M — Map tab
+    Shortcut {
+        sequence: "Ctrl+M"
+        context:  Qt.ApplicationShortcut
+        onActivated: root.selectTabById("map")
+    }
+
+    // Ctrl+W — Waypoint-Modus togglen (auf Map-Tab)
+    Shortcut {
+        sequence: "Ctrl+W"
+        context:  Qt.ApplicationShortcut
+        onActivated: root.toggleMapWaypointMode()
+    }
+
+    // F5 — Refresh serial ports
+    Shortcut {
+        sequence: "F5"
+        context:  Qt.ApplicationShortcut
+        onActivated: {
+            if (headerLoader.item && typeof headerLoader.item.refreshPorts === "function")
+                headerLoader.item.refreshPorts()
         }
     }
 
