@@ -1,14 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec — RZ GCS (RZ Solutions ground control station).
+PyInstaller spec — uavresearch gcs (UAVResearch ground control station).
 
 Full graphical build: PyQt6 + QtQuick + QtWebEngine + pyqtgraph +
 the entire QML tree under tools/ui/qml/ (including 3D mesh assets).
 
 Build with:
-    pyinstaller tools/installer/specs/rz_gcs.spec --noconfirm
+    pyinstaller tools/installer/specs/uavresearch_gcs.spec --noconfirm
 Output:
-    dist/RZGCS/RZ GCS.exe   (+ _internal/ folder)
+    dist/UAVResearchGCS/uavresearch gcs.exe   (+ _internal/ folder)
 
 Notes
 -----
@@ -23,6 +23,7 @@ Notes
   from all bundled .pyc files. Casual code-protection only; bytecode
   can still be decompiled with public tools.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -31,12 +32,11 @@ from pathlib import Path
 # (bpo-45757) before PyInstaller starts scanning bytecode.
 sys.path.insert(0, str(Path(SPECPATH).resolve()))
 import _dis_patch  # noqa: F401
-
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 PROJECT_ROOT = Path(SPECPATH).resolve().parent.parent.parent
-ASSETS_DIR   = PROJECT_ROOT / "tools" / "installer" / "assets"
-QML_ROOT     = PROJECT_ROOT / "tools" / "ui" / "qml"
+ASSETS_DIR = PROJECT_ROOT / "tools" / "installer" / "assets"
+QML_ROOT = PROJECT_ROOT / "tools" / "ui" / "qml"
 
 block_cipher = None
 
@@ -65,7 +65,8 @@ hidden = (
     + collect_submodules("tools.ui")
     + collect_submodules("pymavlink")
     + [
-        "serial", "serial.tools.list_ports",
+        "serial",
+        "serial.tools.list_ports",
         "pyqtgraph",
         # WebEngine bits PyInstaller occasionally misses
         "PyQt6.QtWebEngineCore",
@@ -88,18 +89,30 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        "PyQt5", "PySide6", "PySide2",
-        "tkinter", "matplotlib", "scipy", "pandas", "IPython",
-        "test", "unittest",
+        "PyQt5",
+        "PySide6",
+        "PySide2",
+        "tkinter",
+        "matplotlib",
+        "scipy",
+        "pandas",
+        "IPython",
+        "test",
+        "unittest",
         # See droneresearch_cli.spec for the rationale.
-        "lxml", "cv2", "google", "grpc", "cryptography",
-        "pkg_resources", "setuptools._vendor",
+        "lxml",
+        "cv2",
+        "google",
+        "grpc",
+        "cryptography",
+        "pkg_resources",
+        "setuptools._vendor",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
-    optimize=1,                  # -O: strip asserts, keep docstrings for legacy widgets
+    optimize=1,  # -O: strip asserts, keep docstrings for legacy widgets
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -109,18 +122,18 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="RZ GCS",
+    name="uavresearch gcs",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,               # GUI app — no console window
+    console=False,  # GUI app — no console window
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ASSETS_DIR / "rz_icon.ico"),
+    icon=str(ASSETS_DIR / "uavresearch_icon.ico"),
     version=None,
 )
 
@@ -132,5 +145,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="RZGCS",
+    name="UAVResearchGCS",
 )

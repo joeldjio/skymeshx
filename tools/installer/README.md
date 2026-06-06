@@ -5,7 +5,7 @@ End-to-end build of two self-contained Windows installers:
 | Installer | Product | What it bundles | Approx. size |
 |---|---|---|---|
 | `DroneResearch-CLI-Setup-X.Y.Z.exe` | DroneResearch (research backend, headless) | `droneresearch.exe` + SDK + safety + experiment runner. No PyQt6, no QtWebEngine. | ~86 MB |
-| `RZ-GCS-Setup-X.Y.Z.exe` | **RZ GCS** (RZ Solutions ground control station) | `RZ GCS.exe` (QML dashboard) + the DroneResearch backend + PyQt6 + WebEngine + pyqtgraph + 3D mesh assets. | ~450 MB |
+| `uavresearch-gcs-setup-X.Y.Z.exe` | **uavresearch gcs** (UAVResearch ground control station) | `uavresearch gcs.exe` (QML dashboard) + the DroneResearch backend + PyQt6 + WebEngine + pyqtgraph + 3D mesh assets. | ~450 MB |
 
 Both installers ship **all** runtime dependencies — end users do **not** need a separate Python install.
 
@@ -20,26 +20,26 @@ tools/installer/
 ├── requirements_build.txt          ← build-time deps (PyInstaller, Pillow, …)
 │
 ├── icon/
-│   └── make_assets.py              ← generates the RZ branding assets
+│   └── make_assets.py              ← generates the UAVResearch branding assets
 │
 ├── assets/                         ← (generated, gitignored)
-│   ├── rz_icon.ico                    multi-res Windows icon
-│   ├── rz_logo_256.png                preview / debugging
+│   ├── uavresearch_icon.ico          multi-res Windows icon
+│   ├── uavresearch_logo_256.png      preview / debugging
 │   ├── wizard_large.bmp               164×314 Inno wizard image
 │   └── wizard_small.bmp               55×55 Inno wizard image
 │
 ├── specs/
 │   ├── droneresearch_cli.spec      ← PyInstaller spec — CLI
-│   ├── rz_gcs.spec                 ← PyInstaller spec — RZ GCS
+│   ├── uavresearch_gcs.spec                 ← PyInstaller spec — uavresearch gcs
 │   └── _dis_patch.py               ← bpo-45757 build-time workaround
 │
 ├── inno/
 │   ├── droneresearch_cli.iss       ← Inno Setup script — CLI
-│   └── rz_gcs.iss                  ← Inno Setup script — RZ GCS
+│   └── uavresearch_gcs.iss                  ← Inno Setup script — uavresearch gcs
 │
 └── out/                            ← (generated, gitignored)
     ├── DroneResearch-CLI-Setup-0.2.0.exe
-    └── RZ-GCS-Setup-0.2.0.exe
+    └── uavresearch-gcs-setup-0.2.0.exe
 ```
 
 ---
@@ -66,9 +66,9 @@ From the repository root:
 
 This will:
 
-1. Regenerate `assets/rz_icon.ico`, the wizard BMPs, and the preview PNG.
+1. Regenerate `assets/uavresearch_icon.ico`, the wizard BMPs, and the preview PNG.
 2. Run PyInstaller for the CLI bundle  → `dist\DroneResearchCLI\`.
-3. Run PyInstaller for the GCS bundle  → `dist\DroneResearchGCS\`.
+3. Run PyInstaller for the GCS bundle  → `dist\UAVResearchGCS\`.
 4. Compile both Inno Setup scripts     → `tools\installer\out\*.exe`.
 
 Typical full build: 4–8 minutes on a modern desktop, dominated by the GCS bundle compression (LZMA2 ultra64).
@@ -93,9 +93,9 @@ Typical full build: 4–8 minutes on a modern desktop, dominated by the GCS bund
 
 ### Modern wizard UX
 
-Both installers use Inno Setup's `WizardStyle=modern` with custom RZ branding:
+Both installers use Inno Setup's `WizardStyle=modern` with custom UAVResearch branding:
 
-- Welcome page with the 164×314 RZ wizard image on the left
+- Welcome page with the 164×314 UAVResearch wizard image on the left
 - License agreement (`LICENSE` from the repo root)
 - Optional installation directory selection
 - Component / task selection (see below)
@@ -113,7 +113,7 @@ Both installers use Inno Setup's `WizardStyle=modern` with custom RZ branding:
 - ✅ Desktop shortcut (default: on)
 - ⬜ Quick Launch shortcut (default: off)
 - ⬜ Associate `.drscenario` files with the GCS (default: off)
-- Start-menu group with `DroneResearch GCS`, `… (Legacy Widget UI)`, `Documentation`, `Uninstall`
+- Start-menu group with `uavresearch gcs`, `… (Legacy Widget UI)`, `Documentation`, `Uninstall`
 
 ### No admin required
 
@@ -127,10 +127,10 @@ Each installer registers a proper uninstaller in *Apps & features* / *Programs a
 
 ## Branding
 
-The RZ logo is **generated**, not committed:
+The UAVResearch logo is **generated**, not committed:
 
-- `tools/installer/icon/make_assets.py` draws a rounded square with a vertical blue gradient (`#2563eb → #1d4ed8`, matches the QML `Theme.qml` accent colour) and bold white "RZ" centred on top.
-- 7 ICO resolutions (16, 24, 32, 48, 64, 128, 256) are stored in a single `rz_icon.ico` so Windows picks the best size for taskbar / Start menu / file-explorer / alt-tab automatically.
+- `tools/installer/icon/make_assets.py` draws a rounded square with a vertical blue gradient (`#2563eb → #1d4ed8`, matching the QML accent colour) and an abstract drone/radar emblem.
+- 7 ICO resolutions (16, 24, 32, 48, 64, 128, 256) are stored in a single `uavresearch_icon.ico` so Windows picks the best size for taskbar / Start menu / file-explorer / alt-tab automatically.
 - Wizard images are exported as 24-bit BMP (Inno requirement; PNG is not supported on the wizard pages).
 
 To customise: edit `make_assets.py` and re-run the build. Both `.iss` scripts pick the regenerated assets up automatically.
@@ -149,16 +149,16 @@ Either install Inno Setup 6 to the default location, or pass `-InnoCompiler 'D:\
 Expected. PyQt6 + WebEngine alone is ~150 MB after LZMA2 compression. We use one-folder mode on purpose so subsequent launches do **not** re-extract anything.
 
 **`ImportError: failed to load tools.ui.app` at runtime**  
-Re-run with `--clean` (the build script already does). If it persists, add the missing module name to `hiddenimports=[…]` in `tools/installer/specs/rz_gcs.spec`.
+Re-run with `--clean` (the build script already does). If it persists, add the missing module name to `hiddenimports=[…]` in `tools/installer/specs/uavresearch_gcs.spec`.
 
 **QML files not found at runtime**  
-Verify the path layout under `dist\RZGCS\_internal\tools\ui\qml\`. If it is missing, the `_collect_qml()` helper in the GCS spec did not find them — check that you're running the build from the repo root.
+Verify the path layout under `dist\UAVResearchGCS\_internal\tools\ui\qml\`. If it is missing, the `_collect_qml()` helper in the GCS spec did not find them — check that you're running the build from the repo root.
 
 ---
 
-## Update flow (RZ GCS)
+## Update flow (uavresearch gcs)
 
-The installed RZ GCS application can fetch its own updates from GitHub
+The installed uavresearch gcs application can fetch its own updates from GitHub
 Releases. The flow lives in `tools/ui/updater.py` (`UpdaterContext`)
 and is wired to the QML UI as an `UpdateBanner` component shown at the
 top of the Help panel.
@@ -170,7 +170,7 @@ How users see it:
 3. If the latest tag is newer than `tools/ui/_version.py:VERSION`,
    the banner turns amber, shows the new version and release notes,
    and offers **Herunterladen & Installieren**.
-4. Click it → the matching `RZ-GCS-Setup-*.exe` asset is downloaded to
+4. Click it → the matching `uavresearch-gcs-setup-*.exe` asset is downloaded to
    `%TEMP%`, then launched with `/SILENT /CLOSEAPPLICATIONS
    /RESTARTAPPLICATIONS /NORESTART`. The app exits cleanly, Inno Setup
    replaces the files (the GUID-stable `AppId` triggers an in-place
@@ -179,15 +179,15 @@ How users see it:
 What the maintainer (you) needs to do for each release:
 
 1. Bump `VERSION` in `tools/ui/_version.py`.
-2. Mirror it in `tools/installer/inno/rz_gcs.iss` (`#define AppVersion`).
+2. Mirror it in `tools/installer/inno/uavresearch_gcs.iss` (`#define AppVersion`).
 3. `git tag v0.3.0 && git push --tags`
 4. Run `tools\installer\build.ps1`.
 5. Create a GitHub Release for the tag and upload the produced
-   `tools\installer\out\RZ-GCS-Setup-0.3.0.exe` as a release asset.
-   The filename **must** start with `RZ-GCS-Setup-` and end with `.exe`
+   `tools\installer\out\uavresearch-gcs-setup-0.3.0.exe` as a release asset.
+   The filename **must** start with `uavresearch-gcs-setup-` and end with `.exe`
    so the updater can find it.
 
-That's it — every running RZ GCS instance picks the update up on the
+That's it — every running uavresearch gcs instance picks the update up on the
 next time the user clicks "Nach Updates suchen".
 
 Network access: a single GET to `api.github.com`. No telemetry,
@@ -197,17 +197,17 @@ no analytics, no auto-apply without explicit user click.
 
 ## Distribution to testers / customers
 
-For every person who should try / buy RZ GCS you ship **one file**:
+For every person who should try / buy uavresearch gcs you ship **one file**:
 
 ```
-tools\installer\out\RZ-GCS-Setup-X.Y.Z.exe
+tools\installer\out\uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 Typical channels: WeTransfer, OneDrive / Google Drive share link, USB stick. The recipient:
 
 1. Double-clicks the installer.
 2. Walks through the Inno Setup wizard (License → Path → Shortcuts → Install).
-3. Launches **RZ GCS** from the Start Menu.
+3. Launches **uavresearch gcs** from the Start Menu.
 
 No Python, no PyQt6, no admin rights required (per-user install by default; the wizard offers a system-wide option for admins).
 
@@ -215,10 +215,10 @@ No Python, no PyQt6, no admin rights required (per-user install by default; the 
 
 ## Trial + license-key flow
 
-RZ GCS ships with a built-in **30-day free trial**. Every fresh install starts the clock on first launch; the trial state is stored in:
+uavresearch gcs ships with a built-in **30-day free trial**. Every fresh install starts the clock on first launch; the trial state is stored in:
 
 ```
-%LOCALAPPDATA%\RZ Solutions\RZ GCS\license.json
+%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json
 ```
 
 ### What the tester sees
@@ -250,11 +250,11 @@ Output:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  RZ GCS license key                                        │
+│  uavresearch gcs license key                                        │
 ├────────────────────────────────────────────────────────────┤
 │  Customer : Acme Drones
 │  Expires  : 2027-05-16  (inclusive)
-│  Key      : RZGCS-XXXX-XXXX-XXXX-20270516
+│  Key      : UAVGCS-XXXX-XXXX-XXXX-20270516
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -270,7 +270,7 @@ Keys are signed with the `LICENSE_SECRET` constant in `tools/ui/_version.py`. To
 
 Old installs continue to honour their old keys — only newly-installed builds reject keys signed with the old secret.
 
-> ⚠️ **Before shipping the first paid copy**, change the default `LICENSE_SECRET` (`rz-solutions-dev-secret-CHANGE-ME-before-shipping`). The CLI generator prints a warning while the default is still in place.
+> ⚠️ **Before shipping the first paid copy**, change the default `LICENSE_SECRET` (`uavresearch-dev-secret-CHANGE-ME-before-shipping`). The CLI generator prints a warning while the default is still in place.
 
 ### Security caveat
 

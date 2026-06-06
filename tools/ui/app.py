@@ -1,5 +1,5 @@
 """
-RZ GCS — QML application entry point (RZ Solutions ground control station).
+uavresearch gcs — QML application entry point (UAVResearch ground control station).
 
 Architecture
 ------------
@@ -109,58 +109,49 @@ def _make_splash() -> QSplashScreen:
     bottom.setColorAt(1.0, QColor(15, 17, 23, 200))
     painter.fillRect(0, 0, W, H, QBrush(bottom))
 
-    # ── Logo mark: stylized "RZ" monogram inside a rounded badge ──────
+    # ── Logo mark: abstract drone/radar emblem inside a rounded badge ─────
     badge_cx, badge_cy, badge_r = W / 2, 78, 32
-    # Outer ring
-    pen = QPen(QColor("#2563eb"), 2)
-    painter.setPen(pen)
+    painter.setPen(QPen(QColor("#2563eb"), 2))
     painter.setBrush(QColor(37, 99, 235, 40))
     painter.drawEllipse(QPointF(badge_cx, badge_cy), badge_r, badge_r)
-    # Inner accent ring
     painter.setPen(QPen(QColor(59, 130, 246, 120), 1))
     painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawEllipse(QPointF(badge_cx, badge_cy), badge_r - 5, badge_r - 5)
 
-    # "RZ" monogram inside badge
-    mono_font = QFont("Segoe UI", 22)
-    mono_font.setBold(True)
-    mono_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.0)
-    painter.setFont(mono_font)
-    painter.setPen(QColor("#e0ecff"))
-    painter.drawText(
-        QRectF(badge_cx - badge_r, badge_cy - badge_r, badge_r * 2, badge_r * 2),
-        int(Qt.AlignmentFlag.AlignCenter),
-        "RZ",
-    )
-
-    # Tiny rotor dots flanking the badge (drone vibe)
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor("#3b82f6"))
-    for dx in (-badge_r - 12, badge_r + 12):
-        painter.drawEllipse(QPointF(badge_cx + dx, badge_cy), 3, 3)
-    painter.setBrush(QColor(59, 130, 246, 80))
-    for dx in (-badge_r - 12, badge_r + 12):
-        painter.drawEllipse(QPointF(badge_cx + dx, badge_cy), 7, 7)
+    painter.setBrush(QColor("#e0ecff"))
+    painter.drawEllipse(QPointF(badge_cx, badge_cy), 4.5, 4.5)
+    painter.setBrush(QColor(59, 130, 246, 90))
+    painter.drawEllipse(QPointF(badge_cx, badge_cy), 10, 10)
 
-    # ── Wordmark: "RZ DRONE SOLUTION" ─────────────────────────────────
-    title_font = QFont("Segoe UI", 26)
+    painter.setPen(QPen(QColor("#93c5fd"), 2))
+    for dx, dy in ((0, -18), (18, 0), (0, 18), (-18, 0)):
+        painter.drawLine(
+            QPointF(badge_cx, badge_cy),
+            QPointF(badge_cx + dx, badge_cy + dy),
+        )
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#bfdbfe"))
+        painter.drawEllipse(QPointF(badge_cx + dx, badge_cy + dy), 3.5, 3.5)
+        painter.setBrush(QColor(59, 130, 246, 70))
+        painter.drawEllipse(QPointF(badge_cx + dx, badge_cy + dy), 7, 7)
+        painter.setPen(QPen(QColor("#93c5fd"), 2))
+
+    # ── Wordmark ───────────────────────────────────────────────────────
+    title_font = QFont("Segoe UI", 24)
     title_font.setBold(True)
-    title_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 4.5)
+    title_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.8)
     painter.setFont(title_font)
 
     title_rect = QRectF(0, 140, W, 44)
-    # Subtle drop-shadow
     painter.setPen(QColor(0, 0, 0, 180))
     painter.drawText(
         title_rect.translated(0, 2),
         int(Qt.AlignmentFlag.AlignCenter),
-        "RZ DRONE SOLUTIONS",
+        "uavresearch gcs",
     )
-    # Main text
     painter.setPen(QColor("#f1f5f9"))
-    painter.drawText(
-        title_rect, int(Qt.AlignmentFlag.AlignCenter), "RZ DRONE SOLUTIONS"
-    )
+    painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignCenter), "uavresearch gcs")
 
     # ── Divider line with gradient ────────────────────────────────────
     line_grad = QLinearGradient(W * 0.25, 0, W * 0.75, 0)
@@ -177,7 +168,7 @@ def _make_splash() -> QSplashScreen:
     painter.drawText(
         QRectF(0, 206, W, 22),
         int(Qt.AlignmentFlag.AlignCenter),
-        "GROUND  CONTROL  STATION",
+        "GROUND CONTROL STATION",
     )
 
     # ── Version / build tag (bottom-right) ────────────────────────────
@@ -223,11 +214,11 @@ def run() -> int:
     from tools.ui._version import VERSION
 
     app = QApplication(sys.argv)
-    app.setApplicationName("RZ GCS")
-    app.setApplicationDisplayName("RZ GCS")
+    app.setApplicationName("uavresearch gcs")
+    app.setApplicationDisplayName("uavresearch gcs")
     app.setApplicationVersion(VERSION)
-    app.setOrganizationName("RZ Solutions")
-    app.setOrganizationDomain("rzsolutions.local")
+    app.setOrganizationName("UAVResearch")
+    app.setOrganizationDomain("uavresearch.local")
     profiler.mark("qapplication_ready")
 
     splash = _make_splash()

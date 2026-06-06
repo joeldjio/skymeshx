@@ -1,5 +1,5 @@
 """
-tools.ui — DroneResearch GCS (PyQt6)
+tools.ui — uavresearch gcs (PyQt6)
 
 Public API
 ----------
@@ -11,6 +11,7 @@ module-level ``__getattr__`` defers the import until something actually
 references the name, so unrelated submodules (service_locator, context.*,
 backend) can be imported on systems where pyqtgraph cannot load.
 """
+
 from typing import Any
 
 __all__ = [
@@ -23,10 +24,12 @@ __all__ = [
 def __getattr__(name: str) -> Any:
     if name in ("DroneBackend", "SwarmBackend"):
         from tools.ui.backend import DroneBackend, SwarmBackend
+
         globals().update(DroneBackend=DroneBackend, SwarmBackend=SwarmBackend)
         return globals()[name]
     if name == "MainWindow":
         from tools.ui.main_window import MainWindow
+
         globals()["MainWindow"] = MainWindow
         return MainWindow
     raise AttributeError(f"module 'tools.ui' has no attribute {name!r}")

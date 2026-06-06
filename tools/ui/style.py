@@ -1,5 +1,5 @@
 """
-Dark modern Qt6 stylesheet for the DroneResearch GCS.
+Dark modern Qt6 stylesheet for the uavresearch gcs.
 
 Usage
 -----

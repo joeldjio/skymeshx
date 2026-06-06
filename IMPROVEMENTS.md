@@ -55,7 +55,7 @@ Das Projekt besteht aus zwei klar getrennten Schichten:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  RZ GCS  (tools/ui/)          PyQt6 + QML                   │
+│  uavresearch gcs  (tools/ui/)          PyQt6 + QML                   │
 │  ┌─────────────┐  ┌──────────┐  ┌────────┐  ┌───────────┐  │
 │  │SwarmContext  │  │Safety    │  │Updater │  │License    │  │
 │  │(Boids/LF/   │  │Context   │  │Context │  │Manager    │  │
@@ -584,7 +584,7 @@ Für jede Drohne pro Tick:
 **Problem:** Der heruntergeladene Installer wurde ohne Integritätsprüfung direkt ausgeführt.
 
 **Implementierung:**
-- `_CheckWorker` sucht nach einem `.sha256`-Asset im GitHub Release (z.B. `RZ-GCS-Setup-1.2.3.sha256`)
+- `_CheckWorker` sucht nach einem `.sha256`-Asset im GitHub Release (z.B. `uavresearch-gcs-setup-1.2.3.sha256`)
 - Falls vorhanden: SHA256-URL wird zusammen mit der Installer-URL weitergegeben
 - `_DownloadWorker` lädt zuerst den Installer, dann die `.sha256`-Datei
 - Verifikation via `hashlib.sha256()` mit 64KB-Chunks

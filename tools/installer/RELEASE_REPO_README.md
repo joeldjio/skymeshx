@@ -1,12 +1,12 @@
-# RZ GCS Releases
+# uavresearch gcs Releases
 
-This repository is the public release channel for **RZ GCS**.
+This repository is the public release channel for **uavresearch gcs**.
 
 It contains published installer files and release notes used by the in-app updater.
 
 ## What this repository contains
 
-- RZ GCS installer releases
+- uavresearch gcs installer releases
 - Release notes
 - Update metadata through GitHub Releases
 
@@ -31,29 +31,29 @@ Do not upload:
 Installers are available under the **Releases** section:
 
 ```text
-https://github.com/joeldjio/rz-gcs-releases/releases
+https://github.com/joeldjio/uavresearch-gcs-releases/releases
 ```
 
 Download the newest Windows installer asset named like:
 
 ```text
-RZ-GCS-Setup-X.Y.Z.exe
+uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 Example:
 
 ```text
-RZ-GCS-Setup-0.3.0.exe
+uavresearch-gcs-setup-0.3.0.exe
 ```
 
 ## Updates
 
-RZ GCS checks this repository for new GitHub Releases.
+uavresearch gcs checks this repository for new GitHub Releases.
 
 The in-app updater looks for installer assets whose file name starts with:
 
 ```text
-RZ-GCS-Setup-
+uavresearch-gcs-setup-
 ```
 
 and ends with:
@@ -66,7 +66,7 @@ If the asset name does not match this pattern, the updater will not find the upd
 
 ## License
 
-RZ GCS is commercial software with a built-in trial period.
+uavresearch gcs is commercial software with a built-in trial period.
 
 To request a license key, contact:
 
@@ -79,14 +79,14 @@ djiojoel2@gmail.com
 Always upload Windows installers using this format:
 
 ```text
-RZ-GCS-Setup-X.Y.Z.exe
+uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 Do not rename the installer to random names like:
 
 ```text
 setup.exe
-RZGCS.exe
+UAVGCS.exe
 installer-latest.exe
 ```
 
@@ -99,7 +99,7 @@ For every release:
 1. Build the installer in the private source repository.
 2. Create a new GitHub Release in this repository.
 3. Use a version tag like `v0.3.0`.
-4. Upload `RZ-GCS-Setup-X.Y.Z.exe` as the release asset.
+4. Upload `uavresearch-gcs-setup-X.Y.Z.exe` as the release asset.
 5. Add short release notes.
 6. Publish the release.
-7. Test the in-app updater from an installed RZ GCS copy.
+7. Test the in-app updater from an installed uavresearch gcs copy.

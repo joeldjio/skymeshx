@@ -1,11 +1,17 @@
-name: Build RZ GCS
+name: Build uavresearch gcs
 
 on:
   push:
-    branches: [main, ui-dashboard]
-    tags: ['v*']
+    branches:
+      - main
+      - ui-dashboard
+      - "fix/**"
+      - "feature/**"
+    tags: ["v*"]
   pull_request:
-    branches: [main, ui-dashboard]
+    branches:
+      - main
+      - ui-dashboard
   workflow_dispatch:
 
 jobs:
@@ -24,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Linux Qt dependencies
         if: runner.os == 'Linux'
@@ -41,29 +47,29 @@ jobs:
       - name: Generate installer assets
         run: python tools/installer/icon/make_assets.py
 
-      - name: Build RZ GCS bundle
-        run: pyinstaller tools/installer/specs/rz_gcs.spec --noconfirm --clean
+      - name: Build uavresearch gcs bundle
+        run: pyinstaller tools/installer/specs/uavresearch_gcs.spec --noconfirm --clean
 
       - name: Package bundle on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path dist/RZGCS -DestinationPath RZ-GCS-windows.zip -Force
+        run: Compress-Archive -Path dist/UAVResearchGCS -DestinationPath uavresearch-gcs-windows.zip -Force
 
       - name: Package bundle on macOS/Linux
         if: runner.os != 'Windows'
         run: |
-          tar -czf "RZ-GCS-${{ runner.os }}.tar.gz" -C dist RZGCS
+          tar -czf "uavresearch-gcs-${{ runner.os }}.tar.gz" -C dist UAVResearchGCS
 
       - name: Upload Windows artifact
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: RZ-GCS-windows
-          path: RZ-GCS-windows.zip
+          name: uavresearch-gcs-windows
+          path: uavresearch-gcs-windows.zip
 
       - name: Upload macOS/Linux artifact
         if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: RZ-GCS-${{ runner.os }}
-          path: RZ-GCS-${{ runner.os }}.tar.gz
+          name: uavresearch-gcs-${{ runner.os }}
+          path: uavresearch-gcs-${{ runner.os }}.tar.gz

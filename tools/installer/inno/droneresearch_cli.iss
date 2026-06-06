@@ -11,7 +11,7 @@
 ; ═══════════════════════════════════════════════════════════════════════
 
 #define AppName        "DroneResearch CLI"
-#define AppPublisher   "RZ Aerospace Research"
+#define AppPublisher   "UAVResearch Aerospace Research"
 #define AppVersion     "0.2.0"
 #define AppURL         "https://github.com/joeldjio/uavresearchproject"
 #define AppExeName     "droneresearch.exe"
@@ -38,7 +38,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\out
 OutputBaseFilename=DroneResearch-CLI-Setup-{#AppVersion}
-SetupIconFile={#AssetsDir}\rz_icon.ico
+SetupIconFile={#AssetsDir}\uavresearch_icon.ico
 WizardImageFile={#AssetsDir}\wizard_large.bmp
 WizardSmallImageFile={#AssetsDir}\wizard_small.bmp
 WizardStyle=modern

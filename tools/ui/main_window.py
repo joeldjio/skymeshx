@@ -1,5 +1,5 @@
 """
-DroneResearch GCS — Main Window.
+uavresearch gcs — Main Window.
 
 Tabs:
   1. Dashboard  — Live telemetry for active drone
@@ -9,29 +9,36 @@ Tabs:
   5. Safety     — APF filter & geofence monitor
   6. Log        — System log & telemetry export
 """
+
 import time
 
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTabWidget, QLabel, QStatusBar, QFrame, QPushButton,
-)
 from PyQt6.QtCore import QTimer, pyqtSlot
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QStatusBar,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from tools.ui.style import Colors, DARK_THEME, TAB_STYLESHEET, STATUSBAR_STYLESHEET
-from tools.ui.backend        import SwarmBackend
-from tools.ui.dashboard_tab  import DashboardTab
-from tools.ui.map_tab        import MapTab
-from tools.ui.swarm_tab      import SwarmTab
+from tools.ui.backend import SwarmBackend
+from tools.ui.dashboard_tab import DashboardTab
 from tools.ui.experiment_tab import ExperimentTab
-from tools.ui.safety_tab     import SafetyTab
-from tools.ui.log_tab        import LogTab
+from tools.ui.log_tab import LogTab
+from tools.ui.map_tab import MapTab
+from tools.ui.safety_tab import SafetyTab
+from tools.ui.style import DARK_THEME, STATUSBAR_STYLESHEET, TAB_STYLESHEET, Colors
+from tools.ui.swarm_tab import SwarmTab
 
-_APP_TITLE   = "DroneResearch GCS"
+_APP_TITLE = "uavresearch gcs"
 _APP_VERSION = "v0.3.0"
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle(_APP_TITLE)
@@ -119,20 +126,20 @@ class MainWindow(QMainWindow):
         self._tabs = QTabWidget()
         self._tabs.setStyleSheet(TAB_STYLESHEET)
 
-        self._tab_dashboard  = DashboardTab(self._swarm)
-        self._tab_map        = MapTab(self._swarm)
-        self._tab_swarm      = SwarmTab(self._swarm)
+        self._tab_dashboard = DashboardTab(self._swarm)
+        self._tab_map = MapTab(self._swarm)
+        self._tab_swarm = SwarmTab(self._swarm)
         self._tab_experiment = ExperimentTab()
-        self._tab_safety     = SafetyTab(self._swarm)
-        self._tab_log        = LogTab(self._swarm)
+        self._tab_safety = SafetyTab(self._swarm)
+        self._tab_log = LogTab(self._swarm)
 
         for widget, label in [
-            (self._tab_dashboard,  "📊  Dashboard"),
-            (self._tab_map,        "🗺  Map"),
-            (self._tab_swarm,      "🚁  Swarm"),
+            (self._tab_dashboard, "📊  Dashboard"),
+            (self._tab_map, "🗺  Map"),
+            (self._tab_swarm, "🚁  Swarm"),
             (self._tab_experiment, "🔬  Experiment"),
-            (self._tab_safety,     "🛡  Safety"),
-            (self._tab_log,        "📋  Log"),
+            (self._tab_safety, "🛡  Safety"),
+            (self._tab_log, "📋  Log"),
         ]:
             self._tabs.addTab(widget, label)
 
@@ -155,9 +162,9 @@ class MainWindow(QMainWindow):
     @pyqtSlot()
     def _tick(self) -> None:
         self._ind_time.setText(time.strftime("%H:%M:%S"))
-        backends   = self._swarm.all_backends()
-        total      = len(backends)
-        connected  = sum(1 for b in backends.values() if b.is_connected)
+        backends = self._swarm.all_backends()
+        total = len(backends)
+        connected = sum(1 for b in backends.values() if b.is_connected)
         self._ind_count.setText(f"{connected}/{total} drones")
 
     @pyqtSlot(str, str)

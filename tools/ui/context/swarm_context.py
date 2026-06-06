@@ -670,7 +670,7 @@ class SwarmContext(QObject):
         except Exception:
             import pathlib
 
-            fallback = pathlib.Path.home() / ".rz_gcs" / "syslogs"
+            fallback = pathlib.Path.home() / ".uavresearch_gcs" / "syslogs"
             fallback.mkdir(parents=True, exist_ok=True)
             return str(fallback)
 
@@ -980,7 +980,7 @@ class SwarmContext(QObject):
                 "V-Shape",
                 "Circle",
                 "Grid",
-                "RZ Logo",
+                "Diamond",
                 "Letter R",
                 "Letter Z",
             ]
@@ -1361,6 +1361,32 @@ class SwarmContext(QObject):
         (-1.0, 0.2),
         (-1.0, 0.6),
     ]
+    _DIAMOND_OFFSETS = [
+        (2.0, 0.0),
+        (1.5, -0.5),
+        (1.5, 0.5),
+        (1.0, -1.0),
+        (1.0, 0.0),
+        (1.0, 1.0),
+        (0.5, -1.5),
+        (0.5, -0.5),
+        (0.5, 0.5),
+        (0.5, 1.5),
+        (0.0, -2.0),
+        (0.0, -1.0),
+        (0.0, 1.0),
+        (0.0, 2.0),
+        (-0.5, -1.5),
+        (-0.5, -0.5),
+        (-0.5, 0.5),
+        (-0.5, 1.5),
+        (-1.0, -1.0),
+        (-1.0, 0.0),
+        (-1.0, 1.0),
+        (-1.5, -0.5),
+        (-1.5, 0.5),
+        (-2.0, 0.0),
+    ]
 
     def _formation_offsets(self, n_followers: int):
         """Return list of (north_m, east_m) offsets for ``n_followers`` drones
@@ -1368,7 +1394,7 @@ class SwarmContext(QObject):
 
         Formation type indices (must match the QML ComboBox model):
             0 = Line, 1 = V-Shape, 2 = Circle, 3 = Grid,
-            4 = RZ (R+Z combined), 5 = R, 6 = Z
+            4 = Diamond, 5 = R, 6 = Z
         """
         import math
 
@@ -1401,21 +1427,16 @@ class SwarmContext(QObject):
             return offs
 
         if ftype in (4, 5, 6):
-            # Letter formations — use the precomputed normalized templates.
-            if ftype == 5:
+            # Diamond + letter formations — use precomputed normalized templates.
+            if ftype == 4:
+                tmpl = self._DIAMOND_OFFSETS
+                scale = d * 0.45
+            elif ftype == 5:
                 tmpl = self._LETTER_R_OFFSETS
-            elif ftype == 6:
-                tmpl = self._LETTER_Z_OFFSETS
+                scale = d * 0.6
             else:
-                # "RZ" combined: place R to the west, Z to the east.
-                rz = []
-                for n, e in self._LETTER_R_OFFSETS:
-                    rz.append((n, e - 1.6))
-                for n, e in self._LETTER_Z_OFFSETS:
-                    rz.append((n, e + 1.6))
-                tmpl = rz
-            # Scale by follow distance (letter spans ~2 units in N and ~1.6 in E)
-            scale = d * 0.6
+                tmpl = self._LETTER_Z_OFFSETS
+                scale = d * 0.6
             return [(n * scale, e * scale) for (n, e) in tmpl[:n_followers]]
 
         # Default: Line (followers trail directly behind the leader)

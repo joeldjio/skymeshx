@@ -19,7 +19,7 @@ from tools.ui import license as lic
 def test_generate_and_validate_roundtrip():
     exp = date(2027, 1, 31)
     key = lic.generate_key(exp)
-    assert key.startswith("RZGCS-")
+    assert key.startswith("UAVGCS-")
     assert key.endswith("20270131")
     assert lic.validate_key(key) == exp
 
@@ -41,10 +41,10 @@ def test_validate_rejects_tampered_expiry():
 @pytest.mark.parametrize("garbage", [
     "",
     "not a key",
-    "RZGCS-AAAA-BBBB-CCCC",                  # missing date
+    "UAVGCS-AAAA-BBBB-CCCC",                  # missing date
     "OTHER-Q3D7-ZKN5-FHFT-20270516",         # wrong prefix
-    "RZGCS-Q3D7-ZKN5-FHFT-2027ABCD",         # non-numeric date
-    "RZGCS-Q3D7-ZKN5-FHFT-20279999",         # invalid calendar date
+    "UAVGCS-Q3D7-ZKN5-FHFT-2027ABCD",         # non-numeric date
+    "UAVGCS-Q3D7-ZKN5-FHFT-20279999",         # invalid calendar date
 ])
 def test_validate_rejects_garbage(garbage):
     assert lic.validate_key(garbage) is None
@@ -110,7 +110,7 @@ def test_activate_valid_key_unlocks(manager):
 
 
 def test_activate_invalid_key_rejected(manager):
-    assert manager.activate("RZGCS-AAAA-BBBB-CCCC-20270101") is False
+    assert manager.activate("UAVGCS-AAAA-BBBB-CCCC-20270101") is False
     assert manager.state == "trial"
     assert manager.lastError != ""
 

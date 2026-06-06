@@ -25,8 +25,8 @@ def main():
         from tools.ui.main_window import MainWindow
 
         app = QApplication(sys.argv)
-        app.setApplicationName("DroneResearch GCS")
-        app.setApplicationVersion("0.2.0")
+        app.setApplicationName("uavresearch gcs")
+        app.setApplicationVersion("0.3.0")
         app.setFont(QFont("Segoe UI", 10))
 
         # Show deprecation notice in UI

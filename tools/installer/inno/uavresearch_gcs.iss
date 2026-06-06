@@ -1,13 +1,13 @@
 ; ════════════════════════════════════════════════════════════════════════
-;  RZ GCS — Windows Installer (Inno Setup 6+)
+;  uavresearch gcs — Windows Installer (Inno Setup 6+)
 ; ════════════════════════════════════════════════════════════════════════
 ;
 ;  Build:
-;     iscc tools\installer\inno\rz_gcs.iss
+;     iscc tools\installer\inno\uavresearch_gcs.iss
 ;  Output:
-;     tools\installer\out\RZ-GCS-Setup-0.2.0.exe
+;     tools\installer\out\uavresearch-gcs-setup-0.2.0.exe
 ;
-;  Prerequisite: PyInstaller has produced dist\RZGCS\.
+;  Prerequisite: PyInstaller has produced dist\UAVResearchGCS\.
 ;
 ;  Upgrade semantics
 ;  -----------------
@@ -19,17 +19,17 @@
 ;    seamless one-click upgrade flow.
 ; ════════════════════════════════════════════════════════════════════════
 
-#define AppName        "RZ GCS"
-#define AppPublisher   "RZ Solutions"
+#define AppName        "uavresearch gcs"
+#define AppPublisher   "UAVResearch"
 #define AppVersion     "0.3.0"
-#define AppURL         "https://github.com/joeldjio/rz-gcs-releases"
-#define AppExeName     "RZ GCS.exe"
+#define AppURL         "https://github.com/joeldjio/uavresearch-gcs-releases"
+#define AppExeName     "uavresearch gcs.exe"
 ; Stable, randomly-generated GUID. DO NOT change this once published
 ; — it would break upgrade detection on existing installs.
-#define AppId          "{{8F7E2D14-3A6B-4F2C-9B4E-RZGCS00000001}"
+#define AppId          "{{8F7E2D14-3A6B-4F2C-9B4E-3A2C0B1D0001}"
 
 #define ProjectRoot    "..\..\.."
-#define DistRoot       ProjectRoot + "\dist\RZGCS"
+#define DistRoot       ProjectRoot + "\dist\UAVResearchGCS"
 #define AssetsDir      "..\assets"
 
 [Setup]
@@ -41,18 +41,18 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\RZ Solutions\RZ GCS
-DefaultGroupName=RZ Solutions
+DefaultDirName={autopf}\UAVResearch\uavresearch gcs
+DefaultGroupName=UAVResearch
 DisableProgramGroupPage=no
 LicenseFile={#ProjectRoot}\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\out
-OutputBaseFilename=RZ-GCS-Setup-{#AppVersion}
-SetupIconFile={#AssetsDir}\rz_icon.ico
+OutputBaseFilename=uavresearch-gcs-setup-{#AppVersion}
+SetupIconFile={#AssetsDir}\uavresearch_icon.ico
 ; ── Silent / in-place upgrade support (used by the in-app updater) ──
 ; CloseApplications=force lets us replace _internal/ even while the
-; previous RZ GCS.exe was running, and RestartApplications=yes brings
+; previous uavresearch gcs.exe was running, and RestartApplications=yes brings
 ; it back up after the upgrade finishes.
 CloseApplications=force
 CloseApplicationsFilter=*.exe,*.dll,*.pyd
@@ -112,7 +112,7 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major < 10) then
   begin
-    MsgBox('RZ GCS requires Windows 10 or later (uses Qt 6 / WebEngine).',
+    MsgBox('uavresearch gcs requires Windows 10 or later (uses Qt 6 / WebEngine).',
            mbCriticalError, MB_OK);
     Result := False;
   end

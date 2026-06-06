@@ -1,10 +1,10 @@
 """
-RZ GCS — offline trial + license-key system.
+uavresearch gcs — offline trial + license-key system.
 
 Concept
 -------
 * On first launch the app stamps an install timestamp into
-  ``%LOCALAPPDATA%\\RZ Solutions\\RZ GCS\\license.json``.
+  ``%LOCALAPPDATA%\\UAVResearch\\uavresearch gcs\\license.json``.
 * For ``TRIAL_DAYS`` days the app is fully unlocked (state = "trial").
 * After that the app still starts but ``LicenseManager.state`` flips
   to "expired" — QML covers the entire window with ``LicenseOverlay``
@@ -13,7 +13,7 @@ Concept
 
 Key format
 ----------
-``RZGCS-XXXX-XXXX-XXXX-YYYYMMDD``
+``UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD``
 
 * ``YYYYMMDD`` = expiry date (inclusive).
 * ``XXXXXXXXXXXX`` = first 12 chars of
@@ -46,7 +46,7 @@ from PyQt6.QtCore import (
 from tools.ui._version import LICENSE_CONTACT, LICENSE_SECRET, TRIAL_DAYS
 
 
-KEY_PREFIX = "RZGCS"
+KEY_PREFIX = "UAVGCS"
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ class LicenseManager(QObject):
         base = QStandardPaths.writableLocation(
             QStandardPaths.StandardLocation.AppLocalDataLocation
         )
-        path = Path(base) if base else Path.home() / ".rz_gcs"
+        path = Path(base) if base else Path.home() / ".uavresearch_gcs"
         path.mkdir(parents=True, exist_ok=True)
         return path / "license.json"
 
@@ -242,7 +242,7 @@ class LicenseManager(QObject):
     def activate(self, key: str) -> bool:
         exp = validate_key(key)
         if exp is None:
-            self._last_error = "Ungültiger Schlüssel. Format: RZGCS-XXXX-XXXX-XXXX-YYYYMMDD"
+            self._last_error = "Ungültiger Schlüssel. Format: UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD"
             self.lastErrorChanged.emit()
             return False
         if exp < date.today():

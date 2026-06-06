@@ -1,4 +1,4 @@
-# RZ GCS — Projekt-Überblick (für mich)
+# uavresearch gcs — Projekt-Überblick (für mich)
 
 > Persönliches Briefing-Dokument. Kein Marketing, kein Kunde-zeigen.
 > Hier steht **was wir gebaut haben, wie es zusammenhängt, und was als Nächstes ansteht.**
@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Was ist RZ GCS?
+## 1. Was ist uavresearch gcs?
 
 Eine **Ground Control Station für Drohnen-Schwärme**, die als Windows-Installer
 (später auch Mac/Linux) ausgeliefert wird. Der eigentliche Code ist das
@@ -19,38 +19,38 @@ PyQt6/QML-Oberfläche darauf.
 | Komponente | Branding | Wer sieht das? |
 |---|---|---|
 | `droneresearch` (Backend, CLI, SDK) | DroneResearch | Forscher, CLI-User, SDK-User |
-| `tools/ui` (Desktop-App) | **RZ GCS** / RZ Solutions | Endkunden, Tester |
+| `tools/ui` (Desktop-App) | **uavresearch gcs** / UAVResearch | Endkunden, Tester |
 
 → Der wissenschaftliche Forschungs-Stack heißt weiter „DroneResearch"
 (Repo-Name, Python-Imports, Logo). Nur die kommerzielle Desktop-App
-ist „RZ GCS".
+ist „uavresearch gcs".
 
 ---
 
 ## 2. Was wir heute gebaut haben (2026-05-16)
 
 ### 2.1 Rebrand
-- App-Titel, QApplication name/org, Status-Bar-Texte → **RZ GCS / RZ Solutions**
-- Installer-Dateinamen → `RZ-GCS-Setup-X.Y.Z.exe`
+- App-Titel, QApplication name/org, Status-Bar-Texte → **uavresearch gcs / UAVResearch**
+- Installer-Dateinamen → `uavresearch-gcs-setup-X.Y.Z.exe`
 - Inno-`AppId` auf eine stabile, dedizierte GUID rotiert — damit Upgrades funktionieren
-- Spec/Inno-Dateien umbenannt: `rz_gcs.spec`, `rz_gcs.iss`
+- Spec/Inno-Dateien umbenannt: `uavresearch_gcs.spec`, `uavresearch_gcs.iss`
 
 ### 2.2 In-App-Updater  (`tools/ui/updater.py`)
 - `UpdaterContext` als Qt-Singleton, registriert im ServiceLocator als `updater`
 - Prüft auf Klick gegen GitHub Releases API
-  (`https://api.github.com/repos/joeldjio/rz-gcs-releases/releases/latest`)
-- Sucht ein Asset mit Präfix `RZ-GCS-Setup-` und Endung `.exe`
+  (`https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest`)
+- Sucht ein Asset mit Präfix `uavresearch-gcs-setup-` und Endung `.exe`
 - Vergleicht Tag-Version mit eingebauter `_version.VERSION`
 - QML-Banner im Help-Tab zeigt: idle / checking / available / uptodate / error / downloading
 - Download nach `%TEMP%`, dann silent install: `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`
 - Inno setzt `CloseApplications=force` und `RestartApplications=yes` → in-place Upgrade ohne User-Interaktion
-- Code-Repo `joeldjio/uavresearchproject` ist privat; öffentliches Update-/Release-Repo ist `joeldjio/rz-gcs-releases`
+- Code-Repo `joeldjio/uavresearchproject` ist privat; öffentliches Update-/Release-Repo ist `joeldjio/uavresearch-gcs-releases`
 
 ### 2.3 Trial + License-Keys  (`tools/ui/license.py`)
 - `LicenseManager` als Qt-Singleton, registriert als `licenseManager`
 - **30 Tage Free Trial** ab erstem Start, Zeitstempel in
-  `%LOCALAPPDATA%\RZ Solutions\RZ GCS\license.json`
-- **Key-Format:** `RZGCS-XXXX-XXXX-XXXX-YYYYMMDD`
+  `%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json`
+- **Key-Format:** `UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD`
   - `XXXXXXXXXXXX` = erste 12 Zeichen von `base32(HMAC-SHA256(SECRET, "v1|YYYYMMDD"))`
   - Validierung **komplett offline**, kein Server
 - **3 Zustände:** `trial`, `licensed`, `expired`
@@ -59,7 +59,7 @@ ist „RZ GCS".
 - **CLI-Generator:** `python tools/installer/gen_license.py --days 365 --customer "X"`
 
 ### 2.4 Code-Schutz
-- Beide PyInstaller-Specs (`rz_gcs.spec`, `droneresearch_cli.spec`) bauen mit `optimize=2`
+- Beide PyInstaller-Specs (`uavresearch_gcs.spec`, `droneresearch_cli.spec`) bauen mit `optimize=2`
   → `assert`-Statements + `__doc__`-Strings werden aus dem Bytecode gestrippt
 - Source-Dateien werden **nicht** mit ausgeliefert, nur `.pyc` im PYZ-Archiv
 - `pkg_resources` und `setuptools._vendor` ausgeschlossen
@@ -101,7 +101,7 @@ ist „RZ GCS".
 └────────────────────────────────┬──────────────────────────────────────┘
                                  │ Python Imports
 ┌────────────────────────────────▼──────────────────────────────────────┐
-│   tools/ui/  (RZ GCS Desktop)                                         │
+│   tools/ui/  (uavresearch gcs Desktop)                                         │
 │                                                                       │
 │   service_locator.py — registriert als Qt-Singletons:                 │
 │     • swarm           SwarmContext (mehrere Drohnen + FSM)            │
@@ -237,7 +237,7 @@ Sender (z.B. Radiomaster Boxer) steckt, und auf der Drohne sitzt ein
 ELRS-Empfänger.
 
 ### Was wir aus GCS-Sicht brauchen
-RZ GCS spricht **nicht direkt** mit dem ELRS-Modul. Wir reden nur
+uavresearch gcs spricht **nicht direkt** mit dem ELRS-Modul. Wir reden nur
 **MAVLink** mit dem Flight Controller. Der FC kriegt RC-Inputs vom
 Empfänger über CRSF/SBUS.
 
@@ -288,7 +288,7 @@ git push                       (was du tust)
          │
          ▼
 tools\installer\out\
-  └── RZ-GCS-Setup-0.2.0.exe   (eine Datei, ~270 MB)
+  └── uavresearch-gcs-setup-0.2.0.exe   (eine Datei, ~270 MB)
          │
          ▼
 GitHub Release erstellen        (Web-UI oder gh CLI)
@@ -356,12 +356,12 @@ git push origin feature/com-port-scan
 ```powershell
 # 1. Versionen synchron hochzählen
 #    tools/ui/_version.py            : VERSION = "0.3.0"
-#    tools/installer/inno/rz_gcs.iss  : #define AppVersion "0.3.0"
+#    tools/installer/inno/uavresearch_gcs.iss  : #define AppVersion "0.3.0"
 
 # 2. Commit + Tag
 git add -A
 git commit -m "release: v0.3.0"
-git tag -a v0.3.0 -m "RZ GCS 0.3.0"
+git tag -a v0.3.0 -m "uavresearch gcs 0.3.0"
 git push origin ui-dashboard --tags
 
 # 3. Bauen (~5 Min)
@@ -369,8 +369,8 @@ git push origin ui-dashboard --tags
 
 # 4. Release auf GitHub
 gh release create v0.3.0 `
-  tools\installer\out\RZ-GCS-Setup-0.3.0.exe `
-  --title "RZ GCS 0.3.0" `
+  tools\installer\out\uavresearch-gcs-setup-0.3.0.exe `
+  --title "uavresearch gcs 0.3.0" `
   --notes "Was neu ist..."
 
 # 5. Bestehende Kunden klicken im Help-Tab auf "Updates suchen" → Update läuft auto.
@@ -387,7 +387,7 @@ gh release create v0.3.0 `
 Wenn du auf GitHub einen Release mit Asset hochlädst:
 
 ```text
-RZ-GCS-Setup-0.3.0.exe
+uavresearch-gcs-setup-0.3.0.exe
 ```
 
 dann kann jeder, der Zugriff auf die Release-Seite hat, diese `.exe`
@@ -428,13 +428,13 @@ Das Code-Repo `joeldjio/uavresearchproject` ist privat. Der Updater fragt
 stattdessen das öffentliche Release-Repo ab:
 
 ```text
-https://api.github.com/repos/joeldjio/rz-gcs-releases/releases/latest
+https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest
 ```
 
 Die Einstellung steht in `tools/ui/_version.py`:
 
 ```python
-GITHUB_REPO = "joeldjio/rz-gcs-releases"
+GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
 ```
 
 Wichtig: In das Release-Repo kommen **nur Installer und Release Notes**,
@@ -445,13 +445,13 @@ kein Source-Code und kein `LICENSE_SECRET`.
 ```powershell
 # 1. Versionen anpassen:
 # tools/ui/_version.py -> VERSION = "0.3.0"
-# tools/installer/inno/rz_gcs.iss -> AppVersion "0.3.0"
+# tools/installer/inno/uavresearch_gcs.iss -> AppVersion "0.3.0"
 
 # 2. Commit + Tag
 git status
 git add -A
 git commit -m "release: v0.3.0"
-git tag -a v0.3.0 -m "RZ GCS 0.3.0"
+git tag -a v0.3.0 -m "uavresearch gcs 0.3.0"
 git push origin ui-dashboard --tags
 
 # 3. Installer bauen
@@ -459,8 +459,8 @@ git push origin ui-dashboard --tags
 
 # 4. GitHub Release erstellen
 gh release create v0.3.0 `
-  tools\installer\out\RZ-GCS-Setup-0.3.0.exe `
-  --title "RZ GCS 0.3.0" `
+  tools\installer\out\uavresearch-gcs-setup-0.3.0.exe `
+  --title "uavresearch gcs 0.3.0" `
   --notes "Neue Version mit Bugfixes und Verbesserungen."
 ```
 
@@ -484,7 +484,7 @@ python tools\installer\gen_license.py --expires 2027-05-17 --customer "Kunde Nam
 Der Kunde bekommt einen Key im Format:
 
 ```text
-RZGCS-XXXX-XXXX-XXXX-YYYYMMDD
+UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD
 ```
 
 Lizenz-Anfragen gehen an:
@@ -509,7 +509,7 @@ Die Software prüft nicht gegen eine Datenbank. Sie prüft eine Signatur:
 Beispiel:
 
 ```text
-RZGCS-ABCD-EFGH-IJKL-20270517
+UAVGCS-ABCD-EFGH-IJKL-20270517
                          └ Ablaufdatum
        └ Signatur aus SECRET + Ablaufdatum
 ```
@@ -519,7 +519,7 @@ RZGCS-ABCD-EFGH-IJKL-20270517
 Die App speichert Trial/Lizenz hier:
 
 ```text
-%LOCALAPPDATA%\RZ Solutions\RZ GCS\license.json
+%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json
 ```
 
 Darin steht:
@@ -587,7 +587,7 @@ Pflicht:
 - [ ] Better connection-string parser (Mission-Planner-kompatible Strings akzeptieren)
 
 ### 8.3 Vor erster bezahlter Auslieferung
-- [ ] **`LICENSE_SECRET` rotieren** (aktuell `rz-solutions-dev-secret-CHANGE-ME-before-shipping`)
+- [ ] **`LICENSE_SECRET` rotieren** (aktuell `uavresearch-dev-secret-CHANGE-ME-before-shipping`)
 - [ ] Code-Signing-Zertifikat (sonst SmartScreen-Warnung beim Tester)
 - [x] Echter `LICENSE_CONTACT` in `_version.py`: `djiojoel2@gmail.com`
 - [ ] Entscheiden: privates Code-Repo + öffentliches Release-Repo oder eigener Update-Server
@@ -615,10 +615,10 @@ tools/installer/
   ├── build.ps1                   One-Shot-Builder
   ├── gen_license.py              Key-Generator-CLI
   ├── specs/
-  │   ├── rz_gcs.spec             PyInstaller-Spec für GCS
+  │   ├── uavresearch_gcs.spec             PyInstaller-Spec für GCS
   │   └── droneresearch_cli.spec  PyInstaller-Spec für CLI
   ├── inno/
-  │   ├── rz_gcs.iss              Inno-Setup-Skript für GCS
+  │   ├── uavresearch_gcs.iss              Inno-Setup-Skript für GCS
   │   └── droneresearch_cli.iss   Inno-Setup-Skript für CLI
   └── README.md                   Detaillierte Build- + Distribution-Doku
 tests/test_license.py             Regression-Tests für Trial+Keys
@@ -645,7 +645,7 @@ python -m pytest tests\ -q
 
 ### Trial reset (zum Testen — in installierter App)
 ```powershell
-Remove-Item "$env:LOCALAPPDATA\RZ Solutions\RZ GCS\license.json"
+Remove-Item "$env:LOCALAPPDATA\UAVResearch\uavresearch gcs\license.json"
 ```
 
 ### Eigene Lizenz für Dev-Tests aktivieren
@@ -678,8 +678,8 @@ mehr weiß, was zu tun ist, hier anfangen.
 | Lizenzsystem | Offline-Lizenz mit HMAC-Signatur, keine Serverpflicht |
 | Trial | 30 Tage ab erstem Start |
 | Kundenkontakt | `djiojoel2@gmail.com` |
-| Installer-Name | `RZ-GCS-Setup-X.Y.Z.exe` |
-| App-Name | `RZ GCS` |
+| Installer-Name | `uavresearch-gcs-setup-X.Y.Z.exe` |
+| App-Name | `uavresearch gcs` |
 | Backend-Name | `droneresearch` bleibt intern so |
 
 ### 11.2 Was der Kunde bekommt
@@ -687,7 +687,7 @@ mehr weiß, was zu tun ist, hier anfangen.
 Der Kunde bekommt **nur diese Datei**:
 
 ```text
-RZ-GCS-Setup-X.Y.Z.exe
+uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 Der Kunde bekommt nicht:
@@ -712,7 +712,7 @@ Nicht öffentlich teilen:
 Wichtig: Der aktuelle `LICENSE_SECRET` ist noch ein Dev-Secret:
 
 ```text
-rz-solutions-dev-secret-CHANGE-ME-before-shipping
+uavresearch-dev-secret-CHANGE-ME-before-shipping
 ```
 
 Vor echter Auslieferung muss er geändert werden.
@@ -723,10 +723,10 @@ Bei jedem Release muss die Version an mindestens diesen Stellen gleich sein:
 
 ```text
 tools/ui/_version.py
-tools/installer/inno/rz_gcs.iss
+tools/installer/inno/uavresearch_gcs.iss
 Git tag, z. B. v0.3.0
-Installer-Datei, z. B. RZ-GCS-Setup-0.3.0.exe
-GitHub Release, z. B. RZ GCS 0.3.0
+Installer-Datei, z. B. uavresearch-gcs-setup-0.3.0.exe
+GitHub Release, z. B. uavresearch gcs 0.3.0
 ```
 
 Wenn diese Versionen nicht zusammenpassen, kann der Updater falsche Ergebnisse
@@ -737,19 +737,19 @@ anzeigen oder den Installer nicht finden.
 Der Updater sucht im öffentlichen Release-Repo:
 
 ```python
-GITHUB_REPO = "joeldjio/rz-gcs-releases"
+GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
 ```
 
 nach dem neuesten GitHub Release und darin nach einem Asset:
 
 ```text
-RZ-GCS-Setup-*.exe
+uavresearch-gcs-setup-*.exe
 ```
 
 Beispiel:
 
 ```text
-RZ-GCS-Setup-0.3.0.exe
+uavresearch-gcs-setup-0.3.0.exe
 ```
 
 Wenn der Asset-Name anders ist, findet die App kein Update.
@@ -759,11 +759,11 @@ Wenn der Asset-Name anders ist, findet die App kein Update.
 Für echten Verkauf ist diese Strategie jetzt aktiv:
 
 1. Code-Repo `joeldjio/uavresearchproject` privat lassen.
-2. Öffentliches Release-Repo `joeldjio/rz-gcs-releases` verwenden.
+2. Öffentliches Release-Repo `joeldjio/uavresearch-gcs-releases` verwenden.
 3. In `tools/ui/_version.py` ist gesetzt:
 
 ```python
-GITHUB_REPO = "joeldjio/rz-gcs-releases"
+GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
 ```
 
 4. Installer nur als Release-Asset dort hochladen.
@@ -804,7 +804,7 @@ python tools\installer\gen_license.py --days 365 --customer "Kunde GmbH"
 9. App speichert Key in:
 
 ```text
-%LOCALAPPDATA%\RZ Solutions\RZ GCS\license.json
+%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json
 ```
 
 10. App läuft bis Ablaufdatum.
@@ -875,7 +875,7 @@ Strengere Checkliste:
 
 | Problem | Wahrscheinliche Ursache | Lösung |
 |---|---|---|
-| Update wird nicht gefunden | Asset heißt nicht `RZ-GCS-Setup-*.exe` | Release Asset richtig benennen |
+| Update wird nicht gefunden | Asset heißt nicht `uavresearch-gcs-setup-*.exe` | Release Asset richtig benennen |
 | Update geht bei privatem Repo nicht | GitHub API braucht Auth | Public Release-Repo verwenden |
 | Key wird abgelehnt | Falscher Secret, Tippfehler oder abgelaufen | Mit aktuellem Secret neuen Key generieren |
 | Kunde sieht Trial abgelaufen | Kein gültiger Key gespeichert | Key eingeben oder neuen Key schicken |
@@ -897,12 +897,12 @@ Strengere Checkliste:
 10. Trial + Lizenz + Update testen.
 11. Erst danach an Tester/Kunden schicken.
 
-### 11.14A Release-Repo `joeldjio/rz-gcs-releases`
+### 11.14A Release-Repo `joeldjio/uavresearch-gcs-releases`
 
 Das öffentliche Release-Repo ist:
 
 ```text
-https://github.com/joeldjio/rz-gcs-releases
+https://github.com/joeldjio/uavresearch-gcs-releases
 ```
 
 Zweck:
@@ -918,7 +918,7 @@ Kanal für fertige Installer.
 
 Erlaubt:
 - GitHub Releases
-- Installer-Dateien wie `RZ-GCS-Setup-0.3.0.exe`
+- Installer-Dateien wie `uavresearch-gcs-setup-0.3.0.exe`
 - Release Notes
 - README mit Download-/Lizenzhinweisen
 
@@ -936,19 +936,19 @@ Nicht erlaubt:
 In `tools/ui/_version.py` steht:
 
 ```python
-GITHUB_REPO = "joeldjio/rz-gcs-releases"
+GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
 ```
 
 Der Updater ruft dadurch diese URL auf:
 
 ```text
-https://api.github.com/repos/joeldjio/rz-gcs-releases/releases/latest
+https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest
 ```
 
 Dann sucht er im neuesten Release ein Asset:
 
 ```text
-RZ-GCS-Setup-*.exe
+uavresearch-gcs-setup-*.exe
 ```
 
 Wenn kein Asset mit diesem Namen vorhanden ist, findet die App kein Update.
@@ -965,7 +965,7 @@ Wenn kein Asset mit diesem Namen vorhanden ist, findet die App kein Update.
 3. Im Release-Repo auf GitHub öffnen:
 
 ```text
-https://github.com/joeldjio/rz-gcs-releases
+https://github.com/joeldjio/uavresearch-gcs-releases
 ```
 
 4. **Releases → Draft a new release**.
@@ -978,13 +978,13 @@ v0.3.0
 6. Titel setzen:
 
 ```text
-RZ GCS 0.3.0
+uavresearch gcs 0.3.0
 ```
 
 7. Installer hochladen:
 
 ```text
-tools\installer\out\RZ-GCS-Setup-0.3.0.exe
+tools\installer\out\uavresearch-gcs-setup-0.3.0.exe
 ```
 
 8. Release Notes schreiben.
@@ -1036,7 +1036,7 @@ Für schnellen lokalen Test auf Windows brauche ich keinen Commit:
 Ergebnis:
 
 ```text
-tools\installer\out\RZ-GCS-Setup-X.Y.Z.exe
+tools\installer\out\uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 Das ist gut für:
@@ -1058,13 +1058,13 @@ git push origin ui-dashboard
 Danach startet der Workflow automatisch:
 
 ```text
-.github/workflows/build-rz-gcs.yml
+.github/workflows/build-uavresearch-gcs.yml
 ```
 
 Alternativ kann ich ihn auf GitHub manuell starten:
 
 ```text
-GitHub → Actions → Build RZ GCS → Run workflow
+GitHub → Actions → Build uavresearch gcs → Run workflow
 ```
 
 #### Mac-Build
@@ -1079,7 +1079,7 @@ Von Windows aus kann ich keinen sauberen macOS-Build erzeugen.
 GitHub Actions erzeugt für macOS aktuell:
 
 ```text
-RZ-GCS-macOS.tar.gz
+uavresearch-gcs-macOS.tar.gz
 ```
 
 Das ist noch kein schöner `.dmg` Installer. Für echte Mac-Kunden braucht es
@@ -1102,7 +1102,7 @@ Für Windows habe ich zwei Wege:
 Erzeugt den echten Inno Setup Installer:
 
 ```text
-RZ-GCS-Setup-X.Y.Z.exe
+uavresearch-gcs-setup-X.Y.Z.exe
 ```
 
 **GitHub Actions:**
@@ -1110,7 +1110,7 @@ RZ-GCS-Setup-X.Y.Z.exe
 GitHub baut ein Windows-Artefakt:
 
 ```text
-RZ-GCS-windows.zip
+uavresearch-gcs-windows.zip
 ```
 
 Wichtig: Für den offiziellen Kunden-Installer ist aktuell der lokale
@@ -1123,7 +1123,7 @@ Für einen echten Release immer committen, taggen und pushen:
 ```powershell
 git add -A
 git commit -m "release: v0.3.0"
-git tag -a v0.3.0 -m "RZ GCS 0.3.0"
+git tag -a v0.3.0 -m "uavresearch gcs 0.3.0"
 git push origin ui-dashboard --tags
 ```
 
@@ -1136,7 +1136,7 @@ Dann bauen:
 Dann die Datei hochladen:
 
 ```text
-tools\installer\out\RZ-GCS-Setup-0.3.0.exe
+tools\installer\out\uavresearch-gcs-setup-0.3.0.exe
 ```
 
 als GitHub Release Asset zum Tag `v0.3.0`.
