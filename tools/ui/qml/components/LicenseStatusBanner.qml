@@ -111,7 +111,7 @@ Rectangle {
             TextField {
                 id: keyField
                 Layout.fillWidth: true
-                placeholderText: "RZGCS-XXXX-XXXX-XXXX-YYYYMMDD"
+                placeholderText: "UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD"
                 font.family: "Consolas"
                 font.pixelSize: 12
                 selectByMouse: true

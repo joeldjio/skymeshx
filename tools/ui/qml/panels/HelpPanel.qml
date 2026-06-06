@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "../components" as Cmp
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HelpPanel — Vollständige Feature-Referenz der RZ Drone Solutions GCS
+// HelpPanel — Vollständige Feature-Referenz der UAVResearch GCS
 //
 // Aufbau:
 //   1. Quickstart (5-Schritt-Workflow)
@@ -111,7 +111,7 @@ Item {
                     anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
                     spacing: 4
                     Text {
-                        text: "RZ Drone Solutions · Ground Control Station"
+                        text: "UAVResearch · Ground Control Station"
                         color: "#fbbf24"; font.pixelSize: 18; font.weight: Font.Bold
                     }
                     Text {
@@ -251,13 +251,13 @@ Item {
                     "<b>Swarm-Algorithmen (eigene Sektion)</b><br>" +
                     "&nbsp;&nbsp;• <b>Boids</b> – Separation / Alignment / Cohesion mit konfigurierbaren Gewichten. Gut für „Schwarm-Look“ ohne Mission.<br>" +
                     "&nbsp;&nbsp;• <b>Leader-Follower</b> – Du wählst einen Leader, alle anderen berechnen relative Slot-Positionen.<br>" +
-                    "&nbsp;&nbsp;&nbsp;&nbsp;Formation-Typen: <i>Line · V-Shape · Circle · Grid · RZ-Logo · Letter R · Letter Z</i>.<br>" +
+                    "&nbsp;&nbsp;&nbsp;&nbsp;Formation-Typen: <i>Line · V-Shape · Circle · Grid · UAV-Logo · Letter R · Letter Z</i>.<br>" +
                     "&nbsp;&nbsp;&nbsp;&nbsp;<b>Formation Size</b>: <code>0</code> = alle verbundenen Drohnen werden eingebunden. Sonst: Leader + (Size−1) Follower.<br>" +
                     "&nbsp;&nbsp;&nbsp;&nbsp;<b>Follow Distance</b>: Slot-Abstand in m (Default 8 m, sicher gegen APF min_distance 2 m).<br>" +
                     "&nbsp;&nbsp;• <b>Consensus</b> – Verteilte Voting-Logik (z. B. Mehrheitsbeschluss über RTL).<br>" +
                     "&nbsp;&nbsp;• <b>Behavior Trees</b> – Vorgefertigte Missions-Templates (Surveillance, Search&amp;Rescue, Coverage …).<br><br>" +
                     "<b>Letter-Templates – Drohnen-Anforderungen</b><br>" +
-                    "&nbsp;&nbsp;Letter R = 14 Drohnen · Letter Z = 12 · RZ-Logo = 25. Bei weniger Drohnen wird das Template gestaucht oder Slots bleiben leer.<br><br>" +
+                    "&nbsp;&nbsp;Letter R = 14 Drohnen · Letter Z = 12 · UAV-Logo = 25. Bei weniger Drohnen wird das Template gestaucht oder Slots bleiben leer.<br><br>" +
                     "<span style='color:#f59e0b'><b>Häufige Stolpersteine</b></span><br>" +
                     "&nbsp;&nbsp;• Formation läuft nicht an → Formation Size kleiner als Drohnen-Anzahl, oder kein Leader gesetzt.<br>" +
                     "&nbsp;&nbsp;• Drohnen kollidieren in der Formation → Follow Distance &lt; APF min_distance. Beide aufeinander abstimmen.<br>" +
@@ -289,7 +289,7 @@ Item {
                     "&nbsp;&nbsp;• APF „kämpft“ gegen Formation → Follow Distance &lt; min_distance. Lösung: Follow Distance erhöhen oder min_distance senken.<br>" +
                     "&nbsp;&nbsp;• SITL spawnt alle Drohnen am exakt gleichen Punkt → APF eskaliert beim Takeoff. " +
                     "Lösung: Drohnen in Höhenstaffeln starten (5/8/11/14 m) <i>vor</i> dem Aktivieren von APF.<br>" +
-                    "&nbsp;&nbsp;• Geofence-Default 50 m ist für Letter-Templates zu klein (RZ-Logo spannt ~25 m + Spawn-Streuung)."
+                    "&nbsp;&nbsp;• Geofence-Default 50 m ist für Letter-Templates zu klein (UAV-Logo spannt ~25 m + Spawn-Streuung)."
             }
 
             // ── 7. Tab: Gimbal ─────────────────────────────────────────────

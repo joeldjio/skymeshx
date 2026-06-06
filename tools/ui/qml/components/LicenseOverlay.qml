@@ -75,7 +75,7 @@ Item {
                             font.pixelSize: 20; font.bold: true
                         }
                         Text {
-                            text: "RZ GCS · RZ Solutions"
+                            text: "UAVResearch GCS"
                             color: "#64748b"
                             font.pixelSize: 11
                         }
@@ -88,7 +88,7 @@ Item {
                     Layout.fillWidth: true
                     text: licenseManager
                         ? "Die " + licenseManager.trialDays + "-tägige Test-Phase ist abgelaufen.\n" +
-                          "Um RZ GCS weiter zu nutzen, gib bitte einen Lizenz-Schlüssel ein. " +
+                          "Um UAVResearch GCS weiter zu nutzen, gib bitte einen Lizenz-Schlüssel ein. "
                           "Den Schlüssel erhältst du von:\n" +
                           licenseManager.contactInfo
                         : ""
@@ -109,7 +109,7 @@ Item {
                     TextField {
                         id: keyField
                         Layout.fillWidth: true
-                        placeholderText: "RZGCS-XXXX-XXXX-XXXX-YYYYMMDD"
+                        placeholderText: "UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD"
                         font.family: "Consolas"
                         font.pixelSize: 13
                         selectByMouse: true

@@ -920,7 +920,7 @@ Item {
                                 ComboBox {
                                     id: formCombo
                                     width: parent.width; height: 22
-                                    model: ["Line", "V-Shape", "Circle", "Grid", "RZ Logo", "Letter R", "Letter Z"]
+                                    model: ["Line", "V-Shape", "Circle", "Grid", "UAV Logo", "Letter R", "Letter Z"]
                                     currentIndex: swarm ? swarm.formationType : 0
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     contentItem: Text { text: formCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: 6; verticalAlignment: Text.AlignVCenter }

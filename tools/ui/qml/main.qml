@@ -25,7 +25,7 @@ Window {
     height: 900
     minimumWidth:  1100
     minimumHeight: 700
-    title: "RZ GCS"
+    title: "UAVResearch GCS"
     color: "#0f1117"
 
     // ── Tab definitions ───────────────────────────────────────────────────────
@@ -680,7 +680,7 @@ Window {
 
                 Text {
                     id: statusMsg
-                    text: "RZ GCS ready."
+                    text: "UAVResearch GCS ready."
                     color: parent.parent.lastLevel === "ERROR" ? "white" : (parent.parent.lastLevel === "WARN" ? "#fcd34d" : "#94a3b8")
                     font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
@@ -762,7 +762,7 @@ Window {
                 Timer {
                     id: clearTimer; interval: 5000
                     onTriggered: {
-                        statusMsg.text = "RZ GCS ready."
+                        statusMsg.text = "UAVResearch GCS ready."
                         statusBar.lastLevel = "INFO"
                     }
                 }
@@ -773,7 +773,7 @@ Window {
                 spacing: 16
                 Text { text: "PyQt6 + QML"; color: "#2d3748"; font.pixelSize: 9 }
                 Text {
-                    text: "RZ GCS " + ((typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?")
+                    text: "UAVResearch GCS " + ((typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?")
                     color: "#2d3748"; font.pixelSize: 9
                 }
             }
