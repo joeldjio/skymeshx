@@ -19,35 +19,46 @@ Usage:
     metrics.stop()
     print(metrics.summary())
 """
+
 import math
 import statistics
-import time
 import threading
+import time
 from typing import Any, Dict, List, Optional
 
 
 class MetricsCollector:
-
     def __init__(self, metric_names: List[str]):
-        self._requested = set(metric_names) if metric_names else {"flight_time", "battery_drain"}
-        self._backend   = None
-        self._running   = False
+        self._requested = (
+            set(metric_names) if metric_names else {"flight_time", "battery_drain"}
+        )
+        self._backend = None
+        self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._samples:  List[dict] = []
+        self._samples: List[dict] = []
         self._start_bat = None
-        self._start_t   = None
+        self._start_t = None
         self._airborne_t = 0.0
-        self._last_t     = None
+        self._last_t = None
         self._was_airborne = False
+        self._intended_path: List[tuple] = []  # (lat, lon) Soll-Punkte
+        self._path_rms_errors: List[float] = []
+
+    def set_intended_path(self, waypoints: List[dict]):
+        """Set the intended flight path for position_error calculation.
+
+        waypoints: list of {"lat": float, "lon": float} dicts
+        """
+        self._intended_path = [(wp["lat"], wp["lon"]) for wp in waypoints]
 
     def attach(self, backend):
         self._backend = backend
 
     def start(self):
-        self._running  = True
-        self._start_t  = time.time()
-        self._samples  = []
-        self._thread   = threading.Thread(
+        self._running = True
+        self._start_t = time.time()
+        self._samples = []
+        self._thread = threading.Thread(
             target=self._collect_loop, daemon=True, name="metrics"
         )
         self._thread.start()
@@ -61,11 +72,11 @@ class MetricsCollector:
         if not self._samples:
             return {}
         result = {}
-        lats   = [s["lat"]  for s in self._samples if s["lat"] != 0]
-        alts   = [s["alt"]  for s in self._samples]
-        speeds = [s["spd"]  for s in self._samples]
-        bats   = [s["bat"]  for s in self._samples if s["bat"] >= 0]
-        gps    = [s["gps"]  for s in self._samples]
+        lats = [s["lat"] for s in self._samples if s["lat"] != 0]
+        alts = [s["alt"] for s in self._samples]
+        speeds = [s["spd"] for s in self._samples]
+        bats = [s["bat"] for s in self._samples if s["bat"] >= 0]
+        gps = [s["gps"] for s in self._samples]
 
         if "flight_time" in self._requested:
             result["flight_time_s"] = round(self._airborne_t, 1)
@@ -84,12 +95,23 @@ class MetricsCollector:
 
         if "hover_stability" in self._requested and len(lats) > 10:
             lat_std = statistics.stdev(lats)
-            lon_std = statistics.stdev([s["lon"] for s in self._samples if s["lon"] != 0])
+            lon_std = statistics.stdev(
+                [s["lon"] for s in self._samples if s["lon"] != 0]
+            )
             pos_std = math.sqrt(lat_std**2 + lon_std**2) * 111320
             result["hover_stability_m"] = round(pos_std, 3)
 
         if "gps_quality" in self._requested and gps:
-            result["gps_fix_pct"] = round(100 * sum(1 for g in gps if g >= 3) / len(gps), 1)
+            result["gps_fix_pct"] = round(
+                100 * sum(1 for g in gps if g >= 3) / len(gps), 1
+            )
+
+        if "position_error" in self._requested and self._path_rms_errors:
+            rms = math.sqrt(
+                sum(e**2 for e in self._path_rms_errors) / len(self._path_rms_errors)
+            )
+            result["position_error_rms_m"] = round(rms, 3)
+            result["position_error_max_m"] = round(max(self._path_rms_errors), 3)
 
         return result
 
@@ -99,7 +121,7 @@ class MetricsCollector:
                 t = self._backend.telemetry
                 now = time.time()
                 sample = {
-                    "t":   now,
+                    "t": now,
                     "lat": t.lat,
                     "lon": t.lon,
                     "alt": t.alt_rel,
@@ -109,6 +131,10 @@ class MetricsCollector:
                     "armed": t.armed,
                 }
                 self._samples.append(sample)
+                if "position_error" in self._requested and self._intended_path:
+                    err = self._min_path_dist(sample["lat"], sample["lon"])
+                    if err is not None:
+                        self._path_rms_errors.append(err)
                 if self._start_bat is None and t.battery_pct >= 0:
                     self._start_bat = t.battery_pct
                 if t.armed and t.alt_rel > 0.5:
@@ -119,11 +145,26 @@ class MetricsCollector:
                     self._last_t = None
             time.sleep(0.5)
 
+    def _min_path_dist(self, lat: float, lon: float) -> Optional[float]:
+        """Minimale Distanz (Meter) vom Punkt zum nächsten Pfadsegment."""
+        if not self._intended_path:
+            return None
+        min_d = float("inf")
+        for plat, plon in self._intended_path:
+            dlat = (lat - plat) * 111320.0
+            dlon = (lon - plon) * 111320.0 * math.cos(math.radians(lat))
+            d = math.sqrt(dlat**2 + dlon**2)
+            if d < min_d:
+                min_d = d
+        return min_d
+
     def _calc_distance(self) -> float:
         total = 0.0
-        pts   = [(s["lat"], s["lon"]) for s in self._samples if s["lat"] != 0]
+        pts = [(s["lat"], s["lon"]) for s in self._samples if s["lat"] != 0]
         for i in range(1, len(pts)):
-            dlat = (pts[i][0] - pts[i-1][0]) * 111320
-            dlon = (pts[i][1] - pts[i-1][1]) * 111320 * math.cos(math.radians(pts[i][0]))
+            dlat = (pts[i][0] - pts[i - 1][0]) * 111320
+            dlon = (
+                (pts[i][1] - pts[i - 1][1]) * 111320 * math.cos(math.radians(pts[i][0]))
+            )
             total += math.sqrt(dlat**2 + dlon**2)
         return total

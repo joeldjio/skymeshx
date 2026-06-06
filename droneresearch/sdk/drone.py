@@ -19,13 +19,14 @@ Usage:
     drone.wait_for_landing()
     drone.disconnect()
 """
-import time
+
 import threading
+import time
 from typing import Callable, Optional
 
+from droneresearch.control.mission import MissionEngine, Waypoint
 from droneresearch.core.connection import MAVLinkConnection
 from droneresearch.core.telemetry import TelemetryState
-from droneresearch.control.mission import MissionEngine, Waypoint
 from droneresearch.data.logger import TelemetryLogger
 from droneresearch.data.store import TelemetryStore
 
@@ -41,24 +42,24 @@ class Drone:
     def __init__(
         self,
         connection_string: str,
-        drone_id:     str  = "drone",
-        log_dir:      str  = "logs",
-        auto_log:     bool = True,
+        drone_id: str = "drone",
+        log_dir: str = "logs",
+        auto_log: bool = True,
     ):
-        self.id               = drone_id
-        self._conn            = MAVLinkConnection(connection_string)
-        self._logger          = TelemetryLogger(log_dir) if auto_log else None
-        self._store           = TelemetryStore()
-        self._mission         = MissionEngine(self._conn)
+        self.id = drone_id
+        self._conn = MAVLinkConnection(connection_string)
+        self._logger = TelemetryLogger(log_dir) if auto_log else None
+        self._store = TelemetryStore()
+        self._mission = MissionEngine(self._conn)
         self._event_cbs: dict = {}
-        self._stop            = threading.Event()
+        self._stop = threading.Event()
 
         # Wire core events → high-level events
-        self._conn.on("telemetry",    self._on_telemetry)
-        self._conn.on("armed",        lambda v: self._emit("armed", v))
-        self._conn.on("mode",         lambda v: self._emit("mode", v))
-        self._conn.on("statustext",   lambda t, s: self._emit("statustext", t, s))
-        self._conn.on("connected",    lambda: self._emit("connected"))
+        self._conn.on("telemetry", self._on_telemetry)
+        self._conn.on("armed", lambda v: self._emit("armed", v))
+        self._conn.on("mode", lambda v: self._emit("mode", v))
+        self._conn.on("statustext", lambda t, s: self._emit("statustext", t, s))
+        self._conn.on("connected", lambda: self._emit("connected"))
         self._conn.on("disconnected", lambda: self._emit("disconnected"))
         self._conn.on(
             "command_ack",
@@ -145,7 +146,10 @@ class Drone:
     def takeoff(self, altitude: float = 10.0, timeout: float = 30.0) -> bool:
         if not self.armed:
             self.arm()
-        self.set_mode("GUIDED")
+        # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
+        ap = self._conn.telemetry.autopilot
+        mode = "OFFBOARD" if ap == "px4" else "GUIDED"
+        self.set_mode(mode)
         self._conn.takeoff(altitude)
         return self._wait_for(
             lambda: self._conn.telemetry.alt_rel >= altitude * 0.85,
@@ -163,7 +167,10 @@ class Drone:
         self._conn.rtl()
 
     def goto(self, lat: float, lon: float, alt: float, timeout: float = 60.0) -> bool:
-        self.set_mode("GUIDED")
+        # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
+        ap = self._conn.telemetry.autopilot
+        mode = "OFFBOARD" if ap == "px4" else "GUIDED"
+        self.set_mode(mode)
         self._conn.goto(lat, lon, alt)
         return self._wait_for(
             lambda: self._distance_to(lat, lon) < 2.0,
@@ -185,7 +192,9 @@ class Drone:
     def mission(self) -> MissionEngine:
         return self._mission
 
-    def run_mission(self, waypoints: list, wait: bool = True, timeout: float = 600.0) -> bool:
+    def run_mission(
+        self, waypoints: list, wait: bool = True, timeout: float = 600.0
+    ) -> bool:
         self._mission.clear()
         for wp in waypoints:
             if isinstance(wp, dict):
@@ -215,15 +224,19 @@ class Drone:
     def on(self, event: str, callback: Callable = None):
         """Register event callback. Can be used as decorator."""
         if callback is None:
+
             def decorator(fn):
                 self._event_cbs.setdefault(event, []).append(fn)
                 return fn
+
             return decorator
         self._event_cbs.setdefault(event, []).append(callback)
 
     def off(self, event: str, callback: Callable):
         if event in self._event_cbs:
-            self._event_cbs[event] = [c for c in self._event_cbs[event] if c is not callback]
+            self._event_cbs[event] = [
+                c for c in self._event_cbs[event] if c is not callback
+            ]
 
     # ── Internal ──────────────────────────────────────────────────────────
 
@@ -240,11 +253,11 @@ class Drone:
         if self._logger:
             self._logger.log(snap)
         self._emit("telemetry", tel)
-        self._emit("altitude",   tel.alt_rel)
-        self._emit("position",   tel.lat, tel.lon, tel.alt_rel)
-        self._emit("attitude",   tel.roll, tel.pitch, tel.yaw)
-        self._emit("battery",    tel.battery_pct)
-        self._emit("speed",      tel.groundspeed)
+        self._emit("altitude", tel.alt_rel)
+        self._emit("position", tel.lat, tel.lon, tel.alt_rel)
+        self._emit("attitude", tel.roll, tel.pitch, tel.yaw)
+        self._emit("battery", tel.battery_pct)
+        self._emit("speed", tel.groundspeed)
 
     def _wait_for(self, condition: Callable, timeout: float) -> bool:
         deadline = time.time() + timeout
@@ -256,10 +269,14 @@ class Drone:
 
     def _distance_to(self, lat: float, lon: float) -> float:
         import math
+
         t = self._conn.telemetry
         dlat = math.radians(lat - t.lat)
         dlon = math.radians(lon - t.lon)
-        a = (math.sin(dlat/2)**2 +
-             math.cos(math.radians(t.lat)) * math.cos(math.radians(lat)) *
-             math.sin(dlon/2)**2)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(t.lat))
+            * math.cos(math.radians(lat))
+            * math.sin(dlon / 2) ** 2
+        )
         return 6371000 * 2 * math.asin(math.sqrt(a))

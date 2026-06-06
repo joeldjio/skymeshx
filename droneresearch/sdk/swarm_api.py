@@ -31,6 +31,11 @@ class Swarm:
         self._auto_log = auto_log
         self._lock = threading.Lock()
         self._event_cbs: dict = {}
+        self._following = False
+        self._follow_thread: Optional[threading.Thread] = None
+        self._follow_shape = "line"
+        self._follow_spacing = 5.0
+        self._follow_leader: Optional[str] = None
 
     # ── Drone management ─────────────────────────────────────────────────
 
@@ -141,6 +146,51 @@ class Swarm:
                 args=(target_lat, target_lon, alt0),
                 daemon=True,
             ).start()
+
+    def start_follow(
+        self,
+        shape: str = "line",
+        spacing: float = 5.0,
+        leader: Optional[str] = None,
+        update_hz: float = 2.0,
+    ) -> None:
+        """Start continuous formation following at update_hz rate.
+
+        Each follower continuously updates its goto target based on
+        the current leader position. Call stop_follow() to stop.
+        """
+        if self._following:
+            self.stop_follow()
+        self._follow_shape = shape
+        self._follow_spacing = spacing
+        self._follow_leader = leader
+        self._following = True
+        self._follow_thread = threading.Thread(
+            target=self._follow_loop,
+            args=(1.0 / update_hz,),
+            daemon=True,
+            name="swarm-follow",
+        )
+        self._follow_thread.start()
+
+    def stop_follow(self) -> None:
+        """Stop the formation following loop."""
+        self._following = False
+        if self._follow_thread:
+            self._follow_thread.join(timeout=2.0)
+            self._follow_thread = None
+
+    def _follow_loop(self, dt: float) -> None:
+        while self._following:
+            try:
+                self.formation(
+                    self._follow_shape,
+                    self._follow_spacing,
+                    self._follow_leader,
+                )
+            except Exception as e:
+                print(f"[swarm-follow] error: {e}")
+            time.sleep(dt)
 
     # ── Data ─────────────────────────────────────────────────────────────
 
