@@ -12,6 +12,7 @@ Three-stage cold start:
 Heavy imports (rclpy, droneresearch SDK, QtWebEngine) are lazy:
 they are only triggered when actually needed, NOT at import-time.
 """
+
 import sys
 from pathlib import Path
 
@@ -23,28 +24,43 @@ profiler.mark("python_start")
 # Stage 1 — minimal Qt imports (no QtWebEngine, no rclpy, no SDK yet)
 # ──────────────────────────────────────────────────────────────────────
 import os
+
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 # Force QML disk cache: compiled .qmlc files persist between runs.
 # First start is slow (~9s), every subsequent start should drop to <1s.
 os.environ.setdefault("QML_DISK_CACHE", "1")
 os.environ.setdefault("QML_FORCE_DISK_CACHE", "1")
+# Suppress harmless DirectWrite warning about legacy GDI fonts
+# ("MS Sans Serif" has no DirectWrite font face — this is a Qt internal
+# fallback and does not affect rendering quality).
+os.environ.setdefault("QT_LOGGING_RULES", "qt.qpa.fonts=false")
 
 # QtWebEngine MUST be initialised before QGuiApplication on some platforms.
 # We import it here but defer initialize() if possible. Some platforms
 # (Windows) do require initialize() pre-app — we keep that contract.
 from PyQt6.QtWebEngineQuick import QtWebEngineQuick
+
 QtWebEngineQuick.initialize()
 profiler.mark("qtwebengine_init")
 
-from PyQt6.QtGui  import (
-    QGuiApplication, QPixmap, QColor, QPainter, QFont, QPen, QBrush,
-    QLinearGradient, QRadialGradient, QPolygonF,
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, QUrl
+from PyQt6.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QGuiApplication,
+    QLinearGradient,
+    QPainter,
+    QPen,
+    QPixmap,
+    QPolygonF,
+    QRadialGradient,
 )
-from PyQt6.QtQml  import QQmlApplicationEngine
-from PyQt6.QtCore import QUrl, QTimer, Qt, QPointF, QRectF
+from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtWidgets import QApplication, QSplashScreen
 
 profiler.mark("qt_core_imports")
+
 
 def _resolve_qml_root() -> Path:
     """
@@ -82,7 +98,7 @@ def _make_splash() -> QSplashScreen:
 
     # ── Soft radial glow behind the logo (top-center) ─────────────────
     glow = QRadialGradient(QPointF(W / 2, 95), 220)
-    glow.setColorAt(0.0, QColor(37, 99, 235, 90))     # blue-600 @ ~35%
+    glow.setColorAt(0.0, QColor(37, 99, 235, 90))  # blue-600 @ ~35%
     glow.setColorAt(0.5, QColor(37, 99, 235, 30))
     glow.setColorAt(1.0, QColor(37, 99, 235, 0))
     painter.fillRect(0, 0, W, H, QBrush(glow))
@@ -113,7 +129,8 @@ def _make_splash() -> QSplashScreen:
     painter.setPen(QColor("#e0ecff"))
     painter.drawText(
         QRectF(badge_cx - badge_r, badge_cy - badge_r, badge_r * 2, badge_r * 2),
-        int(Qt.AlignmentFlag.AlignCenter), "RZ",
+        int(Qt.AlignmentFlag.AlignCenter),
+        "RZ",
     )
 
     # Tiny rotor dots flanking the badge (drone vibe)
@@ -134,10 +151,16 @@ def _make_splash() -> QSplashScreen:
     title_rect = QRectF(0, 140, W, 44)
     # Subtle drop-shadow
     painter.setPen(QColor(0, 0, 0, 180))
-    painter.drawText(title_rect.translated(0, 2), int(Qt.AlignmentFlag.AlignCenter), "RZ DRONE SOLUTIONS")
+    painter.drawText(
+        title_rect.translated(0, 2),
+        int(Qt.AlignmentFlag.AlignCenter),
+        "RZ DRONE SOLUTIONS",
+    )
     # Main text
     painter.setPen(QColor("#f1f5f9"))
-    painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignCenter), "RZ DRONE SOLUTIONS")
+    painter.drawText(
+        title_rect, int(Qt.AlignmentFlag.AlignCenter), "RZ DRONE SOLUTIONS"
+    )
 
     # ── Divider line with gradient ────────────────────────────────────
     line_grad = QLinearGradient(W * 0.25, 0, W * 0.75, 0)
@@ -152,7 +175,8 @@ def _make_splash() -> QSplashScreen:
     painter.setFont(sub_font)
     painter.setPen(QColor("#7c8ba6"))
     painter.drawText(
-        QRectF(0, 206, W, 22), int(Qt.AlignmentFlag.AlignCenter),
+        QRectF(0, 206, W, 22),
+        int(Qt.AlignmentFlag.AlignCenter),
         "GROUND  CONTROL  STATION",
     )
 
@@ -162,9 +186,12 @@ def _make_splash() -> QSplashScreen:
     painter.setFont(tag_font)
     painter.setPen(QColor("#475569"))
     from tools.ui._version import VERSION as _APP_VERSION
-    painter.drawText(QRectF(0, H - 26, W - 16, 18),
-                     int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                     f"v{_APP_VERSION}  ·  loading…")
+
+    painter.drawText(
+        QRectF(0, H - 26, W - 16, 18),
+        int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+        f"v{_APP_VERSION}  ·  loading…",
+    )
 
     painter.end()
 
@@ -194,6 +221,7 @@ def _build_contexts():
 def run() -> int:
     # QApplication required for QSplashScreen (uses QWidget)
     from tools.ui._version import VERSION
+
     app = QApplication(sys.argv)
     app.setApplicationName("RZ GCS")
     app.setApplicationDisplayName("RZ GCS")
@@ -211,7 +239,7 @@ def run() -> int:
 
     # ── QML engine ────────────────────────────────────────────────────────
     engine = QQmlApplicationEngine()
-    ctx    = engine.rootContext()
+    ctx = engine.rootContext()
     for name, obj in contexts.items():
         ctx.setContextProperty(name, obj)
     profiler.mark("qml_ctx_set")

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import "../components" as Cmp
 
 Item {
     id: root
@@ -79,13 +80,22 @@ Item {
                     }
                 }
 
-                Item { width: parent.width - 300; height: parent.height }
+                Item { Layout.fillWidth: true; height: parent.height }
 
-                Text {
-                    text: root.activeLogModel.count + " entries"
-                    color: "#64748b"; font.pixelSize: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+                    Text {
+                        text: root.activeLogModel.count + " entries"
+                        color: "#64748b"; font.pixelSize: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    // Export feedback toast
+                    Text {
+                        id: exportFeedback
+                        visible: false
+                        color: "#4ade80"; font.pixelSize: 9
+                        anchors.verticalCenter: parent.verticalCenter
+                        Timer { id: exportHideTimer; interval: 4000; onTriggered: exportFeedback.visible = false }
+                    }
 
                 Rectangle {
                     width: 90; height: 24; radius: 5
@@ -93,6 +103,41 @@ Item {
                     border.color: "#166534"; border.width: 1
                     anchors.verticalCenter: parent.verticalCenter
                     Text { anchors.centerIn: parent; text: "AUTO-SAVE AKTIV"; color: "#4ade80"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                }
+
+                // Export current log to file
+                Rectangle {
+                    id: exportBtn
+                    width: 70; height: 24; radius: 5
+                    color: exportMa.containsMouse ? "#15803d" : "#1e2535"
+                    border.color: "#22c55e"; border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Text { anchors.centerIn: parent; text: "EXPORT"; color: "#4ade80"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                    MouseArea {
+                        id: exportMa; anchors.fill: parent; hoverEnabled: true
+                        onClicked: {
+                            if (typeof swarm === "undefined" || !swarm) return
+                            var d = new Date()
+                            var stamp = d.getFullYear() + "-" +
+                                        String(d.getMonth()+1).padStart(2,"0") + "-" +
+                                        String(d.getDate()).padStart(2,"0") + "_" +
+                                        String(d.getHours()).padStart(2,"0") +
+                                        String(d.getMinutes()).padStart(2,"0") +
+                                        String(d.getSeconds()).padStart(2,"0")
+                            var lines = []
+                            for (var i = 0; i < root.activeLogModel.count; i++) {
+                                var e = root.activeLogModel.get(i)
+                                lines.push(e.time + "  [" + e.level + "]  " + e.text)
+                            }
+                            var path = "logs/export_" + stamp + ".txt"
+                            var ok = swarm.writeFile(path, lines.join("\n"))
+                            exportFeedback.text = ok ? ("✓ " + path) : "✗ Export fehlgeschlagen"
+                            exportFeedback.color = ok ? "#4ade80" : "#fca5a5"
+                            exportFeedback.visible = true
+                            exportHideTimer.restart()
+                        }
+                    }
                 }
             }
         }
@@ -136,11 +181,21 @@ Item {
                 id: logListView
                 property string filterLevel: "ALL"
                 property string filterText:  ""
+                // Only auto-scroll when the view was already pinned to the
+                // bottom. If the user scrolled up to inspect old entries,
+                // we do not hijack their scroll position.
+                property bool   _pinToBottom: true
+
                 anchors { fill: parent; margins: 8 }
                 clip: true
                 spacing: 2
 
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+
+                onContentYChanged: {
+                    // Re-evaluate pin after each scroll movement
+                    _pinToBottom = (contentY + height >= contentHeight - 4)
+                }
 
                 model: root.activeLogModel
 
@@ -168,7 +223,9 @@ Item {
                         // Time
                         Text {
                             text: model.time
-                            color: "#4a5568"; font.pixelSize: 10; font.family: "Consolas"
+                            color: "#4a5568"; font.pixelSize: 10
+                            font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                           ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
                             width: 60
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -186,7 +243,9 @@ Item {
                                 anchors.centerIn: parent
                                 text: extractDroneId(model.text)
                                 color: getDroneColor(extractDroneId(model.text))
-                                font.pixelSize: 9; font.weight: Font.Bold; font.family: "Consolas"
+                                font.pixelSize: 9; font.weight: Font.Bold
+                                font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                               ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
                             }
                         }
 
@@ -215,7 +274,9 @@ Item {
                             color: model.level === "ERROR" ? "#fca5a5"
                                  : model.level === "WARN"  ? "#fcd34d"
                                  : "#8be9fd"
-                            font.pixelSize: 11; font.family: "Consolas"
+                            font.pixelSize: 11
+                            font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                           ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
                             width: parent.width - 140
                             wrapMode: Text.WordWrap
                             anchors.verticalCenter: parent.verticalCenter
@@ -224,16 +285,9 @@ Item {
                     }
                 }
 
-                onCountChanged: positionViewAtEnd()
+                // Auto-scroll only when pinned to bottom
+                onCountChanged: if (_pinToBottom) positionViewAtEnd()
             }
-        }
-    }
-
-    // Auto-scroll when new logs arrive (auto-save handled globally)
-    Connections {
-        target: root.activeLogModel
-        function onCountChanged() {
-            logListView.positionViewAtEnd()
         }
     }
 }

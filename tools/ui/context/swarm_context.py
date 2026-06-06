@@ -632,6 +632,49 @@ class SwarmContext(QObject):
             return ""
 
     @pyqtSlot(str, str, result=bool)
+    def appendFile(self, path: str, line: str) -> bool:
+        """Append a single line to a file, creating it (and parent dirs) if needed.
+
+        Used by GlobalLogHandler for crash-safe, incremental syslog writing
+        instead of rewriting the entire log buffer every second.
+        """
+        try:
+            import os
+
+            clean = path
+            if clean.startswith("file:///"):
+                clean = clean[8:]
+            elif clean.startswith("file://"):
+                clean = clean[7:]
+            parent = os.path.dirname(clean)
+            if parent and not os.path.isdir(parent):
+                os.makedirs(parent, exist_ok=True)
+            with open(clean, "a", encoding="utf-8") as f:
+                f.write(line + "\n")
+            return True
+        except Exception as exc:
+            # Do not emit logMessage here — would cause infinite recursion
+            return False
+
+    @pyqtSlot(result=str)
+    def syslogsDir(self) -> str:
+        """Return the absolute path of the syslogs directory (creates it on first call)."""
+        import os
+
+        # Place syslogs next to where the GCS is run from (project root or
+        # PyInstaller _MEIPASS parent).  Falls back to the user's home dir.
+        try:
+            base = os.path.abspath("logs/syslogs")
+            os.makedirs(base, exist_ok=True)
+            return base
+        except Exception:
+            import pathlib
+
+            fallback = pathlib.Path.home() / ".rz_gcs" / "syslogs"
+            fallback.mkdir(parents=True, exist_ok=True)
+            return str(fallback)
+
+    @pyqtSlot(str, str, result=bool)
     def writeFile(self, path: str, content: str) -> bool:
         """Write content to a local file (for log export from QML)."""
         try:

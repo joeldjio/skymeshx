@@ -42,9 +42,39 @@ QtObject {
         return type === "observation" ? droneObservation : droneGeneric
     }
 
-    // ── Typography ────────────────────────────────────────────────────
-    readonly property string fontSans: "Segoe UI"
-    readonly property string fontMono: "Consolas"
+    // ── Typography ─────────────────────────────────────────────────
+    // Platform-specific primary font (best-looking choice per OS).
+    // Existing code using  font.family: Theme.fontSans  keeps working.
+    readonly property string fontSans: Qt.platform.os === "windows" ? "Segoe UI"
+                                     : Qt.platform.os === "osx"     ? "SF Pro Text"
+                                     : "Ubuntu"       // Linux / other
+
+    readonly property string fontMono: Qt.platform.os === "windows" ? "Cascadia Code"
+                                     : Qt.platform.os === "osx"     ? "SF Mono"
+                                     : "DejaVu Sans Mono"  // Linux / other
+
+    // Prioritised family lists for font.families (Qt ≥ 5.13).
+    // Qt picks the first family that is installed on the current system.
+    // Falls back to the OS default sans-serif / monospace if none match.
+    readonly property var fontFamiliesSans: [
+        "Segoe UI",      // Windows 10/11
+        "SF Pro Text",   // macOS
+        "Ubuntu",        // Ubuntu Linux
+        "Noto Sans",     // Android / cross-platform
+        "Helvetica Neue",
+        "Arial",         // universal fallback
+    ]
+
+    readonly property var fontFamiliesMono: [
+        "Cascadia Code", // Windows Terminal / Win 11
+        "Consolas",      // Windows Vista+
+        "SF Mono",       // macOS
+        "Menlo",         // macOS (older)
+        "JetBrains Mono",
+        "DejaVu Sans Mono", // Linux
+        "Liberation Mono",  // Linux
+        "Courier New",      // universal fallback
+    ]
 
     readonly property int   fontXS: 8
     readonly property int   fontS:  10

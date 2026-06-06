@@ -8,10 +8,10 @@ import QtQuick
 //   model            → ListModel of {time, level, text}
 //   maxEntries       → ring buffer cap (default 3000)
 //
-// Drop this into any parent and reference it via id, e.g.:
-//   GlobalLogHandler { id: globalLog }
-//   ...
-//   model: globalLog.model
+// Syslog: each new entry is appended immediately via swarm.appendFile()
+// into  logs/syslogs/<timestamp>.txt  (path resolved by Python so it
+// works both in source-tree runs and PyInstaller bundles).
+// No more per-second full-file rewrites.
 Item {
     id: handler
 
@@ -23,54 +23,44 @@ Item {
 
     ListModel { id: logModel }
 
-    // ── Syslog auto-save (always-on, regardless of LogPanel being loaded) ──
+    // ── Syslog path (resolved once on first entry) ────────────────────
     property string _syslogPath: ""
-    property bool   _autoSaveDirty: false
 
     function _ensureSyslogPath() {
         if (_syslogPath !== "") return
-        var d = new Date()
+        if (typeof swarm === "undefined" || !swarm || !swarm.syslogsDir) return
+        var dir = swarm.syslogsDir()               // "…/logs/syslogs" (abs path)
+        var d   = new Date()
         var stamp = d.getFullYear() + "-" +
-                    String(d.getMonth()+1).padStart(2,"0") + "-" +
-                    String(d.getDate()).padStart(2,"0") + "_" +
-                    String(d.getHours()).padStart(2,"0") +
-                    String(d.getMinutes()).padStart(2,"0") +
-                    String(d.getSeconds()).padStart(2,"0")
-        _syslogPath = "c:/Users/fuckheinerkleinehack/Documents/DroneResearch/tools/ui/syslogs/" + stamp + ".txt"
+                    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+                    String(d.getDate()).padStart(2, "0") + "_" +
+                    String(d.getHours()).padStart(2, "0") +
+                    String(d.getMinutes()).padStart(2, "0") +
+                    String(d.getSeconds()).padStart(2, "0")
+        // Use forward-slash separator — Python handles both on Windows
+        _syslogPath = dir + "/" + stamp + ".txt"
     }
 
-    function _flushSyslog() {
-        if (!_autoSaveDirty) return
-        if (typeof swarm === "undefined" || !swarm || !swarm.writeFile) return
+    // ── Append one entry to syslog (crash-safe, incremental) ─────────
+    function _appendToSyslog(time, level, text) {
+        if (typeof swarm === "undefined" || !swarm || !swarm.appendFile) return
         _ensureSyslogPath()
-        var lines = []
-        for (var i = 0; i < logModel.count; i++) {
-            var e = logModel.get(i)
-            lines.push(e.time + "  [" + e.level + "]  " + e.text)
-        }
-        swarm.writeFile(_syslogPath, lines.join("\n"))
-        _autoSaveDirty = false
+        if (_syslogPath === "") return
+        swarm.appendFile(_syslogPath, time + "  [" + level + "]  " + text)
     }
 
-    // Throttled writer — at most every 1 s
-    Timer {
-        id: syslogFlushTimer
-        interval: 1000; repeat: true; running: true
-        onTriggered: handler._flushSyslog()
-    }
-
+    // ── Add entry to in-memory model + syslog ────────────────────────
     function _append(level, text) {
-        var d = new Date()
-        logModel.append({
-            time:  Qt.formatTime(d, "hh:mm:ss"),
-            level: level,
-            text:  text
-        })
+        var d    = new Date()
+        var time = Qt.formatTime(d, "hh:mm:ss")
+        logModel.append({ time: time, level: level, text: text })
         if (logModel.count > handler.maxEntries)
             logModel.remove(0, 1)
-        _autoSaveDirty = true
+        _appendToSyslog(time, level, text)
         handler.newEntry(level, text)
     }
+
+    // ── Signal connections ────────────────────────────────────────────
 
     Connections {
         target: (typeof swarm !== "undefined") ? swarm : null

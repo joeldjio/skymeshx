@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import "../components" as Cmp
 
 Item {
     id: root
@@ -21,6 +22,10 @@ Item {
     onHoverIdxChanged: repaintAll()
 
     // ── CSV Parser ────────────────────────────────────────────────────────
+    // Computed ranges for auto-scaling Y axes (updated after CSV load)
+    property real _altMax: 120
+    property real _spdMax: 30
+
     function loadCsv(text) {
         var lines = text.split("\n")
         if (lines.length < 2) return
@@ -46,6 +51,16 @@ Item {
             })
         }
         rows = parsed
+        // Auto-scale: round up to next 10m / 5 m/s
+        if (parsed.length > 0) {
+            var maxAlt = 0, maxSpd = 0
+            for (var j = 0; j < parsed.length; j++) {
+                if (parsed[j].alt > maxAlt) maxAlt = parsed[j].alt
+                if (parsed[j].spd > maxSpd) maxSpd = parsed[j].spd
+            }
+            _altMax = Math.max(20, Math.ceil(maxAlt * 1.15 / 10) * 10)
+            _spdMax = Math.max(10, Math.ceil(maxSpd * 1.15 / 5)  * 5)
+        }
         repaintAll()
         statsRow.visible = parsed.length > 0
     }
@@ -57,7 +72,7 @@ Item {
         var H = h - pad.t - pad.b
         ctx.fillStyle = "#0a0e1a"; ctx.fillRect(0, 0, w, h)
 
-        ctx.fillStyle = "#4a5568"; ctx.font = "bold 9px Consolas"
+        ctx.fillStyle = "#4a5568"; ctx.font = "bold 9px Consolas, Courier New"
         ctx.textAlign = "left"; ctx.textBaseline = "top"
         ctx.fillText(title, pad.l + 2, 4)
 
@@ -67,7 +82,7 @@ Item {
             ctx.lineWidth   = g === 0 ? 1.2 : 0.8
             ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + W, gy); ctx.stroke()
             var lv = yMin + g * (yMax - yMin) / 4
-            ctx.fillStyle = "#374151"; ctx.font = "8px Consolas"
+            ctx.fillStyle = "#374151"; ctx.font = "8px Consolas, Courier New"
             ctx.textAlign = "right"; ctx.textBaseline = "middle"
             ctx.fillText(lv % 1 === 0 ? lv : lv.toFixed(1), pad.l - 3, gy)
         }
@@ -80,7 +95,7 @@ Item {
         }
 
         var tMax = dataRows[dataRows.length - 1].t || 1
-        ctx.fillStyle = "#374151"; ctx.font = "8px Consolas"
+        ctx.fillStyle = "#374151"; ctx.font = "8px Consolas, Courier New"
         ctx.textAlign = "left";  ctx.textBaseline = "bottom"; ctx.fillText("0s", pad.l, h - 2)
         ctx.textAlign = "right"; ctx.fillText(tMax.toFixed(0) + "s", pad.l + W, h - 2)
 
@@ -121,7 +136,7 @@ Item {
             ctx.fillStyle = "#0a0e1a"
             ctx.beginPath(); ctx.arc(hx, hy, 2, 0, Math.PI * 2); ctx.fill()
             var tv = hr[yKey].toFixed(1)
-            ctx.fillStyle = col; ctx.font = "bold 10px Consolas"
+            ctx.fillStyle = col; ctx.font = "bold 10px Consolas, Courier New"
             ctx.textAlign = hx > pad.l + W * 0.6 ? "right" : "left"
             ctx.textBaseline = "bottom"
             ctx.fillText(tv, hx + (hx > pad.l + W * 0.6 ? -7 : 7), hy - 5)
@@ -264,7 +279,7 @@ Item {
                 radius: 8; color: "#0a0e1a"; border.color: "#1e2535"; border.width: 1; clip: true
                 Canvas {
                     id: altCanvas; anchors.fill: parent
-                    onPaint: root.drawChart(getContext("2d"), width, height, root.rows, "alt",  0,  120, "#2563eb", "Altitude (m)",       root.hoverIdx)
+                    onPaint: root.drawChart(getContext("2d"), width, height, root.rows, "alt",  0, root._altMax, "#2563eb", "Altitude (m)  [0–" + root._altMax + "m]", root.hoverIdx)
                 }
                 MouseArea {
                     anchors.fill: parent; hoverEnabled: true
@@ -282,7 +297,7 @@ Item {
                 radius: 8; color: "#0a0e1a"; border.color: "#1e2535"; border.width: 1; clip: true
                 Canvas {
                     id: spdCanvas; anchors.fill: parent
-                    onPaint: root.drawChart(getContext("2d"), width, height, root.rows, "spd",  0,   30, "#22c55e", "Groundspeed (m/s)", root.hoverIdx)
+                    onPaint: root.drawChart(getContext("2d"), width, height, root.rows, "spd",  0, root._spdMax, "#22c55e", "Groundspeed (m/s)  [0–" + root._spdMax + "m/s]", root.hoverIdx)
                 }
                 MouseArea {
                     anchors.fill: parent; hoverEnabled: true

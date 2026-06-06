@@ -5,45 +5,47 @@ Usage
 -----
 from tools.ui.style import Colors, DARK_THEME, TAB_STYLESHEET, STATE_COLORS, DRONE_COLORS
 """
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class _Colors:
     """Single source of truth for all UI colour values."""
+
     # Backgrounds
-    bg_app:      str = "#0f1117"
-    bg_panel:    str = "#161b27"
-    bg_card:     str = "#1a2035"
-    bg_input:    str = "#1e2535"
-    bg_hover:    str = "#263148"
-    bg_console:  str = "#0d1117"
+    bg_app: str = "#0f1117"
+    bg_panel: str = "#161b27"
+    bg_card: str = "#1a2035"
+    bg_input: str = "#1e2535"
+    bg_hover: str = "#263148"
+    bg_console: str = "#0d1117"
     # Borders
-    border:      str = "#2d3748"
+    border: str = "#2d3748"
     # Accent
-    blue:        str = "#2563eb"
-    blue_dark:   str = "#1d4ed8"
-    blue_dim:    str = "#4a6fa5"
+    blue: str = "#2563eb"
+    blue_dark: str = "#1d4ed8"
+    blue_dim: str = "#4a6fa5"
     # Semantic
-    green:       str = "#22c55e"
-    green_dark:  str = "#15803d"
-    yellow:      str = "#f59e0b"
+    green: str = "#22c55e"
+    green_dark: str = "#15803d"
+    yellow: str = "#f59e0b"
     yellow_dark: str = "#b45309"
-    orange:      str = "#f97316"
-    red:         str = "#dc2626"
-    red_dark:    str = "#b91c1c"
-    purple:      str = "#8b5cf6"
-    teal:        str = "#14b8a6"
-    cyan:        str = "#06b6d4"
-    lime:        str = "#84cc16"
-    pink:        str = "#ec4899"
+    orange: str = "#f97316"
+    red: str = "#dc2626"
+    red_dark: str = "#b91c1c"
+    purple: str = "#8b5cf6"
+    teal: str = "#14b8a6"
+    cyan: str = "#06b6d4"
+    lime: str = "#84cc16"
+    pink: str = "#ec4899"
     # Text
-    text_primary:  str = "#e2e8f0"
-    text_muted:    str = "#94a3b8"
+    text_primary: str = "#e2e8f0"
+    text_muted: str = "#94a3b8"
     text_disabled: str = "#4a5568"
-    text_dim:      str = "#64748b"
+    text_dim: str = "#64748b"
     # Sky / Ground (attitude indicator)
-    sky:   str = "#1e40af"
+    sky: str = "#1e40af"
     earth: str = "#78350f"
 
 
@@ -86,7 +88,7 @@ DARK_THEME = """
 QMainWindow, QDialog, QWidget {
     background-color: #0f1117;
     color: #e2e8f0;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Segoe UI', 'SF Pro Text', 'Ubuntu', 'Noto Sans', Arial, sans-serif;
     font-size: 13px;
 }
 
@@ -281,7 +283,7 @@ QTextEdit, QPlainTextEdit {
     color: #8be9fd;
     border: 1px solid #2d3748;
     border-radius: 8px;
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-family: 'Cascadia Code', 'Consolas', 'SF Mono', 'Menlo', 'DejaVu Sans Mono', 'Courier New', monospace;
     font-size: 12px;
     padding: 6px;
 }
@@ -351,18 +353,27 @@ QProgressBar::chunk {
 
 # Status badge colors
 STATE_COLORS = {
-    "IDLE":      "#64748b",
-    "ARMING":    "#f59e0b",
-    "ARMED":     "#f97316",
-    "TAKEOFF":   "#3b82f6",
-    "FLYING":    "#22c55e",
-    "MISSION":   "#8b5cf6",
-    "LANDING":   "#f59e0b",
-    "RTL":       "#f97316",
+    "IDLE": "#64748b",
+    "ARMING": "#f59e0b",
+    "ARMED": "#f97316",
+    "TAKEOFF": "#3b82f6",
+    "FLYING": "#22c55e",
+    "MISSION": "#8b5cf6",
+    "LANDING": "#f59e0b",
+    "RTL": "#f97316",
     "EMERGENCY": "#ef4444",
-    "UNKNOWN":   "#374151",
+    "UNKNOWN": "#374151",
 }
 
-DRONE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ec4899",
-                "#8b5cf6", "#14b8a6", "#f97316", "#06b6d4",
-                "#84cc16", "#a855f7"]
+DRONE_COLORS = [
+    "#3b82f6",
+    "#22c55e",
+    "#f59e0b",
+    "#ec4899",
+    "#8b5cf6",
+    "#14b8a6",
+    "#f97316",
+    "#06b6d4",
+    "#84cc16",
+    "#a855f7",
+]
