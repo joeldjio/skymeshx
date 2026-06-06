@@ -72,7 +72,8 @@ Item {
             model: [
                 { id: "dark",      label: "Dark",      icon: "◐" },
                 { id: "street",    label: "Street",    icon: "▢" },
-                { id: "satellite", label: "Satellite", icon: "◆" },
+                { id: "satellite", label: "Satellite", icon: "🛰" },
+                { id: "hybrid",    label: "Hybrid",    icon: "◆" },
                 { id: "topo",      label: "Topo",      icon: "⛰" },
             ]
             delegate: Rectangle {
@@ -190,9 +191,13 @@ var map = L.map("map", {
 var mapLayers = {
   dark: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.85}),
   street: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.95}),
-  satellite: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.95}),
+  satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, opacity:0.95, attribution:"Esri World Imagery"}),
+  hybrid: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, opacity:0.95}),
   topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {maxZoom:17, opacity:0.9}),
 };
+// Road overlay for hybrid mode
+var roadOverlay = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.35, className:"hybrid-roads"});
+var hybridActive = false;
 
 var darkStyle = document.createElement("style");
 darkStyle.id = "dark-filter";
@@ -203,14 +208,18 @@ var currentLayer = mapLayers.dark;
 currentLayer.addTo(map);
 
 function setMapType(type) {
+  if (hybridActive) { try { map.removeLayer(roadOverlay); } catch(e){} hybridActive = false; }
   if (currentLayer) map.removeLayer(currentLayer);
   currentLayer = mapLayers[type] || mapLayers.dark;
   currentLayer.addTo(map);
+  if (type === "hybrid") { roadOverlay.addTo(map); hybridActive = true; }
   var ds = document.getElementById("dark-filter");
   if (type === "dark") {
     ds.innerHTML = ".leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.85) saturate(1.1); }";
   } else if (type === "topo") {
     ds.innerHTML = ".leaflet-tile { filter: brightness(0.85) saturate(0.9); }";
+  } else if (type === "satellite" || type === "hybrid") {
+    ds.innerHTML = ".leaflet-tile { filter: brightness(1.05) saturate(1.1); }";
   } else {
     ds.innerHTML = ".leaflet-tile { filter: none; }";
   }
@@ -418,7 +427,7 @@ function updateFormation(leaderId, positions) {
 
     var followerPos = _validLatLng(pos);
     if (!followerPos) return;
-    
+
     // Draw line from leader to follower
     var line = L.polyline([leaderPos, followerPos], {
       color: "#f97316",
@@ -427,7 +436,7 @@ function updateFormation(leaderId, positions) {
       dashArray: "5, 5"
     }).addTo(map);
     formationLines.push(line);
-    
+
     // Draw circle at follower position
     var circle = L.circle(followerPos, {
       radius: 15,
@@ -438,7 +447,7 @@ function updateFormation(leaderId, positions) {
     }).addTo(map);
     formationCircles.push(circle);
   });
-  
+
   // Highlight leader with special marker
   if (droneMarkers[leaderId]) {
     var leaderIcon = L.divIcon({
@@ -453,15 +462,15 @@ function updateFormation(leaderId, positions) {
 
 function updateBoidsVisualization(activeDrones) {
   clearSwarmVisualization();
-  
+
   if (!activeDrones || activeDrones.length === 0) return;
-  
+
   // Draw perception radius circles for active boids
   activeDrones.forEach(function(droneId) {
     if (droneMarkers[droneId] && droneMarkers[droneId]._lastData) {
       var d = droneMarkers[droneId]._lastData;
       var pos = [d.lat, d.lon];
-      
+
       // Draw perception radius circle (50m default)
       var circle = L.circle(pos, {
         radius: 50,
@@ -478,15 +487,15 @@ function updateBoidsVisualization(activeDrones) {
 
 function updateConsensusVisualization(votingDrones) {
   clearSwarmVisualization();
-  
+
   if (!votingDrones || votingDrones.length === 0) return;
-  
+
   // Visualize voting drones with special indicators
   votingDrones.forEach(function(droneId) {
     if (droneMarkers[droneId] && droneMarkers[droneId]._lastData) {
       var d = droneMarkers[droneId]._lastData;
       var pos = [d.lat, d.lon];
-      
+
       // Draw voting indicator
       var circle = L.circle(pos, {
         radius: 25,
@@ -502,9 +511,9 @@ function updateConsensusVisualization(votingDrones) {
 
 function updateBehaviorTreeVisualization(missionType, activeDrones) {
   clearSwarmVisualization();
-  
+
   if (!activeDrones || activeDrones.length === 0) return;
-  
+
   // Different visualization based on mission type
   var colors = {
     0: "#ef4444", // Surveillance - red
@@ -512,14 +521,14 @@ function updateBehaviorTreeVisualization(missionType, activeDrones) {
     2: "#8b5cf6", // Formation Flight - purple
     3: "#06b6d4"  // Area Coverage - cyan
   };
-  
+
   var color = colors[missionType] || "#64748b";
-  
+
   activeDrones.forEach(function(droneId) {
     if (droneMarkers[droneId] && droneMarkers[droneId]._lastData) {
       var d = droneMarkers[droneId]._lastData;
       var pos = [d.lat, d.lon];
-      
+
       // Draw mission area indicator
       var circle = L.circle(pos, {
         radius: 35,

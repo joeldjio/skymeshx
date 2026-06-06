@@ -565,7 +565,7 @@ Window {
                         }
                     }
                 }
-                
+
                 // ── TABS 1..N: Panel Loaders ──────────────────────────────
                 // Each tab gets its own Loader. Inactive tabs are unloaded
                 // (active=false) to save memory; first-tab visit triggers load.
@@ -762,7 +762,10 @@ Window {
                 anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
                 spacing: 16
                 Text { text: "PyQt6 + QML"; color: "#2d3748"; font.pixelSize: 9 }
-                Text { text: "RZ GCS v0.2.0"; color: "#2d3748"; font.pixelSize: 9 }
+                Text {
+                    text: "RZ GCS " + ((typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?")
+                    color: "#2d3748"; font.pixelSize: 9
+                }
             }
         }
     }

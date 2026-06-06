@@ -36,7 +36,10 @@ QtObject {
     function isMissionTarget(did) { return state.missionTargetIds[did] === true }
 
     function toggleMissionTarget(did) {
-        var m = state.missionTargetIds
+        // Always create a new object so the property assignment triggers
+        // QML bindings — assigning the same reference is a no-op for the
+        // binding engine even if the content changed.
+        var m = Object.assign({}, state.missionTargetIds)
         if (m[did]) delete m[did]; else m[did] = true
         state.missionTargetIds = m
         var c = 0; for (var k in m) c++

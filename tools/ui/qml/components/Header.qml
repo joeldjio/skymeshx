@@ -67,7 +67,10 @@ Rectangle {
             text: "RZ Drone Solution  GCS"
             color: "#e2e8f0"; font.pixelSize: 15; font.weight: Font.Bold; font.letterSpacing: 0.5
         }
-        Text { text: "v0.2.0"; color: "#4a6fa5"; font.pixelSize: 11 }
+        Text {
+            text: (typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?"
+            color: "#4a6fa5"; font.pixelSize: 11
+        }
 
         Rectangle { width: 1; height: 24; color: "#2d3748" }
 
