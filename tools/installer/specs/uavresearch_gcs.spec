@@ -74,7 +74,6 @@ hidden = (
         "PyQt6.QtWebEngineWidgets",
         "PyQt6.QtQuick3D",
         "PyQt6.QtPositioning",
-        "PyQt6.QtLocation",
     ]
 )
 

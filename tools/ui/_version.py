@@ -31,7 +31,7 @@ VERSION: str = "0.3.1"
 INSTALLER_ASSET_PREFIX: str = "uavresearch-gcs-setup-"
 
 # GitHub repo (owner/name) the updater queries.
-GITHUB_REPO: str = "joeldjio/uavresearch-gcs-releases"
+GITHUB_REPO: str = "joeldjio/rz-gcs-releases"
 
 # ─────────────────────────────────────────────────────────────────────
 #  Licensing — used by tools/ui/license.py

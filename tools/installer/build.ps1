@@ -63,10 +63,18 @@ function Test-Tool($cmd, $hint) {
         throw "Missing tool '$cmd'. $hint"
     }
 }
+
+function Test-PythonModule($module, $hint) {
+    python -m $module --version *> $null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Missing Python module '$module'. $hint"
+    }
+}
+
 Test-Tool 'python' 'Install Python 3.10+ and ensure it is on PATH.'
 
 if (-not $SkipBundle) {
-    Test-Tool 'pyinstaller' "Install build deps:`n    pip install -r tools\installer\requirements_build.txt"
+    Test-PythonModule 'PyInstaller' "Install build deps:`n    python -m pip install -r tools\installer\requirements_build.txt"
 }
 
 if (-not (Test-Path $InnoCompiler)) {
@@ -85,7 +93,7 @@ Write-Host ""
 function Invoke-PyInstaller($spec, $label) {
     Write-Host "[2/4] PyInstaller: $label" -ForegroundColor Yellow
     Write-Host "       spec = $spec" -ForegroundColor DarkGray
-    pyinstaller --noconfirm --clean $spec
+    python -m PyInstaller --noconfirm --clean $spec
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed for $label." }
     Write-Host ""
 }
