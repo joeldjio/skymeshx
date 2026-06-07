@@ -53,6 +53,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tools/installer/requirements_build.txt
 
       # Qt system libs required on headless Linux runners
       - name: Install Linux Qt dependencies
@@ -107,26 +109,56 @@ jobs:
 
       # ── Upload artifacts (available to the publish job) ───────────────────
 
+      # ── SHA256 checksums (used by the in-app updater for verification) ────
+
+      - name: Generate SHA256 checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $file = Get-Item tools\installer\out\uavresearch-gcs-setup-*.exe
+          $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($file.Name)" | Out-File -FilePath "$($file.FullName).sha256" -Encoding utf8
+          Write-Host "SHA256: $hash  $($file.Name)"
+
+      - name: Generate SHA256 checksum (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          shasum -a 256 uavresearch-gcs-macos.tar.gz > uavresearch-gcs-macos.tar.gz.sha256
+          cat uavresearch-gcs-macos.tar.gz.sha256
+
+      - name: Generate SHA256 checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd tools/installer/out
+          sha256sum *.deb > $(ls *.deb).sha256
+          cat *.sha256
+
+      # ── Upload artifacts (available to the publish job) ───────────────────
+
       - name: Upload Windows installer
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: uavresearch-gcs-windows
-          path: tools/installer/out/uavresearch-gcs-setup-*.exe
+          path: |
+            tools/installer/out/uavresearch-gcs-setup-*.exe
+            tools/installer/out/uavresearch-gcs-setup-*.exe.sha256
 
       - name: Upload macOS bundle
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: uavresearch-gcs-macos
-          path: uavresearch-gcs-macos.tar.gz
+          path: |
+            uavresearch-gcs-macos.tar.gz
+            uavresearch-gcs-macos.tar.gz.sha256
 
       - name: Upload Linux .deb
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: uavresearch-gcs-linux-jammy
-          path: tools/installer/out/*.deb
+          path: tools/installer/out/*.deb*
 
   # ─────────────────────────────────────────────────────────────────────────
   # Publish job – runs ONLY on version tags or manual dispatch with publish=true
