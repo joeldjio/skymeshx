@@ -537,4 +537,32 @@ class ROS2Context(QObject):
         if status.get("finished"):
             self.ros2LogMessage.emit("INFO", f"[MISSION] ✓ Mission completed on {drone_id}")
         elif status.get("failure"):
-            self.ros2LogMessage.emit("ERROR", f"[MISSION] Mission failed on {drone_id}")
+            self.ros2LogMessage.emit("WARNING", f"[MISSION] ✗ Mission failed on {drone_id}")
+    
+    # ── Frame Conversion Debug ─────────────────────────────────────────────
+    
+    @pyqtSlot(str, result="QVariant")
+    def getFrameData(self, drone_id: str) -> dict:
+        """
+        Get NED and ENU frame data for visualization.
+        
+        Returns dict with:
+            ned_north, ned_east, ned_down (PX4 native frame)
+            enu_east, enu_north, enu_up (ROS2 standard frame)
+        """
+        b = self._bridges.get(drone_id)
+        if not b:
+            return {
+                "ned_north": 0.0, "ned_east": 0.0, "ned_down": 0.0,
+                "enu_east": 0.0, "enu_north": 0.0, "enu_up": 0.0,
+            }
+        
+        tel = b.telemetry
+        return {
+            "ned_north": tel.get("ned_north", 0.0),
+            "ned_east": tel.get("ned_east", 0.0),
+            "ned_down": tel.get("ned_down", 0.0),
+            "enu_east": tel.get("enu_east", 0.0),
+            "enu_north": tel.get("enu_north", 0.0),
+            "enu_up": tel.get("enu_up", 0.0),
+        }

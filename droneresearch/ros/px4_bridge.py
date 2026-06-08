@@ -164,6 +164,13 @@ class PX4ROS2Bridge:
             "battery_v":    0.0,
             "gps_fix":      0,
             "satellites":   0,
+            # Frame conversion debug (NED = PX4 native, ENU = ROS2 standard)
+            "ned_north":    0.0,
+            "ned_east":     0.0,
+            "ned_down":     0.0,
+            "enu_east":     0.0,
+            "enu_north":    0.0,
+            "enu_up":       0.0,
         }
         self._offboard_active  = False
         self._setpoint: Optional[dict] = None
@@ -516,11 +523,20 @@ if _ROS2_OK and _PX4_MSGS_OK:
 
         def _cb_local_pos(self, msg: VehicleLocalPosition):
             # PX4 local pos is NED — convert to ENU for display
-            e, n, u = ned_to_enu(msg.x, msg.y, msg.z)
+            # Store both NED (PX4 native) and ENU (ROS2 standard) for frame visualization
+            ned_n, ned_e, ned_d = msg.x, msg.y, msg.z
+            enu_e, enu_n, enu_u = ned_to_enu(ned_n, ned_e, ned_d)
             ve, vn, vu = ned_to_enu(msg.vx, msg.vy, msg.vz)
             self._on_tel({
-                "alt_rel": u,
+                "alt_rel": enu_u,
                 "vx": vn, "vy": ve, "vz": vu,
+                # Frame conversion debug
+                "ned_north": ned_n,
+                "ned_east": ned_e,
+                "ned_down": ned_d,
+                "enu_east": enu_e,
+                "enu_north": enu_n,
+                "enu_up": enu_u,
             })
 
         def _cb_attitude(self, msg: VehicleAttitude):

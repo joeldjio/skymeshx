@@ -37,3 +37,9 @@ tools/installer/out/
 *.bak
 *.orig
 *.spec.bak
+
+# Local documentation and agent rules (keep local only)
+.bob/rules-*/AGENTS.md
+AGENTS.md
+docs/ANWENDUNGSBESCHREIBUNG.md
+docs/PX4_OPTIMIERUNGEN_UND_FEATURES.md
