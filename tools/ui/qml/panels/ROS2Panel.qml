@@ -468,6 +468,222 @@ Item {
                     }
                 }
 
+                // ── Frame Conversion Debug ────────────────────────────────
+                Text { text: "FRAME CONVERSION (NED ↔ ENU)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+
+                Rectangle {
+                    width: parent.width; height: frameCol.implicitHeight + 16; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+
+                    property var frameData: ({})
+                    Timer {
+                        interval: 200; running: true; repeat: true
+                        onTriggered: {
+                            if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
+                            parent.frameData = ros2.getFrameData(root.selectedDroneId)
+                        }
+                    }
+
+                    Column {
+                        id: frameCol
+                        anchors { fill: parent; margins: 10 }
+                        spacing: 8
+
+                        // Info text
+                        Text {
+                            width: parent.width
+                            text: "PX4 uses NED (North-East-Down), ROS2 uses ENU (East-North-Up). Conversion: [E,N,U] = [E,N,-D]"
+                            color: "#64748b"; font.pixelSize: 8
+                            wrapMode: Text.WordWrap
+                        }
+
+                        // Side-by-side comparison
+                        Row {
+                            width: parent.width; spacing: 10
+
+                            // NED (PX4)
+                            Column {
+                                width: (parent.width - 10) / 2
+                                spacing: 4
+
+                                Rectangle {
+                                    width: parent.width; height: 24; radius: 4
+                                    color: "#7f1d1d"; border.color: "#ef4444"; border.width: 1
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "NED (PX4 Native)"
+                                        color: "#fca5a5"; font.pixelSize: 10; font.weight: Font.Bold
+                                    }
+                                }
+
+                                Column {
+                                    width: parent.width; spacing: 2
+                                    Repeater {
+                                        model: [
+                                            { key: "ned_north", label: "North", unit: "m", color: "#ef4444" },
+                                            { key: "ned_east",  label: "East",  unit: "m", color: "#ef4444" },
+                                            { key: "ned_down",  label: "Down",  unit: "m", color: "#ef4444" },
+                                        ]
+                                        delegate: Row {
+                                            width: parent.width; height: 20; spacing: 4
+                                            Text {
+                                                text: modelData.label + ":"
+                                                color: "#94a3b8"; font.pixelSize: 9; width: 50
+                                            }
+                                            Text {
+                                                text: {
+                                                    var val = frameCol.parent.frameData[modelData.key]
+                                                    return val !== undefined ? val.toFixed(2) + modelData.unit : "—"
+                                                }
+                                                color: modelData.color
+                                                font.pixelSize: 10; font.family: "Consolas"; font.weight: Font.Bold
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ENU (ROS2)
+                            Column {
+                                width: (parent.width - 10) / 2
+                                spacing: 4
+
+                                Rectangle {
+                                    width: parent.width; height: 24; radius: 4
+                                    color: "#14532d"; border.color: "#22c55e"; border.width: 1
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "ENU (ROS2 Standard)"
+                                        color: "#86efac"; font.pixelSize: 10; font.weight: Font.Bold
+                                    }
+                                }
+
+                                Column {
+                                    width: parent.width; spacing: 2
+                                    Repeater {
+                                        model: [
+                                            { key: "enu_east",  label: "East",  unit: "m", color: "#22c55e" },
+                                            { key: "enu_north", label: "North", unit: "m", color: "#22c55e" },
+                                            { key: "enu_up",    label: "Up",    unit: "m", color: "#22c55e" },
+                                        ]
+                                        delegate: Row {
+                                            width: parent.width; height: 20; spacing: 4
+                                            Text {
+                                                text: modelData.label + ":"
+                                                color: "#94a3b8"; font.pixelSize: 9; width: 50
+                                            }
+                                            Text {
+                                                text: {
+                                                    var val = frameCol.parent.frameData[modelData.key]
+                                                    return val !== undefined ? val.toFixed(2) + modelData.unit : "—"
+                                                }
+                                                color: modelData.color
+                                                font.pixelSize: 10; font.family: "Consolas"; font.weight: Font.Bold
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2D Visualization (Top-down view)
+                        Rectangle {
+                            width: parent.width; height: 180; radius: 6
+                            color: "#0d1117"; border.color: "#2d3748"; border.width: 1
+
+                            Canvas {
+                                id: frameCanvas
+                                anchors.fill: parent
+                                anchors.margins: 5
+
+                                property var frameData: frameCol.parent.frameData
+
+                                onFrameDataChanged: requestPaint()
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.clearRect(0, 0, width, height)
+
+                                    var centerX = width / 2
+                                    var centerY = height / 2
+                                    var scale = 15  // pixels per meter
+
+                                    // Draw grid
+                                    ctx.strokeStyle = "#1e293b"
+                                    ctx.lineWidth = 1
+                                    for (var i = -10; i <= 10; i++) {
+                                        if (i === 0) continue
+                                        // Vertical lines
+                                        ctx.beginPath()
+                                        ctx.moveTo(centerX + i * scale, 0)
+                                        ctx.lineTo(centerX + i * scale, height)
+                                        ctx.stroke()
+                                        // Horizontal lines
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, centerY + i * scale)
+                                        ctx.lineTo(width, centerY + i * scale)
+                                        ctx.stroke()
+                                    }
+
+                                    // Draw axes
+                                    // North (red, up)
+                                    ctx.strokeStyle = "#ef4444"
+                                    ctx.lineWidth = 2
+                                    ctx.beginPath()
+                                    ctx.moveTo(centerX, centerY)
+                                    ctx.lineTo(centerX, centerY - 40)
+                                    ctx.stroke()
+                                    ctx.fillStyle = "#ef4444"
+                                    ctx.font = "bold 10px sans-serif"
+                                    ctx.fillText("N", centerX + 5, centerY - 35)
+
+                                    // East (red, right)
+                                    ctx.strokeStyle = "#ef4444"
+                                    ctx.beginPath()
+                                    ctx.moveTo(centerX, centerY)
+                                    ctx.lineTo(centerX + 40, centerY)
+                                    ctx.stroke()
+                                    ctx.fillStyle = "#ef4444"
+                                    ctx.fillText("E", centerX + 35, centerY - 5)
+
+                                    // Draw drone position
+                                    var ned_n = frameData.ned_north || 0
+                                    var ned_e = frameData.ned_east || 0
+                                    var droneX = centerX + ned_e * scale
+                                    var droneY = centerY - ned_n * scale  // Invert Y for screen coords
+
+                                    // Drone circle
+                                    ctx.fillStyle = "#2563eb"
+                                    ctx.beginPath()
+                                    ctx.arc(droneX, droneY, 6, 0, 2 * Math.PI)
+                                    ctx.fill()
+
+                                    // Line from origin to drone
+                                    ctx.strokeStyle = "#3b82f6"
+                                    ctx.lineWidth = 1
+                                    ctx.setLineDash([3, 3])
+                                    ctx.beginPath()
+                                    ctx.moveTo(centerX, centerY)
+                                    ctx.lineTo(droneX, droneY)
+                                    ctx.stroke()
+                                    ctx.setLineDash([])
+
+                                    // Position label
+                                    ctx.fillStyle = "#93c5fd"
+                                    ctx.font = "9px Consolas"
+                                    ctx.fillText("(" + ned_n.toFixed(1) + ", " + ned_e.toFixed(1) + ")", droneX + 10, droneY)
+                                }
+                            }
+
+                            Text {
+                                anchors { bottom: parent.bottom; left: parent.left; margins: 5 }
+                                text: "Top-down view (NED frame)"
+                                color: "#475569"; font.pixelSize: 8
+                            }
+                        }
+                    }
+                }
+
             }
         }
 

@@ -28,7 +28,7 @@ class StartupProfiler:
             return
         prev = 0.0
         print("\n[STARTUP PROFILER]")
-        print(f"  {'Phase':<32} {'Δ ms':>8} {'Total':>9}")
+        print(f"  {'Phase':<32} {'Delta ms':>8} {'Total':>9}")
         print(f"  {'-'*32} {'-'*8} {'-'*9}")
         for name, t in self._marks:
             delta_ms = (t - prev) * 1000
