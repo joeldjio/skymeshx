@@ -14,7 +14,8 @@ import time
 import os
 import signal
 import sys
-from typing import Optional, List
+import threading
+from typing import Optional, List, Callable
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class PX4GazeboCluster:
         xrce_port: int = 8888,
         ros2_setups: Optional[List[str]] = None,
         namespace_prefix: str = "uav",
+        log_callback: Optional[Callable[[str, str], None]] = None,
     ):
         """
         Initialize PX4 Gazebo cluster.
@@ -73,6 +75,8 @@ class PX4GazeboCluster:
             xrce_port: uXRCE-DDS Agent port
             ros2_setups: List of ROS2 setup.bash files to source
             namespace_prefix: Prefix for drone namespaces (e.g., "uav" → "uav_1", "uav_2")
+            log_callback: Optional callback for log messages: callback(source, message)
+                         source can be "xrce_agent", "px4_sitl_0", etc.
         """
         if num_drones < 1 or num_drones > 10:
             raise ValueError("num_drones must be between 1 and 10")
@@ -84,8 +88,10 @@ class PX4GazeboCluster:
         self.xrce_port = xrce_port
         self.ros2_setups = ros2_setups or []
         self.namespace_prefix = namespace_prefix
+        self.log_callback = log_callback
         self._processes = []
         self._running = False
+        self._log_threads = []
         
         # Validate PX4 directory
         if not os.path.isdir(self.px4_dir):
@@ -117,6 +123,23 @@ class PX4GazeboCluster:
                     creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
                 )
                 self._processes.append(("xrce_agent", agent_proc))
+                
+                # Start log streaming threads if callback provided
+                if self.log_callback:
+                    stdout_thread = threading.Thread(
+                        target=self._stream_output,
+                        args=(agent_proc, "xrce_agent", "stdout"),
+                        daemon=True
+                    )
+                    stderr_thread = threading.Thread(
+                        target=self._stream_output,
+                        args=(agent_proc, "xrce_agent", "stderr"),
+                        daemon=True
+                    )
+                    stdout_thread.start()
+                    stderr_thread.start()
+                    self._log_threads.extend([stdout_thread, stderr_thread])
+                
                 time.sleep(2)
                 
                 # Check if agent started
@@ -166,6 +189,22 @@ class PX4GazeboCluster:
                 
                 self._processes.append((f"px4_sitl_{namespace}", sitl_proc))
                 
+                # Start log streaming threads if callback provided
+                if self.log_callback:
+                    stdout_thread = threading.Thread(
+                        target=self._stream_output,
+                        args=(sitl_proc, f"px4_sitl_{namespace}", "stdout"),
+                        daemon=True
+                    )
+                    stderr_thread = threading.Thread(
+                        target=self._stream_output,
+                        args=(sitl_proc, f"px4_sitl_{namespace}", "stderr"),
+                        daemon=True
+                    )
+                    stdout_thread.start()
+                    stderr_thread.start()
+                    self._log_threads.extend([stdout_thread, stderr_thread])
+                
                 # Wait for SITL to initialize
                 wait_time = 10 if i == 0 else 5  # First drone takes longer (Gazebo startup)
                 logger.info(f"  Waiting {wait_time}s for {namespace} to initialize...")
@@ -195,6 +234,32 @@ class PX4GazeboCluster:
             logger.error(f"Failed to start cluster: {e}")
             self.stop()
             return False
+    
+    def _stream_output(self, proc: subprocess.Popen, source: str, stream_name: str):
+        """
+        Stream process output to log callback in a background thread.
+        
+        Args:
+            proc: Process to stream from
+            source: Source identifier (e.g., "xrce_agent", "px4_sitl_0")
+            stream_name: "stdout" or "stderr"
+        """
+        stream = proc.stdout if stream_name == "stdout" else proc.stderr
+        if stream is None:
+            return
+        
+        try:
+            for line in iter(stream.readline, b''):
+                if not line:
+                    break
+                
+                text = line.decode('utf-8', errors='replace').rstrip()
+                if text and self.log_callback:
+                    self.log_callback(source, text)
+                    
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(source, f"[Log stream error: {e}]")
     
     def stop(self):
         """Stop all processes gracefully."""
