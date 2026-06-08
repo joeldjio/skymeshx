@@ -851,7 +851,19 @@ Item {
                         text: "Upload Mission (" + dialogWaypoints.count + " WP)"
                         enabled: dialogWaypoints.count > 0
                         onClicked: {
-                            if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
+                            console.log("[Mission Upload] Button clicked")
+                            console.log("[Mission Upload] ros2 defined:", typeof ros2 !== "undefined")
+                            console.log("[Mission Upload] selectedDroneId:", root.selectedDroneId)
+                            console.log("[Mission Upload] waypoint count:", dialogWaypoints.count)
+                            
+                            if (typeof ros2 === "undefined" || !ros2) {
+                                console.log("[Mission Upload] ERROR: ros2 not available")
+                                return
+                            }
+                            if (root.selectedDroneId === "") {
+                                console.log("[Mission Upload] ERROR: No drone selected")
+                                return
+                            }
                             
                             // Convert to array
                             var waypoints = []
@@ -865,9 +877,15 @@ Item {
                                 })
                             }
                             
+                            console.log("[Mission Upload] Calling ros2.uploadMission with", waypoints.length, "waypoints")
                             var success = ros2.uploadMission(root.selectedDroneId, waypoints)
+                            console.log("[Mission Upload] Upload result:", success)
+                            
                             if (success) {
+                                console.log("[Mission Upload] Success! Closing dialog")
                                 missionDialog.close()
+                            } else {
+                                console.log("[Mission Upload] Upload failed")
                             }
                         }
                     }
