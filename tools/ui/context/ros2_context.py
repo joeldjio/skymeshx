@@ -81,6 +81,18 @@ class ROS2Context(QObject):
         self._poll_timer.setInterval(200)
         self._poll_timer.timeout.connect(self._poll)
 
+        # SITL cluster management
+        self._sitl_cluster = None
+        self._sitl_config = {
+            'px4_dir': '/home/iruz/PX4-Autopilot',
+            'model': 'x500',
+            'namespace': 'uav_1',
+            'ros2_setups': [
+                '/opt/ros/humble/setup.bash',
+                '/home/iruz/ws_sensor_combined/install/setup.bash'
+            ]
+        }
+
         # Emit initial node status
         self._emit_node_status()
 
@@ -273,3 +285,115 @@ class ROS2Context(QObject):
             snap = dict(bridge.telemetry)
             if snap:
                 self.telemetryReceived.emit(did, snap)
+
+    # ── PX4 SITL Control ──────────────────────────────────────────────────
+
+    @pyqtSlot(result=bool)
+    def isSitlRunning(self) -> bool:
+        """Check if SITL cluster is running."""
+        return self._sitl_cluster is not None and self._sitl_cluster.is_running()
+
+    @pyqtSlot(result=str)
+    def getSitlPx4Dir(self) -> str:
+        """Get current PX4 directory."""
+        return self._sitl_config.get('px4_dir', '')
+
+    @pyqtSlot(str)
+    def setSitlPx4Dir(self, path: str) -> None:
+        """Set PX4 directory."""
+        self._sitl_config['px4_dir'] = path
+
+    @pyqtSlot(result=str)
+    def getSitlModel(self) -> str:
+        """Get current SITL model."""
+        return self._sitl_config.get('model', 'x500')
+
+    @pyqtSlot(str)
+    def setSitlModel(self, model: str) -> None:
+        """Set SITL model."""
+        self._sitl_config['model'] = model
+
+    @pyqtSlot(result=str)
+    def getSitlNamespace(self) -> str:
+        """Get current SITL namespace."""
+        return self._sitl_config.get('namespace', 'uav_1')
+
+    @pyqtSlot(str)
+    def setSitlNamespace(self, namespace: str) -> None:
+        """Set SITL namespace."""
+        self._sitl_config['namespace'] = namespace
+
+    @pyqtSlot(result="QVariant")
+    def getSitlRos2Setups(self) -> list:
+        """Get ROS2 setup files."""
+        return self._sitl_config.get('ros2_setups', [])
+
+    @pyqtSlot(str)
+    def addSitlRos2Setup(self, path: str) -> None:
+        """Add ROS2 setup file."""
+        if path and path not in self._sitl_config['ros2_setups']:
+            self._sitl_config['ros2_setups'].append(path)
+
+    @pyqtSlot(str)
+    def removeSitlRos2Setup(self, path: str) -> None:
+        """Remove ROS2 setup file."""
+        if path in self._sitl_config['ros2_setups']:
+            self._sitl_config['ros2_setups'].remove(path)
+
+    @pyqtSlot()
+    def startSitl(self) -> None:
+        """Start PX4 SITL + Gazebo + XRCE-DDS Agent."""
+        
+        if self._sitl_cluster is not None and self._sitl_cluster.is_running():
+            self.ros2LogMessage.emit("WARN", "[SITL] Already running")
+            return
+
+        def _start():
+            try:
+                from droneresearch.simulation import PX4GazeboCluster
+                
+                self.ros2LogMessage.emit("INFO", "[SITL] Starting PX4 Gazebo cluster...")
+                self.ros2LogMessage.emit("INFO", f"[SITL] PX4 Dir: {self._sitl_config['px4_dir']}")
+                self.ros2LogMessage.emit("INFO", f"[SITL] Model: {self._sitl_config['model']}")
+                self.ros2LogMessage.emit("INFO", f"[SITL] Namespace: {self._sitl_config['namespace']}")
+                
+                cluster = PX4GazeboCluster(
+                    num_drones=1,
+                    px4_dir=self._sitl_config['px4_dir'],
+                    model=self._sitl_config['model'],
+                    ros2_setups=self._sitl_config['ros2_setups'],
+                    namespace_prefix=self._sitl_config['namespace'].rsplit('_', 1)[0]  # "uav_1" → "uav"
+                )
+                
+                if cluster.start():
+                    self._sitl_cluster = cluster
+                    self.ros2LogMessage.emit("INFO", "[SITL] ✓ Cluster started successfully")
+                    self.ros2LogMessage.emit("INFO", f"[SITL] Namespace: {self._sitl_config['namespace']}")
+                    self.ros2LogMessage.emit("INFO", "[SITL] You can now start the ROS2 bridge")
+                else:
+                    self.ros2LogMessage.emit("ERROR", "[SITL] Failed to start cluster")
+                    
+            except FileNotFoundError as e:
+                self.ros2LogMessage.emit("ERROR", f"[SITL] PX4 directory not found: {e}")
+            except Exception as e:
+                self.ros2LogMessage.emit("ERROR", f"[SITL] Start failed: {e}")
+
+        threading.Thread(target=_start, daemon=True).start()
+
+    @pyqtSlot()
+    def stopSitl(self) -> None:
+        """Stop PX4 SITL cluster."""
+        if self._sitl_cluster is None:
+            self.ros2LogMessage.emit("WARN", "[SITL] Not running")
+            return
+
+        def _stop():
+            try:
+                self.ros2LogMessage.emit("INFO", "[SITL] Stopping cluster...")
+                self._sitl_cluster.stop()
+                self._sitl_cluster = None
+                self.ros2LogMessage.emit("INFO", "[SITL] ✓ Cluster stopped")
+            except Exception as e:
+                self.ros2LogMessage.emit("ERROR", f"[SITL] Stop failed: {e}")
+
+        threading.Thread(target=_stop, daemon=True).start()
