@@ -260,6 +260,7 @@ class PX4GazeboCluster:
     
     def __del__(self):
         """Cleanup on deletion."""
-        self.stop()
+        if hasattr(self, '_processes'):
+            self.stop()
 
 # Made with Bob
