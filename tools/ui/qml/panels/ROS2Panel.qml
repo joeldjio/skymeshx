@@ -97,8 +97,8 @@ Item {
                     }
                 }
 
-                // ── Bridge Konfiguration ──────────────────────────────────
-                Text { text: "BRIDGE KONFIGURATION"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                // ── PX4 Connection ──────────────────────────────────
+                Text { text: "PX4 CONNECTION"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
 
                 Rectangle {
                     width: parent.width; height: cfgCol.implicitHeight + 20; radius: 8
@@ -141,13 +141,32 @@ Item {
 
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
-                            color: bridgeTogM.containsMouse ? (cfgCol._bridgeActive ? "#7f1d1d" : "#166534") : (cfgCol._bridgeActive ? "#450a0a" : "#14532d")
-                            border.color: cfgCol._bridgeActive ? "#ef4444" : "#22c55e"; border.width: 1
+                            // Show button even if ROS2 not available, but with different color
+                            color: {
+                                if (root._nodeStatus !== "ok") return "#1e293b"  // Disabled gray
+                                return bridgeTogM.containsMouse ? (cfgCol._bridgeActive ? "#7f1d1d" : "#166534") : (cfgCol._bridgeActive ? "#450a0a" : "#14532d")
+                            }
+                            border.color: {
+                                if (root._nodeStatus !== "ok") return "#475569"  // Disabled gray
+                                return cfgCol._bridgeActive ? "#ef4444" : "#22c55e"
+                            }
+                            border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
                             Row {
                                 anchors.centerIn: parent; spacing: 6
-                                Text { text: cfgCol._bridgeActive ? "■" : "▶"; color: cfgCol._bridgeActive ? "#fca5a5" : "#86efac"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: cfgCol._bridgeActive ? "Bridge stoppen" : "Bridge starten (uXRCE-DDS)"; color: cfgCol._bridgeActive ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                Text {
+                                    text: cfgCol._bridgeActive ? "■" : "▶"
+                                    color: root._nodeStatus !== "ok" ? "#64748b" : (cfgCol._bridgeActive ? "#fca5a5" : "#86efac")
+                                    font.pixelSize: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: root._nodeStatus !== "ok" ? "Connect to PX4 (ROS2 required)" : (cfgCol._bridgeActive ? "Disconnect" : "Connect to PX4")
+                                    color: root._nodeStatus !== "ok" ? "#64748b" : (cfgCol._bridgeActive ? "#fca5a5" : "#86efac")
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                             MouseArea {
                                 id: bridgeTogM; anchors.fill: parent; hoverEnabled: true
@@ -159,6 +178,7 @@ Item {
                             }
                         }
                     }
+                }
 
                 // ── PX4 SITL Control ──────────────────────────────────────
                 Text { text: "PX4 SITL STEUERUNG"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
@@ -247,16 +267,18 @@ Item {
                         // Info text
                         Text {
                             width: parent.width
-                            text: sitlCol._sitlRunning 
-                                ? "✓ SITL läuft. Starte jetzt die Bridge oben."
-                                : "Startet: XRCE-DDS Agent + PX4 SITL + Gazebo"
+                            text: sitlCol._sitlRunning
+                                ? "✓ Running"
+                                : "Agent + PX4 + Gazebo"
                             color: sitlCol._sitlRunning ? "#22c55e" : "#64748b"
                             font.pixelSize: 8
                             wrapMode: Text.WordWrap
                         }
                     }
                 }
-                }
+
+                // Spacer
+                Item { width: 1; height: 16 }
 
                 // ── uORB Topics ───────────────────────────────────────────
                 Text { text: "uORB TOPICS"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
@@ -276,10 +298,17 @@ Item {
                         Repeater {
                             model: topicsCol.topics
                             delegate: Row {
-                                width: topicsCol.width; spacing: 5
-                                Rectangle { width: 7; height: 7; radius: 3.5; anchors.verticalCenter: parent.verticalCenter; color: modelData.includes("/out/") ? "#22c55e" : "#2563eb" }
-                                Text { text: modelData; color: "#64748b"; font.pixelSize: 8; font.family: "Consolas"; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: modelData.includes("/out/") ? "← PX4" : "→ PX4"; color: modelData.includes("/out/") ? "#4422c55e" : "#442563eb"; font.pixelSize: 7; anchors.verticalCenter: parent.verticalCenter }
+                                width: topicsCol.width; spacing: 4
+                                Rectangle { width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter; color: modelData.includes("/out/") ? "#22c55e" : "#2563eb" }
+                                Text {
+                                    text: modelData;
+                                    color: "#64748b";
+                                    font.pixelSize: 8;
+                                    font.family: "Consolas";
+                                    anchors.verticalCenter: parent.verticalCenter;
+                                    elide: Text.ElideMiddle;
+                                    width: topicsCol.width - 40
+                                }
                             }
                         }
 

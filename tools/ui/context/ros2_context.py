@@ -358,12 +358,20 @@ class ROS2Context(QObject):
                 self.ros2LogMessage.emit("INFO", f"[SITL] Model: {self._sitl_config['model']}")
                 self.ros2LogMessage.emit("INFO", f"[SITL] Namespace: {self._sitl_config['namespace']}")
                 
+                # Define log callback to forward SITL logs to UI
+                # Note: This will be called from background threads, but Qt signals are thread-safe
+                def log_callback(source: str, message: str):
+                    # Prefix with source for clarity
+                    # Qt signals are thread-safe and will be queued to the main thread
+                    self.ros2LogMessage.emit("INFO", f"[{source}] {message}")
+                
                 cluster = PX4GazeboCluster(
                     num_drones=1,
                     px4_dir=self._sitl_config['px4_dir'],
                     model=self._sitl_config['model'],
                     ros2_setups=self._sitl_config['ros2_setups'],
-                    namespace_prefix=self._sitl_config['namespace'].rsplit('_', 1)[0]  # "uav_1" → "uav"
+                    namespace_prefix=self._sitl_config['namespace'].rsplit('_', 1)[0],  # "uav_1" → "uav"
+                    log_callback=log_callback
                 )
                 
                 if cluster.start():
