@@ -57,6 +57,7 @@ except ImportError:
     _ROS2_OK = False
 
 from droneresearch.ros.context import acquire_ros, release_ros
+from droneresearch.ros.px4_mission import PX4MissionUploader
 
 try:
     from px4_msgs.msg import (
@@ -167,6 +168,7 @@ class PX4ROS2Bridge:
         self._offboard_active  = False
         self._setpoint: Optional[dict] = None
         self._callbacks: dict = {}
+        self._mission_uploader: Optional[PX4MissionUploader] = None
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -261,6 +263,55 @@ class PX4ROS2Bridge:
         self._offboard_active = False
         self._setpoint = None
 
+    # ── Mission Management ────────────────────────────────────────────────
+
+    def upload_mission(self, waypoints: List[Dict], timeout: float = 10.0) -> bool:
+        """
+        Upload waypoint mission to PX4.
+        
+        Args:
+            waypoints: List of waypoint dicts with keys: lat, lon, alt
+                      Example: [{"lat": 47.397, "lon": 8.545, "alt": 10.0}, ...]
+            timeout: Timeout in seconds for ACK
+        
+        Returns:
+            True if upload successful
+        """
+        if not self._mission_uploader:
+            print("[px4-bridge] Mission uploader not available")
+            return False
+        return self._mission_uploader.upload(waypoints, timeout=timeout)
+
+    def clear_mission(self) -> bool:
+        """
+        Clear mission on PX4.
+        
+        Returns:
+            True if successful
+        """
+        if not self._mission_uploader:
+            print("[px4-bridge] Mission uploader not available")
+            return False
+        return self._mission_uploader.clear()
+
+    def start_mission(self):
+        """Start mission execution (switch to AUTO.MISSION mode)."""
+        # PX4 mode 4 = AUTO.MISSION
+        self._send_vehicle_command(
+            VehicleCommandId.SET_MODE,
+            param1=1.0,  # MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            param2=4.0,  # PX4 AUTO.MISSION mode
+        )
+
+    def pause_mission(self):
+        """Pause mission execution (switch to AUTO.LOITER mode)."""
+        # PX4 mode 3 = AUTO.LOITER
+        self._send_vehicle_command(
+            VehicleCommandId.SET_MODE,
+            param1=1.0,  # MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            param2=3.0,  # PX4 AUTO.LOITER mode
+        )
+
     # ── Events ────────────────────────────────────────────────────────────
 
     def on(self, event: str, cb: Callable):
@@ -278,6 +329,16 @@ class PX4ROS2Bridge:
             get_setpoint    = lambda: self._setpoint,
             offboard_active = lambda: self._offboard_active,
         )
+        # Initialize mission uploader after node is created
+        try:
+            self._mission_uploader = PX4MissionUploader(
+                self._node,
+                namespace=self._ns_prefix.lstrip("/") if self._ns_prefix else ""
+            )
+        except Exception as e:
+            print(f"[px4-bridge] Mission uploader init failed: {e}")
+            self._mission_uploader = None
+        
         try:
             while self._running and rclpy.ok():
                 rclpy.spin_once(self._node, timeout_sec=0.1)

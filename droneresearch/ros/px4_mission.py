@@ -1,0 +1,226 @@
+"""
+PX4 Mission Upload via uXRCE-DDS.
+
+Provides mission upload functionality for PX4 via ROS2 topics.
+Uses the native PX4 mission protocol over uXRCE-DDS.
+
+Reference:
+    https://docs.px4.io/main/en/ros2/user_guide.html
+    https://mavlink.io/en/services/mission.html
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+import logging
+from typing import Optional, List, Dict
+
+try:
+    import rclpy
+    from rclpy.node import Node
+    _ROS2_OK = True
+except ImportError:
+    _ROS2_OK = False
+
+try:
+    from px4_msgs.msg import VehicleMissionItem, VehicleMissionItemCount
+    # Note: VehicleMissionAck might not exist in all px4_msgs versions
+    # We'll handle this gracefully
+    try:
+        from px4_msgs.msg import VehicleMissionAck
+        _MISSION_ACK_OK = True
+    except ImportError:
+        _MISSION_ACK_OK = False
+    _PX4_MSGS_OK = True
+except ImportError:
+    _PX4_MSGS_OK = False
+
+logger = logging.getLogger(__name__)
+
+
+class PX4MissionUploader:
+    """
+    Mission upload via uXRCE-DDS for PX4.
+    
+    Uploads waypoint missions to PX4 using ROS2 topics:
+        - /fmu/in/vehicle_mission_item_count
+        - /fmu/in/vehicle_mission_item
+        - /fmu/out/vehicle_mission_ack (if available)
+    
+    Example:
+        >>> uploader = PX4MissionUploader(node, namespace="uav_1")
+        >>> waypoints = [
+        ...     {"lat": 47.397742, "lon": 8.545594, "alt": 10.0},
+        ...     {"lat": 47.397842, "lon": 8.545694, "alt": 15.0},
+        ... ]
+        >>> success = uploader.upload(waypoints)
+    """
+    
+    def __init__(self, node: Node, namespace: str = ""):
+        """
+        Initialize mission uploader.
+        
+        Args:
+            node: ROS2 node instance
+            namespace: PX4 namespace (e.g., "uav_1")
+        """
+        if not _ROS2_OK:
+            raise RuntimeError("rclpy not available")
+        if not _PX4_MSGS_OK:
+            raise RuntimeError("px4_msgs not available")
+        
+        self._node = node
+        self._ns = f"/{namespace}" if namespace else ""
+        
+        # Publishers
+        self._pub_count = node.create_publisher(
+            VehicleMissionItemCount,
+            f"{self._ns}/fmu/in/vehicle_mission_item_count",
+            10
+        )
+        self._pub_item = node.create_publisher(
+            VehicleMissionItem,
+            f"{self._ns}/fmu/in/vehicle_mission_item",
+            10
+        )
+        
+        # Subscriber for ACK (if available)
+        self._sub_ack = None
+        if _MISSION_ACK_OK:
+            self._sub_ack = node.create_subscription(
+                VehicleMissionAck,
+                f"{self._ns}/fmu/out/vehicle_mission_ack",
+                self._on_ack,
+                10
+            )
+        
+        self._ack_received = threading.Event()
+        self._ack_result = None
+        
+        logger.info(f"PX4MissionUploader initialized (namespace: {namespace or '/'})")
+    
+    def upload(self, waypoints: List[Dict], timeout: float = 10.0) -> bool:
+        """
+        Upload waypoints to PX4.
+        
+        Args:
+            waypoints: List of waypoint dicts with keys: lat, lon, alt
+                      Example: [{"lat": 47.397, "lon": 8.545, "alt": 10.0}, ...]
+            timeout: Timeout in seconds for ACK (if available)
+        
+        Returns:
+            True if upload successful (or if ACK not available)
+        """
+        if not waypoints:
+            logger.warning("No waypoints to upload")
+            return False
+        
+        logger.info(f"Uploading {len(waypoints)} waypoints...")
+        
+        # Reset ACK state
+        self._ack_received.clear()
+        self._ack_result = None
+        
+        # 1. Send mission count
+        count_msg = VehicleMissionItemCount()
+        count_msg.timestamp = int(time.time() * 1e6)
+        count_msg.count = len(waypoints)
+        self._pub_count.publish(count_msg)
+        logger.debug(f"Sent mission count: {len(waypoints)}")
+        
+        # Small delay to ensure count is received
+        time.sleep(0.1)
+        
+        # 2. Send mission items
+        for i, wp in enumerate(waypoints):
+            item = VehicleMissionItem()
+            item.timestamp = int(time.time() * 1e6)
+            item.sequence = i
+            item.frame = 3  # MAV_FRAME_GLOBAL_RELATIVE_ALT
+            item.command = 16  # MAV_CMD_NAV_WAYPOINT
+            item.latitude = wp["lat"]
+            item.longitude = wp["lon"]
+            item.altitude = wp["alt"]
+            item.autocontinue = True
+            
+            # Optional parameters
+            item.param1 = wp.get("hold_time", 0.0)  # Hold time in seconds
+            item.param2 = wp.get("accept_radius", 1.0)  # Acceptance radius in meters
+            item.param3 = wp.get("pass_radius", 0.0)  # Pass radius
+            item.param4 = wp.get("yaw", float('nan'))  # Yaw angle
+            
+            self._pub_item.publish(item)
+            logger.debug(f"Sent waypoint {i+1}/{len(waypoints)}: "
+                        f"lat={wp['lat']:.6f}, lon={wp['lon']:.6f}, alt={wp['alt']:.1f}")
+            
+            # Small delay between items
+            time.sleep(0.05)
+        
+        logger.info(f"All {len(waypoints)} waypoints sent")
+        
+        # 3. Wait for ACK (if available)
+        if _MISSION_ACK_OK and self._sub_ack:
+            logger.debug(f"Waiting for ACK (timeout: {timeout}s)...")
+            ack_received = self._ack_received.wait(timeout=timeout)
+            
+            if not ack_received:
+                logger.warning("No ACK received within timeout")
+                return False
+            
+            if self._ack_result == 0:  # MAV_MISSION_ACCEPTED
+                logger.info("✓ Mission upload confirmed by PX4")
+                return True
+            else:
+                logger.error(f"Mission upload rejected by PX4 (result: {self._ack_result})")
+                return False
+        else:
+            # No ACK available, assume success
+            logger.info("✓ Mission uploaded (no ACK confirmation available)")
+            return True
+    
+    def clear(self) -> bool:
+        """
+        Clear mission on PX4.
+        
+        Returns:
+            True if successful
+        """
+        logger.info("Clearing mission...")
+        
+        # Send count = 0 to clear mission
+        count_msg = VehicleMissionItemCount()
+        count_msg.timestamp = int(time.time() * 1e6)
+        count_msg.count = 0
+        self._pub_count.publish(count_msg)
+        
+        logger.info("✓ Mission clear command sent")
+        return True
+    
+    def _on_ack(self, msg):
+        """Handle mission ACK from PX4."""
+        self._ack_result = msg.result
+        self._ack_received.set()
+        
+        result_names = {
+            0: "ACCEPTED",
+            1: "ERROR",
+            2: "UNSUPPORTED_FRAME",
+            3: "UNSUPPORTED",
+            4: "NO_SPACE",
+            5: "INVALID",
+            6: "INVALID_PARAM1",
+            7: "INVALID_PARAM2",
+            8: "INVALID_PARAM3",
+            9: "INVALID_PARAM4",
+            10: "INVALID_PARAM5_X",
+            11: "INVALID_PARAM6_Y",
+            12: "INVALID_PARAM7",
+            13: "INVALID_SEQUENCE",
+            14: "DENIED",
+        }
+        
+        result_name = result_names.get(msg.result, f"UNKNOWN({msg.result})")
+        logger.debug(f"Received mission ACK: {result_name}")
+
+# Made with Bob
