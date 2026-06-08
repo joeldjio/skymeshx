@@ -158,6 +158,103 @@ Item {
                             }
                         }
                     }
+
+                // ── PX4 SITL Control ──────────────────────────────────────
+                Text { text: "PX4 SITL STEUERUNG"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+
+                Rectangle {
+                    width: parent.width; height: sitlCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+
+                    Column {
+                        id: sitlCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                        spacing: 8
+
+                        property bool _sitlRunning: (typeof ros2 !== "undefined" && ros2) ? ros2.isSitlRunning() : false
+                        Timer { interval: 1000; running: true; repeat: true
+                            onTriggered: sitlCol._sitlRunning = (typeof ros2 !== "undefined" && ros2) ? ros2.isSitlRunning() : false
+                        }
+
+                        // PX4 Directory
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "PX4:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 30 }
+                            TextField {
+                                id: px4DirField; width: parent.width - 36; height: 26
+                                text: (typeof ros2 !== "undefined" && ros2) ? ros2.getSitlPx4Dir() : ""
+                                placeholderText: "/home/user/PX4-Autopilot"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6
+                                onEditingFinished: { if (typeof ros2 !== "undefined" && ros2) ros2.setSitlPx4Dir(text) }
+                            }
+                        }
+
+                        // Model
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Model:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
+                            ComboBox {
+                                id: modelCombo; width: parent.width - 46; height: 26
+                                model: ["x500", "iris", "plane", "standard_vtol"]
+                                currentIndex: {
+                                    if (typeof ros2 === "undefined" || !ros2) return 0
+                                    var m = ros2.getSitlModel()
+                                    var idx = model.indexOf(m)
+                                    return idx >= 0 ? idx : 0
+                                }
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                contentItem: Text { text: modelCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+                                onCurrentTextChanged: { if (typeof ros2 !== "undefined" && ros2) ros2.setSitlModel(currentText) }
+                            }
+                        }
+
+                        // Namespace
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "NS:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 30 }
+                            TextField {
+                                id: sitlNsField; width: parent.width - 36; height: 26
+                                text: (typeof ros2 !== "undefined" && ros2) ? ros2.getSitlNamespace() : "uav_1"
+                                placeholderText: "uav_1"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
+                                onEditingFinished: { if (typeof ros2 !== "undefined" && ros2) ros2.setSitlNamespace(text) }
+                            }
+                        }
+
+                        // Start/Stop Button
+                        Rectangle {
+                            width: parent.width; height: 32; radius: 6
+                            color: sitlTogM.containsMouse ? (sitlCol._sitlRunning ? "#7f1d1d" : "#166534") : (sitlCol._sitlRunning ? "#450a0a" : "#14532d")
+                            border.color: sitlCol._sitlRunning ? "#ef4444" : "#22c55e"; border.width: 1
+                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Row {
+                                anchors.centerIn: parent; spacing: 6
+                                Text { text: sitlCol._sitlRunning ? "■" : "▶"; color: sitlCol._sitlRunning ? "#fca5a5" : "#86efac"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: sitlCol._sitlRunning ? "SITL stoppen" : "SITL starten"; color: sitlCol._sitlRunning ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            MouseArea {
+                                id: sitlTogM; anchors.fill: parent; hoverEnabled: true
+                                onClicked: {
+                                    if (typeof ros2 === "undefined" || !ros2) return
+                                    sitlCol._sitlRunning ? ros2.stopSitl() : ros2.startSitl()
+                                }
+                            }
+                        }
+
+                        // Info text
+                        Text {
+                            width: parent.width
+                            text: sitlCol._sitlRunning 
+                                ? "✓ SITL läuft. Starte jetzt die Bridge oben."
+                                : "Startet: XRCE-DDS Agent + PX4 SITL + Gazebo"
+                            color: sitlCol._sitlRunning ? "#22c55e" : "#64748b"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
                 }
 
                 // ── uORB Topics ───────────────────────────────────────────
