@@ -44,7 +44,7 @@ _PX4_MSGS_OK = False
 try:
     import rclpy
     from rclpy.node import Node
-    from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+    from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
     _ROS2_OK = True
     try:
         from px4_msgs.msg import (
@@ -151,9 +151,8 @@ class PX4FormationController:
             
             # QoS profile for PX4 (best effort, keep last)
             qos = QoSProfile(
-                reliability=ReliabilityPolicy.BEST_EFFORT,
-                durability=DurabilityPolicy.TRANSIENT_LOCAL,
-                history=HistoryPolicy.KEEP_LAST,
+                reliability=QoSReliabilityPolicy.BEST_EFFORT,
+                history=QoSHistoryPolicy.KEEP_LAST,
                 depth=1
             )
             
