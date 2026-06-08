@@ -314,6 +314,7 @@ Item {
 
                         Text { visible: topicsCol.topics.length === 0; text: "Kein Drone ausgewählt"; color: "#374151"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
                     }
+                }
 
                 // Spacer
                 Item { width: 1; height: 16 }
@@ -480,21 +481,21 @@ Item {
                                 width: parent.width; spacing: 4
                                 Text { text: "N:"; color: "#64748b"; font.pixelSize: 9; width: 15 }
                                 TextField {
-                                    id: northField; width: (parent.width - 80) / 3; height: 24
+                                    id: formNorthField; width: (parent.width - 80) / 3; height: 24
                                     text: "0"; placeholderText: "0"
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
                                 }
                                 Text { text: "E:"; color: "#64748b"; font.pixelSize: 9; width: 15 }
                                 TextField {
-                                    id: eastField; width: (parent.width - 80) / 3; height: 24
+                                    id: formEastField; width: (parent.width - 80) / 3; height: 24
                                     text: "0"; placeholderText: "0"
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
                                 }
                                 Text { text: "Alt:"; color: "#64748b"; font.pixelSize: 9; width: 20 }
                                 TextField {
-                                    id: altField; width: (parent.width - 80) / 3; height: 24
+                                    id: formAltField; width: (parent.width - 80) / 3; height: 24
                                     text: "10"; placeholderText: "10"
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
@@ -511,9 +512,9 @@ Item {
                                     onClicked: {
                                         if (typeof ros2 !== "undefined" && ros2) {
                                             ros2.setFormationLeaderPosition(
-                                                parseFloat(northField.text),
-                                                parseFloat(eastField.text),
-                                                parseFloat(altField.text),
+                                                parseFloat(formNorthField.text),
+                                                parseFloat(formEastField.text),
+                                                parseFloat(formAltField.text),
                                                 0.0  // yaw
                                             )
                                         }
@@ -522,7 +523,6 @@ Item {
                             }
                         }
                     }
-                }
                 }
             }
         }
