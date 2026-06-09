@@ -15,6 +15,8 @@ import threading
 import time
 import logging
 from typing import Optional, List, Dict, Callable
+from concurrent.futures import ThreadPoolExecutor, Future
+from enum import Enum
 
 try:
     import rclpy
@@ -45,6 +47,17 @@ except ImportError:
     _PX4_MSGS_OK = False
 
 logger = logging.getLogger(__name__)
+
+
+class UploadStatus(Enum):
+    """Mission upload status."""
+    IDLE = "idle"
+    SENDING_COUNT = "sending_count"
+    SENDING_ITEMS = "sending_items"
+    WAITING_ACK = "waiting_ack"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class PX4MissionUploader:
@@ -131,6 +144,14 @@ class PX4MissionUploader:
         }
         self._status_callbacks: List[Callable] = []
         self._uploaded_waypoints: List[Dict] = []
+        
+        # Async upload state
+        self._upload_status = UploadStatus.IDLE
+        self._upload_progress = 0.0  # 0.0 to 1.0
+        self._upload_future: Optional[Future] = None
+        self._upload_cancelled = threading.Event()
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mission_upload")
+        self._progress_callbacks: List[Callable[[UploadStatus, float, str], None]] = []
         
         logger.info(f"PX4MissionUploader initialized (namespace: {namespace or '/'})")
     
@@ -219,6 +240,204 @@ class PX4MissionUploader:
             # No ACK available, assume success
             logger.info("✓ Mission uploaded (no ACK confirmation available)")
             return True
+    
+    def upload_async(
+        self, 
+        waypoints: List[Dict], 
+        timeout: float = 10.0,
+        progress_callback: Optional[Callable[[UploadStatus, float, str], None]] = None
+    ) -> Future:
+        """
+        Upload waypoints asynchronously (non-blocking).
+        
+        Args:
+            waypoints: List of waypoint dicts with keys: lat, lon, alt
+            timeout: Timeout in seconds for ACK
+            progress_callback: Optional callback(status, progress, message)
+                              Called with progress updates
+        
+        Returns:
+            Future object that resolves to bool (success/failure)
+            
+        Example:
+            >>> def on_progress(status, progress, msg):
+            ...     print(f"{status.value}: {progress*100:.0f}% - {msg}")
+            >>> future = uploader.upload_async(waypoints, progress_callback=on_progress)
+            >>> # Do other work...
+            >>> success = future.result()  # Wait for completion
+        """
+        if self._upload_status != UploadStatus.IDLE:
+            raise RuntimeError(f"Upload already in progress (status: {self._upload_status.value})")
+        
+        # Reset state
+        self._upload_cancelled.clear()
+        self._upload_progress = 0.0
+        
+        # Register callback if provided
+        if progress_callback:
+            self._progress_callbacks.append(progress_callback)
+        
+        # Submit upload task to executor
+        self._upload_future = self._executor.submit(
+            self._upload_worker,
+            waypoints,
+            timeout
+        )
+        
+        return self._upload_future
+    
+    def cancel_upload(self):
+        """Cancel ongoing async upload."""
+        if self._upload_status not in (UploadStatus.IDLE, UploadStatus.SUCCESS, UploadStatus.FAILED):
+            logger.info("Cancelling upload...")
+            self._upload_cancelled.set()
+            self._update_progress(UploadStatus.CANCELLED, 0.0, "Upload cancelled by user")
+    
+    def get_upload_status(self) -> Dict:
+        """
+        Get current upload status.
+        
+        Returns:
+            Dict with keys: status, progress, message
+        """
+        return {
+            "status": self._upload_status.value,
+            "progress": self._upload_progress,
+            "is_uploading": self._upload_status not in (
+                UploadStatus.IDLE, 
+                UploadStatus.SUCCESS, 
+                UploadStatus.FAILED,
+                UploadStatus.CANCELLED
+            )
+        }
+    
+    def add_progress_callback(self, callback: Callable[[UploadStatus, float, str], None]):
+        """Add a progress callback."""
+        if callback not in self._progress_callbacks:
+            self._progress_callbacks.append(callback)
+    
+    def remove_progress_callback(self, callback: Callable[[UploadStatus, float, str], None]):
+        """Remove a progress callback."""
+        if callback in self._progress_callbacks:
+            self._progress_callbacks.remove(callback)
+    
+    def _update_progress(self, status: UploadStatus, progress: float, message: str = ""):
+        """Update progress and notify callbacks."""
+        self._upload_status = status
+        self._upload_progress = progress
+        
+        # Notify all callbacks
+        for callback in self._progress_callbacks:
+            try:
+                callback(status, progress, message)
+            except Exception as e:
+                logger.error(f"Progress callback error: {e}")
+    
+    def _upload_worker(self, waypoints: List[Dict], timeout: float) -> bool:
+        """Worker function for async upload (runs in thread)."""
+        try:
+            if not waypoints:
+                self._update_progress(UploadStatus.FAILED, 0.0, "No waypoints to upload")
+                return False
+            
+            # Store waypoints
+            self._uploaded_waypoints = waypoints.copy()
+            self._mission_status["total_count"] = len(waypoints)
+            self._mission_status["current_seq"] = 0
+            
+            logger.info(f"[Async] Uploading {len(waypoints)} waypoints...")
+            
+            # Reset ACK state
+            self._ack_received.clear()
+            self._ack_result = None
+            
+            # Phase 1: Send mission count (10% progress)
+            self._update_progress(UploadStatus.SENDING_COUNT, 0.1, f"Sending mission count: {len(waypoints)}")
+            
+            if self._upload_cancelled.is_set():
+                return False
+            
+            count_msg = VehicleMissionItemCount()
+            count_msg.timestamp = int(time.time() * 1e6)
+            count_msg.count = len(waypoints)
+            self._pub_count.publish(count_msg)
+            logger.debug(f"[Async] Sent mission count: {len(waypoints)}")
+            
+            time.sleep(0.1)
+            
+            # Phase 2: Send mission items (10% to 80% progress)
+            self._update_progress(UploadStatus.SENDING_ITEMS, 0.1, "Sending waypoints...")
+            
+            for i, wp in enumerate(waypoints):
+                if self._upload_cancelled.is_set():
+                    return False
+                
+                item = VehicleMissionItem()
+                item.timestamp = int(time.time() * 1e6)
+                item.sequence = i
+                item.frame = 3  # MAV_FRAME_GLOBAL_RELATIVE_ALT
+                item.command = 16  # MAV_CMD_NAV_WAYPOINT
+                item.latitude = wp["lat"]
+                item.longitude = wp["lon"]
+                item.altitude = wp["alt"]
+                item.autocontinue = True
+                
+                # Optional parameters
+                item.param1 = wp.get("hold_time", 0.0)
+                item.param2 = wp.get("accept_radius", 1.0)
+                item.param3 = wp.get("pass_radius", 0.0)
+                item.param4 = wp.get("yaw", float('nan'))
+                
+                self._pub_item.publish(item)
+                
+                # Update progress (10% to 80%)
+                progress = 0.1 + (0.7 * (i + 1) / len(waypoints))
+                self._update_progress(
+                    UploadStatus.SENDING_ITEMS, 
+                    progress, 
+                    f"Sent waypoint {i+1}/{len(waypoints)}"
+                )
+                
+                logger.debug(f"[Async] Sent waypoint {i+1}/{len(waypoints)}: "
+                            f"lat={wp['lat']:.6f}, lon={wp['lon']:.6f}, alt={wp['alt']:.1f}")
+                
+                time.sleep(0.05)
+            
+            logger.info(f"[Async] All {len(waypoints)} waypoints sent")
+            
+            # Phase 3: Wait for ACK (80% to 100% progress)
+            if _MISSION_ACK_OK and self._sub_ack:
+                self._update_progress(UploadStatus.WAITING_ACK, 0.8, f"Waiting for ACK (timeout: {timeout}s)...")
+                logger.debug(f"[Async] Waiting for ACK (timeout: {timeout}s)...")
+                
+                ack_received = self._ack_received.wait(timeout=timeout)
+                
+                if self._upload_cancelled.is_set():
+                    return False
+                
+                if not ack_received:
+                    self._update_progress(UploadStatus.FAILED, 0.8, "No ACK received within timeout")
+                    logger.warning("[Async] No ACK received within timeout")
+                    return False
+                
+                if self._ack_result == 0:  # MAV_MISSION_ACCEPTED
+                    self._update_progress(UploadStatus.SUCCESS, 1.0, "Mission upload confirmed by PX4")
+                    logger.info("[Async] ✓ Mission upload confirmed by PX4")
+                    return True
+                else:
+                    self._update_progress(UploadStatus.FAILED, 0.8, f"Mission rejected by PX4 (result: {self._ack_result})")
+                    logger.error(f"[Async] Mission upload rejected by PX4 (result: {self._ack_result})")
+                    return False
+            else:
+                # No ACK available, assume success
+                self._update_progress(UploadStatus.SUCCESS, 1.0, "Mission uploaded (no ACK confirmation)")
+                logger.info("[Async] ✓ Mission uploaded (no ACK confirmation available)")
+                return True
+                
+        except Exception as e:
+            self._update_progress(UploadStatus.FAILED, self._upload_progress, f"Upload error: {e}")
+            logger.error(f"[Async] Upload error: {e}", exc_info=True)
+            return False
     
     def clear(self) -> bool:
         """
