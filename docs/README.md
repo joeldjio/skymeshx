@@ -39,6 +39,11 @@ Vollständige Dokumentation des UAVResearch GCS Projekts.
 |----------|-------------|
 | [ui/ui-documentation.md](ui/ui-documentation.md) | Alle Panels, Komponenten, QML-Architektur |
 
+### Development
+| Dokument | Beschreibung |
+|----------|-------------|
+| [development/memory-profiling.md](development/memory-profiling.md) | Memory Profiling Tool für Entwickler |
+
 ---
 
 ## Schnellstart — neuen Release veröffentlichen
