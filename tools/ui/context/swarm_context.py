@@ -1601,6 +1601,27 @@ class SwarmContext(QObject):
             positions[drone_id] = (lat0 + dlat, lon0 + dlon, alt0)
 
         return positions
+    @pyqtSlot(str, int, float, result="QVariantList")
+    def getFormationOffsets(self, shape: str, count: int, spacing: float) -> list:
+        """
+        Get formation offsets for preview visualization.
+        
+        Args:
+            shape: Formation shape ("line", "v", "grid", "circle", "wedge")
+            count: Number of followers (not including leader)
+            spacing: Spacing between drones in meters
+        
+        Returns:
+            List of dicts with keys: north, east (in meters relative to leader)
+            Example: [{"north": -10.0, "east": 5.0}, {"north": -10.0, "east": -5.0}]
+        """
+        from droneresearch.sdk.formations import formation_offsets
+        
+        offsets = formation_offsets(shape, count, spacing)
+        
+        # Convert to list of dicts for QML
+        return [{"north": north, "east": east} for north, east in offsets]
+
 
     # ── Direct backend access (for Python-side panels) ────────────────────
 

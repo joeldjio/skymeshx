@@ -921,8 +921,8 @@ Item {
                                 ComboBox {
                                     id: formCombo
                                     width: parent.width; height: 22
-                                    model: ["Line", "V-Shape", "Circle", "Grid", "Diamond", "Letter R", "Letter Z"]
-                                    currentIndex: swarm ? swarm.formationType : 0
+                                    model: ["Line", "V-Shape", "Circle", "Grid"]
+                                    currentIndex: swarm ? Math.min(swarm.formationType, 3) : 0
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     contentItem: Text { text: formCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: 6; verticalAlignment: Text.AlignVCenter }
                                     onActivated: function(index) { if (swarm) swarm.formationType = index }
@@ -937,6 +937,73 @@ Item {
                                     color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
                                     onEditingFinished: if (swarm) swarm.formationSize = parseInt(text) >= 0 ? parseInt(text) : 0
                                 }
+                            }
+                        }
+
+                        // ── FORMATION PREVIEW ─────────────────────────────────────
+                        Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+                        
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            
+                            Row {
+                                width: parent.width
+                                spacing: 6
+                                Text {
+                                    text: "FORMATION PREVIEW"
+                                    color: "#3b82f6"
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                    font.letterSpacing: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Item { width: parent.width - 200; height: 1 }
+                                Text {
+                                    text: "2D-Vorschau der Formation"
+                                    color: "#64748b"
+                                    font.pixelSize: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            Cmp.FormationPreview {
+                                id: formationPreview
+                                width: parent.width
+                                height: 180
+                                
+                                // Bind to swarm context properties
+                                formationType: {
+                                    if (!swarm) return "line"
+                                    const types = ["line", "v", "circle", "grid"]
+                                    const index = Math.min(swarm.formationType, 3)
+                                    return types[index] || "line"
+                                }
+                                droneCount: {
+                                    if (!swarm) return 2
+                                    // Always use actual connected drone count (minimum 2)
+                                    const count = telemetryModel ? telemetryModel.count : 0
+                                    return Math.max(count, 2)
+                                }
+                                spacing: swarm ? swarm.followDistance : 8
+                                
+                                // Show warning if not enough drones (count = followers only)
+                                property int minRequired: {
+                                    const mins = {"line": 2, "v": 2, "circle": 4, "grid": 4}
+                                    return mins[formationType] || 2
+                                }
+                                property bool hasEnoughDrones: droneCount >= minRequired
+                            }
+                            
+                            // Warning if not enough drones for formation
+                            Text {
+                                width: parent.width
+                                text: "⚠ " + formationPreview.formationType.toUpperCase() + " requires at least " + (formationPreview.minRequired + 1) + " drones (1 leader + " + formationPreview.minRequired + " followers)"
+                                color: "#ef4444"
+                                font.pixelSize: 9
+                                horizontalAlignment: Text.AlignHCenter
+                                visible: !formationPreview.hasEnoughDrones
+                                wrapMode: Text.WordWrap
                             }
                         }
 
@@ -962,7 +1029,7 @@ Item {
                                     currentIndex: swarm ? swarm.consensusAlgorithm : 0
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     contentItem: Text { text: consCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: 6; verticalAlignment: Text.AlignVCenter }
-                                    onActivated: if (swarm) swarm.consensusAlgorithm = index
+                                    onActivated: function(index) { if (swarm) swarm.consensusAlgorithm = index }
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
