@@ -10,5 +10,6 @@ PyQt6-WebEngine>=6.6
 # Legacy QWidget UI (--legacy flag only, optional)
 # pyqtgraph>=0.13
 
-# Development
+# Development & Benchmarking
 pytest>=7.0
+psutil>=5.9  # For CPU/memory monitoring in benchmarks
