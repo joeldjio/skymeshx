@@ -524,6 +524,186 @@ Item {
                         }
                     }
                 }
+
+                // Spacer
+                Item { width: 1; height: 16 }
+
+                // ── Bag Recording ─────────────────────────────────────
+                Text { text: "BAG RECORDING"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+
+                Rectangle {
+                    width: parent.width; height: bagCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+
+                    Column {
+                        id: bagCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                        spacing: 8
+
+                        property bool _recording: (typeof ros2 !== "undefined" && ros2) ? ros2.isBagRecording() : false
+                        property var _status: (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
+                        
+                        Timer { interval: 500; running: true; repeat: true
+                            onTriggered: {
+                                bagCol._recording = (typeof ros2 !== "undefined" && ros2) ? ros2.isBagRecording() : false
+                                bagCol._status = (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
+                            }
+                        }
+
+                        // Topic selection
+                        Text { text: "Topics to record:"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold }
+                        
+                        Column {
+                            width: parent.width; spacing: 2
+                            
+                            CheckBox {
+                                id: topicOdom
+                                text: "/fmu/out/vehicle_odometry"
+                                checked: true
+                                contentItem: Text { 
+                                    text: topicOdom.text
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    leftPadding: topicOdom.indicator.width + 4
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            
+                            CheckBox {
+                                id: topicStatus
+                                text: "/fmu/out/vehicle_status"
+                                checked: true
+                                contentItem: Text { 
+                                    text: topicStatus.text
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    leftPadding: topicStatus.indicator.width + 4
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            
+                            CheckBox {
+                                id: topicBattery
+                                text: "/fmu/out/battery_status"
+                                checked: false
+                                contentItem: Text { 
+                                    text: topicBattery.text
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    leftPadding: topicBattery.indicator.width + 4
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            
+                            CheckBox {
+                                id: topicGPS
+                                text: "/fmu/out/vehicle_gps_position"
+                                checked: false
+                                contentItem: Text { 
+                                    text: topicGPS.text
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    leftPadding: topicGPS.indicator.width + 4
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+
+                        // Start/Stop button
+                        Rectangle {
+                            width: parent.width; height: 32; radius: 6
+                            color: bagTogM.containsMouse ? (bagCol._recording ? "#7f1d1d" : "#166534") : (bagCol._recording ? "#450a0a" : "#14532d")
+                            border.color: bagCol._recording ? "#ef4444" : "#22c55e"; border.width: 1
+                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Row {
+                                anchors.centerIn: parent; spacing: 6
+                                Text { text: bagCol._recording ? "⏹" : "⏺"; color: bagCol._recording ? "#fca5a5" : "#86efac"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: bagCol._recording ? "Stop Recording" : "Start Recording"; color: bagCol._recording ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            MouseArea {
+                                id: bagTogM; anchors.fill: parent; hoverEnabled: true
+                                onClicked: {
+                                    if (typeof ros2 === "undefined" || !ros2) return
+                                    
+                                    if (bagCol._recording) {
+                                        ros2.stopBagRecording()
+                                    } else {
+                                        // Collect selected topics
+                                        var topics = []
+                                        if (topicOdom.checked) topics.push(topicOdom.text)
+                                        if (topicStatus.checked) topics.push(topicStatus.text)
+                                        if (topicBattery.checked) topics.push(topicBattery.text)
+                                        if (topicGPS.checked) topics.push(topicGPS.text)
+                                        
+                                        if (topics.length === 0) {
+                                            console.log("[BAG] No topics selected")
+                                            return
+                                        }
+                                        
+                                        ros2.startBagRecording(topics, "", "zstd")
+                                    }
+                                }
+                            }
+                        }
+
+                        // Recording status (only when active)
+                        Column {
+                            width: parent.width; spacing: 4
+                            visible: bagCol._recording
+
+                            Text { 
+                                text: "Recording Status:"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+                                Text { text: "Duration:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
+                                Text { 
+                                    text: bagCol._status.duration_sec ? bagCol._status.duration_sec.toFixed(1) + "s" : "0.0s"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+                                Text { text: "Size:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
+                                Text {
+                                    text: bagCol._status.size_mb ? bagCol._status.size_mb.toFixed(2) + " MB" : "0.00 MB"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+                                Text { text: "Path:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
+                                Text {
+                                    text: bagCol._status.bag_path ? bagCol._status.bag_path : "./bags/"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 8
+                                    elide: Text.ElideMiddle
+                                    width: parent.width - 64
+                                }
+                            }
+                        }
+
+                        // Info text
+                        Text {
+                            width: parent.width
+                            text: "💾 Bags saved to: <project_root>/bags/"
+                            color: "#64748b"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
             }
         }
 

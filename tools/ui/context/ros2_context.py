@@ -717,6 +717,202 @@ class ROS2Context(QObject):
             self.ros2LogMessage.emit("INFO", "[FORMATION] ✓ Offboard mode enabled for all vehicles")
         except Exception as e:
             self.ros2LogMessage.emit("ERROR", f"[FORMATION] Enable offboard failed: {e}")
+    # ═══════════════════════════════════════════════════════════════════════
+    # BAG RECORDING
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    @pyqtSlot("QVariant", str, str, result=bool)
+    def startBagRecording(self, topics: list, bag_name: str = "", compression: str = "zstd") -> bool:
+        """
+        Start recording ROS2 bag.
+        
+        Args:
+            topics: List of topic names to record (e.g., ["/fmu/out/vehicle_odometry"])
+            bag_name: Optional custom bag name (default: timestamp-based)
+            compression: Compression mode: "zstd", "lz4", or "none" (default: zstd)
+        
+        Returns:
+            True if recording started successfully
+        """
+        if not _ROS2_AVAILABLE:
+            self.ros2LogMessage.emit("ERROR", "[BAG] ROS2 not available")
+            return False
+        
+        # Lazy load bag recorder
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            try:
+                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                import os
+                from pathlib import Path
+                
+                # Use project root / bags directory
+                project_root = Path(__file__).parent.parent.parent
+                bags_dir = project_root / "bags"
+                
+                self._bag_recorder = ROS2BagRecorder(output_dir=str(bags_dir))
+                self.ros2LogMessage.emit("INFO", f"[BAG] Recorder initialized (output: {bags_dir})")
+            except Exception as e:
+                self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to initialize recorder: {e}")
+                return False
+        
+        # Convert QML list to Python list
+        topic_list = list(topics) if topics else []
+        
+        if not topic_list:
+            self.ros2LogMessage.emit("WARN", "[BAG] No topics selected")
+            return False
+        
+        try:
+            success = self._bag_recorder.start_recording(
+                topics=topic_list,
+                bag_name=bag_name if bag_name else None,
+                compression=compression
+            )
+            
+            if success:
+                self.ros2LogMessage.emit("INFO", f"[BAG] ✓ Recording started ({len(topic_list)} topics)")
+            else:
+                self.ros2LogMessage.emit("ERROR", "[BAG] Failed to start recording")
+            
+            return success
+            
+        except Exception as e:
+            self.ros2LogMessage.emit("ERROR", f"[BAG] Start recording error: {e}")
+            return False
+    
+    @pyqtSlot(result=bool)
+    def stopBagRecording(self) -> bool:
+        """
+        Stop current bag recording.
+        
+        Returns:
+            True if recording stopped successfully
+        """
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            self.ros2LogMessage.emit("WARN", "[BAG] Recorder not initialized")
+            return False
+        
+        try:
+            success = self._bag_recorder.stop_recording()
+            
+            if success:
+                self.ros2LogMessage.emit("INFO", "[BAG] ✓ Recording stopped")
+            else:
+                self.ros2LogMessage.emit("WARN", "[BAG] Not recording")
+            
+            return success
+            
+        except Exception as e:
+            self.ros2LogMessage.emit("ERROR", f"[BAG] Stop recording error: {e}")
+            return False
+    
+    @pyqtSlot(result=bool)
+    def isBagRecording(self) -> bool:
+        """Check if currently recording."""
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            return False
+        
+        try:
+            return self._bag_recorder.is_recording()
+        except Exception:
+            return False
+    
+    @pyqtSlot(result="QVariantMap")
+    def getBagRecordingStatus(self) -> dict:
+        """
+        Get current recording status.
+        
+        Returns:
+            Dict with keys: recording, duration_sec, bag_path, size_mb
+        """
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            return {
+                "recording": False,
+                "duration_sec": 0.0,
+                "bag_path": "",
+                "size_mb": 0.0
+            }
+        
+        try:
+            return self._bag_recorder.get_recording_status()
+        except Exception as e:
+            self.ros2LogMessage.emit("ERROR", f"[BAG] Status error: {e}")
+            return {
+                "recording": False,
+                "duration_sec": 0.0,
+                "bag_path": "",
+                "size_mb": 0.0
+            }
+    
+    @pyqtSlot(result="QVariantList")
+    def listBags(self) -> list:
+        """
+        List all recorded bags.
+        
+        Returns:
+            List of dicts with keys: path, size_mb, duration_sec, message_count, topics, start_time
+        """
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            try:
+                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                self._bag_recorder = ROS2BagRecorder(output_dir="./bags")
+            except Exception as e:
+                self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to initialize recorder: {e}")
+                return []
+        
+        try:
+            bags = self._bag_recorder.list_bags()
+            
+            # Convert BagInfo objects to dicts for QML
+            return [
+                {
+                    "path": bag.path,
+                    "size_mb": bag.size_mb,
+                    "duration_sec": bag.duration_sec,
+                    "message_count": bag.message_count,
+                    "topics": bag.topics,
+                    "start_time": bag.start_time
+                }
+                for bag in bags
+            ]
+            
+        except Exception as e:
+            self.ros2LogMessage.emit("ERROR", f"[BAG] List bags error: {e}")
+            return []
+    
+    @pyqtSlot(str, float, result=bool)
+    def playBag(self, bag_path: str, rate: float = 1.0) -> bool:
+        """
+        Play back a recorded bag.
+        
+        Args:
+            bag_path: Path to bag directory
+            rate: Playback rate multiplier (default: 1.0 = real-time)
+        
+        Returns:
+            True if playback started successfully
+        """
+        if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
+            try:
+                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                self._bag_recorder = ROS2BagRecorder(output_dir="./bags")
+            except Exception as e:
+                self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to initialize recorder: {e}")
+                return False
+        
+        try:
+            success = self._bag_recorder.play_bag(bag_path, rate)
+            
+            if success:
+                self.ros2LogMessage.emit("INFO", f"[BAG] ✓ Playing {bag_path} at {rate}x speed")
+            else:
+                self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to play {bag_path}")
+            
+            return success
+            
+        except Exception as e:
+            self.ros2LogMessage.emit("ERROR", f"[BAG] Playback error: {e}")
+            return False
     
     
     # ── Frame Conversion Debug ─────────────────────────────────────────────

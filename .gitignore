@@ -14,6 +14,10 @@ results/
 *.bag
 *.json
 
+# ROS2 bags (directories with .db3 files)
+bags/*/
+!bags/.gitkeep
+
 # Environment
 .venv/
 venv/
