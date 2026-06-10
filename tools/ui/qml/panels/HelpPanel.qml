@@ -6,65 +6,91 @@ import "../components" as Cmp
 // ─────────────────────────────────────────────────────────────────────────────
 // HelpPanel — Vollständige Feature-Referenz der uavresearch gcs GCS
 //
-// Aufbau:
-//   1. Quickstart (5-Schritt-Workflow)
-//   2. Globale Konzepte (Selected vs. Mission-Target, FSM, APF, …)
-//   3. Pro Tab: was es macht, wie man es benutzt, worauf man achten muss
-//   4. Konventionen, Gotchas, Shortcuts
-//
-// Reine Dokumentation. Keine Bindings auf swarm/experiment/safety.
+// Modernisiert mit neuer Theme-Integration und verbesserter Accessibility
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
     id: root
     anchors.fill: parent
 
-    // ── Inline section component ─────────────────────────────────────────────
+    // ── Inline section component mit modernem Design ─────────────────────────
     component HelpSection: Rectangle {
         property string title: ""
         property string subtitle: ""
-        property color  accent: "#fbbf24"
+        property color  accent: Cmp.Theme.accent
         property string body: ""
         width: parent ? parent.width : 600
-        radius: 10
-        color: "#0d1117"
-        border.color: "#1e293b"; border.width: 1
-        height: secCol.implicitHeight + 24
+        radius: Cmp.Theme.radiusMd
+        color: Cmp.Theme.bgPanel
+        border.color: Cmp.Theme.border
+        border.width: 1
+        height: secCol.implicitHeight + Cmp.Theme.spacing(3)
 
+        // Accent bar with smooth gradient
         Rectangle {
-            width: 4; height: parent.height - 16
-            anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
-            radius: 2; color: parent.accent
+            width: 4
+            height: parent.height - Cmp.Theme.spacing(2)
+            anchors {
+                left: parent.left
+                leftMargin: Cmp.Theme.spacing(1)
+                verticalCenter: parent.verticalCenter
+            }
+            radius: 2
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.lighter(parent.parent.accent, 1.2) }
+                GradientStop { position: 1.0; color: parent.parent.accent }
+            }
         }
 
         Column {
             id: secCol
             anchors {
-                left: parent.left; leftMargin: 20
-                right: parent.right; rightMargin: 14
-                top: parent.top; topMargin: 12
+                left: parent.left
+                leftMargin: Cmp.Theme.spacing(2.5)
+                right: parent.right
+                rightMargin: Cmp.Theme.spacing(2)
+                top: parent.top
+                topMargin: Cmp.Theme.spacing(1.5)
             }
-            spacing: 6
+            spacing: Cmp.Theme.spacing(1)
 
             Text {
                 text: parent.parent.title
                 color: parent.parent.accent
-                font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 0.5
+                font.pixelSize: Cmp.Theme.fontMd
+                font.weight: Font.Bold
+                font.letterSpacing: 0.5
             }
             Text {
                 visible: parent.parent.subtitle.length > 0
                 text: parent.parent.subtitle
-                color: "#64748b"; font.pixelSize: 10; font.italic: true
+                color: Cmp.Theme.textSecondary
+                font.pixelSize: Cmp.Theme.fontXs
+                font.italic: true
                 wrapMode: Text.WordWrap
                 width: parent.width
             }
             Text {
                 text: parent.parent.body
-                color: "#cbd5e1"; font.pixelSize: 11
+                color: Cmp.Theme.textPrimary
+                font.pixelSize: Cmp.Theme.fontSm
                 wrapMode: Text.WordWrap
                 width: parent.width
-                lineHeight: 1.4
+                lineHeight: 1.5
                 textFormat: Text.RichText
             }
+        }
+
+        // Subtle hover effect
+        Behavior on border.color {
+            ColorAnimation { duration: Cmp.Theme.durationFast }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: parent.border.color = Qt.lighter(Cmp.Theme.border, 1.3)
+            onExited: parent.border.color = Cmp.Theme.border
+            propagateComposedEvents: true
         }
     }
 
@@ -72,26 +98,34 @@ Item {
     component GlossaryRow: Row {
         property string term: ""
         property string def: ""
-        spacing: 10
+        spacing: Cmp.Theme.spacing(1.5)
         width: parent ? parent.width : 0
+        
         Text {
             text: parent.term
-            color: "#93c5fd"; font.pixelSize: 11; font.weight: Font.Bold
+            color: Cmp.Theme.info
+            font.pixelSize: Cmp.Theme.fontSm
+            font.weight: Font.Bold
             font.family: "Consolas"
             width: 170
             wrapMode: Text.WordWrap
         }
         Text {
             text: parent.def
-            color: "#cbd5e1"; font.pixelSize: 11
+            color: Cmp.Theme.textPrimary
+            font.pixelSize: Cmp.Theme.fontSm
             width: parent.width - 180
             wrapMode: Text.WordWrap
             textFormat: Text.RichText
+            lineHeight: 1.4
         }
     }
 
     ScrollView {
-        anchors { fill: parent; margins: 14 }
+        anchors {
+            fill: parent
+            margins: Cmp.Theme.spacing(2)
+        }
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -99,28 +133,44 @@ Item {
 
         Column {
             width: parent.availableWidth
-            spacing: 14
+            spacing: Cmp.Theme.spacing(2)
 
-            // ── Header ──────────────────────────────────────────────────────
+            // ── Modern Header with gradient ─────────────────────────────────
             Rectangle {
-                width: parent.width; height: 88
-                radius: 10
-                color: "#161b27"
-                border.color: "#fbbf24"; border.width: 1
+                width: parent.width
+                height: 100
+                radius: Cmp.Theme.radiusLg
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.darker(Cmp.Theme.warning, 1.8) }
+                    GradientStop { position: 1.0; color: Qt.darker(Cmp.Theme.warning, 2.2) }
+                }
+                border.color: Cmp.Theme.warning
+                border.width: 2
+                
                 Column {
-                    anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
-                    spacing: 4
+                    anchors {
+                        left: parent.left
+                        leftMargin: Cmp.Theme.spacing(3)
+                        verticalCenter: parent.verticalCenter
+                    }
+                    spacing: Cmp.Theme.spacing(0.5)
+                    
                     Text {
-                        text: "uavresearch gcs · Ground Control Station"
-                        color: "#fbbf24"; font.pixelSize: 18; font.weight: Font.Bold
+                        text: "UAVResearch Ground Control Station"
+                        color: Cmp.Theme.warning
+                        font.pixelSize: Cmp.Theme.fontXl
+                        font.weight: Font.Bold
                     }
                     Text {
                         text: "Vollständige Feature-Referenz · Workflows · Konventionen"
-                        color: "#94a3b8"; font.pixelSize: 11
+                        color: Cmp.Theme.textSecondary
+                        font.pixelSize: Cmp.Theme.fontMd
                     }
                     Text {
-                        text: "Lies mindestens Quickstart + Globale Konzepte, bevor du eine Drohne armst."
-                        color: "#64748b"; font.pixelSize: 10; font.italic: true
+                        text: "⚠ Lies mindestens Quickstart + Globale Konzepte, bevor du eine Drohne armst."
+                        color: Cmp.Theme.textTertiary
+                        font.pixelSize: Cmp.Theme.fontSm
+                        font.italic: true
                     }
                 }
             }
@@ -137,7 +187,7 @@ Item {
             HelpSection {
                 title: "1 · QUICKSTART (5 Schritte zur ersten Mission)"
                 subtitle: "Annahme: SITL läuft bereits (z. B. ArduCopter auf tcp:127.0.0.1:5762)"
-                accent: "#22c55e"
+                accent: Cmp.Theme.success
                 body:
                     "<b>① Drohne hinzufügen</b><br>" +
                     "&nbsp;&nbsp;Swarm-Tab → <b>+ DROHNE</b> → ID (z. B. <code>UAV_1</code>) + Connection-String (<code>tcp:127.0.0.1:5762</code>) → <b>Verbinden</b>. " +
@@ -162,7 +212,7 @@ Item {
             // ── 2. Globale Konzepte ────────────────────────────────────────
             HelpSection {
                 title: "2 · GLOBALE KONZEPTE (musst du verstehen, bevor du irgendwas klickst)"
-                accent: "#06b6d4"
+                accent: Cmp.Theme.info
                 body:
                     "<b>Selected Drone vs. Mission-Targets</b><br>" +
                     "&nbsp;&nbsp;• <b>Selected</b> (im Header / Combo-Box) = die <i>eine</i> Drohne, deren Telemetrie gerade im Telemetry-Tab und InstrBar angezeigt wird.<br>" +
@@ -187,7 +237,7 @@ Item {
             HelpSection {
                 title: "TAB · MAP"
                 subtitle: "Leaflet-basierte Karte mit Live-Drohnen-Markers, Tracks, Wegpunkten und Geofence-Overlay."
-                accent: "#06b6d4"
+                accent: Cmp.Theme.info
                 body:
                     "<b>Was du siehst</b><br>" +
                     "&nbsp;&nbsp;• Drohnen-Marker mit Live-Position (Update ~5 Hz).<br>" +
@@ -212,7 +262,7 @@ Item {
             HelpSection {
                 title: "TAB · TELEMETRY (Dashboard)"
                 subtitle: "Live-Cockpit für eine einzelne Drohne — die per Combo-Box oder Sidebar ausgewählte."
-                accent: "#2563eb"
+                accent: Cmp.Theme.accent
                 body:
                     "<b>Was du siehst</b><br>" +
                     "&nbsp;&nbsp;• <b>FSM-Badge</b> oben: aktueller Zustand der Drohne mit animiertem Indikator bei Übergängen.<br>" +
@@ -235,7 +285,7 @@ Item {
             HelpSection {
                 title: "TAB · SWARM CONTROL"
                 subtitle: "Hauptarbeitsplatz für Multi-Drohnen-Operationen: Verbindung, Mission, Formationen, Algorithmen."
-                accent: "#22c55e"
+                accent: Cmp.Theme.success
                 body:
                     "<b>Linke Spalte — Drohnen-Management</b><br>" +
                     "&nbsp;&nbsp;• <b>+ DROHNE</b>: Dialog mit ID + Connection-String (<code>tcp:…</code>, <code>udp:…</code>, <code>serial:…</code>).<br>" +
@@ -269,7 +319,7 @@ Item {
             HelpSection {
                 title: "TAB · SAFETY / APF"
                 subtitle: "Aktiver Kollisionsschutz, Geofence und Battery-Limits — die einzige Schicht zwischen dir und Crashes."
-                accent: "#ef4444"
+                accent: Cmp.Theme.danger
                 body:
                     "<b>APF (Artificial Potential Field)</b><br>" +
                     "&nbsp;&nbsp;Schiebt Drohnen mit einer repulsiven Kraft auseinander. Konfigurierbar:<br>" +
@@ -296,7 +346,7 @@ Item {
             HelpSection {
                 title: "TAB · GIMBAL / CAMERA"
                 subtitle: "Pan/Tilt-Steuerung und Live-Preview für Observation-Drohnen."
-                accent: "#8b5cf6"
+                accent: "#8b5cf6"  // Purple - keeping original
                 body:
                     "<b>Steuerung</b><br>" +
                     "&nbsp;&nbsp;• Pan- und Tilt-Slider in Grad, sofortige MAVLink-Mount-Command-Sendung.<br>" +
@@ -314,7 +364,7 @@ Item {
             HelpSection {
                 title: "TAB · ROS2 / uXRCE-DDS (PX4-Bridge)"
                 subtitle: "Direkter ROS2-Bridge-Zugriff für PX4-Drohnen über uXRCE-DDS — ohne MAVLink-Umweg."
-                accent: "#06b6d4"
+                accent: Cmp.Theme.info
                 body:
                     "<b>Drei-Spalten-Layout</b><br><br>" +
                     "<b>Links — Status &amp; Konfig</b><br>" +
@@ -342,7 +392,7 @@ Item {
             HelpSection {
                 title: "TAB · SCENARIO (Experiment Runner)"
                 subtitle: "Zwei Modi: Python-Scripts ad-hoc oder JSON-Szenarien aus Files. Beide nutzen den ExperimentContext."
-                accent: "#f59e0b"
+                accent: Cmp.Theme.warning
                 body:
                     "<b>Modus 1 — Python Script</b><br>" +
                     "&nbsp;&nbsp;• <b>OPEN</b>: lädt eine .py-Datei in den Editor.<br>" +
@@ -366,7 +416,7 @@ Item {
             HelpSection {
                 title: "TAB · FLIGHT LOG"
                 subtitle: "Offline-Replay & Plots aus den Telemetry-CSVs jeder vergangenen Verbindung."
-                accent: "#a78bfa"
+                accent: "#a78bfa"  // Light purple - keeping original
                 body:
                     "<b>Datenquelle</b><br>" +
                     "&nbsp;&nbsp;Jede Drohnen-Verbindung schreibt <code>logs/&lt;timestamp&gt;_&lt;drone&gt;_telemetry.csv</code> via <code>TelemetryLogger</code>. " +
@@ -385,7 +435,7 @@ Item {
             HelpSection {
                 title: "TAB · SYSTEM LOG"
                 subtitle: "Aggregierter Live-Stream aller Backend-Logs aus swarm/experiment/safety/ros2."
-                accent: "#64748b"
+                accent: Cmp.Theme.textSecondary
                 body:
                     "<b>Was du siehst</b><br>" +
                     "&nbsp;&nbsp;• Live-Einträge mit Zeitstempel (HH:MM:SS), Level-Badge (INFO/WARN/ERROR), Drohnen-Tag (farbcodiert per Hash) und Nachricht.<br>" +
@@ -404,7 +454,7 @@ Item {
             HelpSection {
                 title: "INSTRBAR (oberer Streifen, immer sichtbar)"
                 subtitle: "Cockpit-Instrumente + Quick-Commands über alle Tabs hinweg."
-                accent: "#3b82f6"
+                accent: Cmp.Theme.accent
                 body:
                     "<b>Tiles (links → rechts)</b><br>" +
                     "&nbsp;&nbsp;1. <b>DRONE</b> – Combo + Connection-Indikator. Wechseln synchronisiert globale Selected.<br>" +
@@ -422,7 +472,7 @@ Item {
             // ── 13. Konventionen & Gotchas ─────────────────────────────────
             HelpSection {
                 title: "KONVENTIONEN, GOTCHAS & TROUBLESHOOTING"
-                accent: "#ef4444"
+                accent: Cmp.Theme.danger
                 body:
                     "<b>Connection-Strings</b><br>" +
                     "&nbsp;&nbsp;• <code>tcp:127.0.0.1:5762</code> – ArduCopter SITL Standard.<br>" +
@@ -456,30 +506,43 @@ Item {
 
             // ── 14. Glossar ────────────────────────────────────────────────
             Rectangle {
-                width: parent.width; radius: 10
-                color: "#0d1117"
-                border.color: "#1e293b"; border.width: 1
-                height: glossCol.implicitHeight + 24
+                width: parent.width
+                radius: Cmp.Theme.radiusMd
+                color: Cmp.Theme.bgPanel
+                border.color: Cmp.Theme.border
+                border.width: 1
+                height: glossCol.implicitHeight + Cmp.Theme.spacing(3)
 
                 Rectangle {
-                    width: 4; height: parent.height - 16
-                    anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter }
-                    radius: 2; color: "#0ea5e9"
+                    width: 4
+                    height: parent.height - Cmp.Theme.spacing(2)
+                    anchors {
+                        left: parent.left
+                        leftMargin: Cmp.Theme.spacing(1)
+                        verticalCenter: parent.verticalCenter
+                    }
+                    radius: 2
+                    color: Cmp.Theme.info
                 }
 
                 Column {
                     id: glossCol
                     anchors {
-                        left: parent.left; leftMargin: 20
-                        right: parent.right; rightMargin: 14
-                        top: parent.top; topMargin: 12
+                        left: parent.left
+                        leftMargin: Cmp.Theme.spacing(2.5)
+                        right: parent.right
+                        rightMargin: Cmp.Theme.spacing(2)
+                        top: parent.top
+                        topMargin: Cmp.Theme.spacing(1.5)
                     }
-                    spacing: 8
+                    spacing: Cmp.Theme.spacing(1)
 
                     Text {
                         text: "GLOSSAR"
-                        color: "#0ea5e9"
-                        font.pixelSize: 14; font.weight: Font.Bold; font.letterSpacing: 0.5
+                        color: Cmp.Theme.info
+                        font.pixelSize: Cmp.Theme.fontMd
+                        font.weight: Font.Bold
+                        font.letterSpacing: 0.5
                     }
 
                     GlossaryRow { term: "AGL";           def: "Above Ground at Launch — Höhe über dem Takeoff-Punkt." }
@@ -503,7 +566,7 @@ Item {
             // ── 15. Tastatur ───────────────────────────────────────────────
             HelpSection {
                 title: "TASTATUR & MAUS — SHORTCUTS"
-                accent: "#fbbf24"
+                accent: Cmp.Theme.warning
                 body:
                     // ─── Flug-Befehle ───────────────────────────────────────
                     "<b style='color:#fbbf24;letter-spacing:1px;'>FLUG-BEFEHLE</b><br>" +
@@ -576,29 +639,37 @@ Item {
                     "</span>"
             }
 
-            // ── Footer ─────────────────────────────────────────────────────
+            // ── Modern Footer ───────────────────────────────────────────────
             Rectangle {
-                width: parent.width; height: 56
-                radius: 8
-                color: "#161b27"
-                border.color: "#1e293b"; border.width: 1
+                width: parent.width
+                height: 64
+                radius: Cmp.Theme.radiusMd
+                color: Cmp.Theme.bgPanel
+                border.color: Cmp.Theme.border
+                border.width: 1
+                
                 Column {
                     anchors.centerIn: parent
-                    spacing: 3
+                    spacing: Cmp.Theme.spacing(0.5)
+                    
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Bei Problemen: System-Log + syslogs/*.txt + Konsolen-Output sammeln."
-                        color: "#64748b"; font.pixelSize: 10; font.italic: true
+                        text: "💡 Bei Problemen: System-Log + syslogs/*.txt + Konsolen-Output sammeln."
+                        color: Cmp.Theme.textSecondary
+                        font.pixelSize: Cmp.Theme.fontSm
+                        font.italic: true
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Dieses Help-Panel ist read-only — keine Bindings, keine Side-Effects."
-                        color: "#475569"; font.pixelSize: 9; font.italic: true
+                        text: "ℹ️ Dieses Help-Panel ist read-only — keine Bindings, keine Side-Effects."
+                        color: Cmp.Theme.textTertiary
+                        font.pixelSize: Cmp.Theme.fontXs
+                        font.italic: true
                     }
                 }
             }
 
-            Item { width: 1; height: 8 }
+            Item { width: 1; height: Cmp.Theme.spacing(1) }
         }
     }
 }
