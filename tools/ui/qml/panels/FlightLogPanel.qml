@@ -493,11 +493,11 @@ Item {
             }
 
             // ── Stats Strip ───────────────────────────────────────────────
-            Row {
+            RowLayout {
                 id: statsRow
                 visible: false
                 Layout.fillWidth: true
-                height: 52
+                Layout.preferredHeight: 52
                 spacing: 6
 
                 property var stats: [
@@ -514,8 +514,12 @@ Item {
                 Repeater {
                     model: statsRow.stats
                     delegate: Rectangle {
-                        width: (statsRow.width - 18) / 4; height: 52; radius: 8
-                        color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 52
+                        radius: 8
+                        color: "#1a2035"
+                        border.color: "#2d3748"
+                        border.width: 1
                         Column {
                             anchors.centerIn: parent; spacing: 2
                             Row {

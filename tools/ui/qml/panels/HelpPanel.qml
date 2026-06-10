@@ -14,6 +14,7 @@ Item {
 
     // ── Inline section component mit modernem Design ─────────────────────────
     component HelpSection: Rectangle {
+        id: helpSection
         property string title: ""
         property string subtitle: ""
         property color  accent: Cmp.Theme.accent
@@ -36,8 +37,8 @@ Item {
             }
             radius: 2
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.lighter(parent.parent.accent, 1.2) }
-                GradientStop { position: 1.0; color: parent.parent.accent }
+                GradientStop { position: 0.0; color: Qt.lighter(helpSection.accent, 1.2) }
+                GradientStop { position: 1.0; color: helpSection.accent }
             }
         }
 
@@ -54,15 +55,15 @@ Item {
             spacing: Cmp.Theme.spacing(1)
 
             Text {
-                text: parent.parent.title
-                color: parent.parent.accent
+                text: helpSection.title
+                color: helpSection.accent
                 font.pixelSize: Cmp.Theme.fontMd
                 font.weight: Font.Bold
                 font.letterSpacing: 0.5
             }
             Text {
-                visible: parent.parent.subtitle.length > 0
-                text: parent.parent.subtitle
+                visible: helpSection.subtitle.length > 0
+                text: helpSection.subtitle
                 color: Cmp.Theme.textSecondary
                 font.pixelSize: Cmp.Theme.fontXs
                 font.italic: true
@@ -70,7 +71,7 @@ Item {
                 width: parent.width
             }
             Text {
-                text: parent.parent.body
+                text: helpSection.body
                 color: Cmp.Theme.textPrimary
                 font.pixelSize: Cmp.Theme.fontSm
                 wrapMode: Text.WordWrap
@@ -168,7 +169,7 @@ Item {
                     }
                     Text {
                         text: "⚠ Lies mindestens Quickstart + Globale Konzepte, bevor du eine Drohne armst."
-                        color: Cmp.Theme.textTertiary
+                        color: Cmp.Theme.textMuted
                         font.pixelSize: Cmp.Theme.fontSm
                         font.italic: true
                     }
@@ -662,7 +663,7 @@ Item {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "ℹ️ Dieses Help-Panel ist read-only — keine Bindings, keine Side-Effects."
-                        color: Cmp.Theme.textTertiary
+                        color: Cmp.Theme.textMuted
                         font.pixelSize: Cmp.Theme.fontXs
                         font.italic: true
                     }

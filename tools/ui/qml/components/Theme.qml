@@ -105,6 +105,14 @@ QtObject {
     readonly property int   fontL:   15
     readonly property int   fontXL:  18
     readonly property int   fontXXL: 24
+    
+    // Aliases for convenience
+    readonly property int   fontXs:  fontXS
+    readonly property int   fontSm:  fontS
+    readonly property int   fontMd:  fontM
+    readonly property int   fontLg:  fontL
+    readonly property int   fontXl:  fontXL
+    readonly property int   fontXxl: fontXXL
 
     // Font weights
     readonly property int   fontWeightNormal:   400
@@ -129,6 +137,12 @@ QtObject {
     readonly property int radiusM:  8
     readonly property int radiusL:  12
     readonly property int radiusXL: 16
+    // Aliases for convenience
+    readonly property int radiusXs: radiusXS
+    readonly property int radiusSm: radiusS
+    readonly property int radiusMd: radiusM
+    readonly property int radiusLg: radiusL
+    readonly property int radiusXl: radiusXL
 
     // ── Shadows (for depth) ───────────────────────────────────────────
     readonly property string shadowSm:  "0 1px 2px 0 rgba(0, 0, 0, 0.3)"
@@ -140,6 +154,10 @@ QtObject {
     readonly property int   transitionFast:   150
     readonly property int   transitionNormal: 250
     readonly property int   transitionSlow:   350
+    // Aliases for convenience
+    readonly property int durationFast:   transitionFast
+    readonly property int durationNormal: transitionNormal
+    readonly property int durationSlow:   transitionSlow
     
     // Easing curves
     readonly property int   easingStandard: Easing.OutCubic

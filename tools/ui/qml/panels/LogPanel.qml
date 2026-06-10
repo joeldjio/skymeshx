@@ -80,22 +80,22 @@ Item {
                     }
                 }
 
-                Item { Layout.fillWidth: true; height: parent.height }
+                Item { width: 1; height: parent.height }
 
-                    Text {
-                        text: root.activeLogModel.count + " entries"
-                        color: "#64748b"; font.pixelSize: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+                Text {
+                    text: root.activeLogModel.count + " entries"
+                    color: "#64748b"; font.pixelSize: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                }
 
-                    // Export feedback toast
-                    Text {
-                        id: exportFeedback
-                        visible: false
-                        color: "#4ade80"; font.pixelSize: 9
-                        anchors.verticalCenter: parent.verticalCenter
-                        Timer { id: exportHideTimer; interval: 4000; onTriggered: exportFeedback.visible = false }
-                    }
+                // Export feedback toast
+                Text {
+                    id: exportFeedback
+                    visible: false
+                    color: "#4ade80"; font.pixelSize: 9
+                    anchors.verticalCenter: parent.verticalCenter
+                    Timer { id: exportHideTimer; interval: 4000; onTriggered: exportFeedback.visible = false }
+                }
 
                 Rectangle {
                     width: 90; height: 24; radius: 5
@@ -224,8 +224,8 @@ Item {
                         Text {
                             text: model.time
                             color: "#4a5568"; font.pixelSize: 10
-                            font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
-                                           ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
+                            font.family: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                        ? Cmp.Theme.fontMono : "Consolas"
                             width: 60
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -244,8 +244,8 @@ Item {
                                 text: extractDroneId(model.text)
                                 color: getDroneColor(extractDroneId(model.text))
                                 font.pixelSize: 9; font.weight: Font.Bold
-                                font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
-                                               ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
+                                font.family: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                            ? Cmp.Theme.fontMono : "Consolas"
                             }
                         }
 
@@ -275,8 +275,8 @@ Item {
                                  : model.level === "WARN"  ? "#fcd34d"
                                  : "#8be9fd"
                             font.pixelSize: 11
-                            font.families: (typeof Cmp !== "undefined" && Cmp.Theme)
-                                           ? Cmp.Theme.fontFamiliesMono : ["Consolas", "Courier New"]
+                            font.family: (typeof Cmp !== "undefined" && Cmp.Theme)
+                                        ? Cmp.Theme.fontMono : "Consolas"
                             width: parent.width - 140
                             wrapMode: Text.WordWrap
                             anchors.verticalCenter: parent.verticalCenter
