@@ -119,6 +119,12 @@ def qapp():
     """
     try:
         from PyQt6.QtCore import QCoreApplication
+        # Import QtWebEngineWidgets BEFORE creating QCoreApplication
+        # to avoid "must be imported before QCoreApplication" error
+        try:
+            from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+        except ImportError:
+            pass  # QtWebEngine not installed, tests will skip if needed
     except ImportError:
         pytest.skip("PyQt6 not installed — skipping UI tests")
 
