@@ -10,7 +10,10 @@ import pytest
 
 # Make sure license imports work even when PyQt6 isn't on the path
 # (LicenseManager test sets QT_QPA_PLATFORM=offscreen below).
+pytest.importorskip("PyQt6", reason="PyQt6 required for license tests")
 from tools.ui import license as lic
+
+pytestmark = pytest.mark.ui
 
 
 # ──────────────────────────────────────────────────────────────────────

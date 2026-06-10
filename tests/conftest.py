@@ -111,26 +111,32 @@ def make_msg():
 
 @pytest.fixture(scope="session")
 def qapp():
-    """Session-scoped QCoreApplication for signal/slot tests.
+    """Session-scoped QApplication for UI tests.
 
-    The UI tests don't open windows; they just exercise QObject signal
-    routing. QCoreApplication is enough and avoids dragging in QtGui /
-    QtWidgets (no display server needed → works on CI).
+    Creates a full QApplication (not just QCoreApplication) to support
+    E2E tests that create windows. QtWebEngineWidgets is imported before
+    QApplication creation to avoid initialization errors.
     """
     try:
-        from PyQt6.QtCore import QCoreApplication
-        # Import QtWebEngineWidgets BEFORE creating QCoreApplication
+        # Import QtWebEngineWidgets BEFORE creating QApplication
         # to avoid "must be imported before QCoreApplication" error
         try:
             from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
         except ImportError:
             pass  # QtWebEngine not installed, tests will skip if needed
+        
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import Qt
+        import sys
+        
+        # Set platform to offscreen for headless CI
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
     except ImportError:
         pytest.skip("PyQt6 not installed — skipping UI tests")
 
-    app = QCoreApplication.instance()
+    app = QApplication.instance()
     if app is None:
-        app = QCoreApplication([])
+        app = QApplication(sys.argv)
     yield app
     # Do not call app.quit() — pytest may reuse it across the session.
 
