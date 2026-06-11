@@ -311,26 +311,26 @@ Item {
                             Repeater {
                                 model: [
                                     ["Autopilot", root.selectedSnap.autopilot || "UNKNOWN"],
-                                    ["Copter Art", root.selectedSnap.vehicle_type || "UNKNOWN"],
-                                    ["Firmware", root.selectedSnap.firmware_version || "Noch nicht gemeldet"],
-                                    ["Board", root.selectedSnap.board_version || "Noch nicht gemeldet"],
+                                    ["Vehicle Type", root.selectedSnap.vehicle_type || "UNKNOWN"],
+                                    ["Firmware", root.selectedSnap.firmware_version || "Not reported yet"],
+                                    ["Board", root.selectedSnap.board_version || "Not reported yet"],
                                     ["Vendor/Product", ((root.selectedSnap.vendor_id || 0) + " / " + (root.selectedSnap.product_id || 0))],
                                     ["System Status", root.selectedSnap.system_status !== undefined ? root.selectedSnap.system_status : "UNKNOWN"],
                                     ["Flight Mode", root.selectedSnap.flight_mode || "UNKNOWN"],
                                     ["FSM", root.selectedSnap.fsmState || "UNKNOWN"],
-                                    ["Verbindung", root.selectedSnap.connectionString || "—"],
-                                    ["App-Typ", root.selectedSnap.droneType || "generic"]
+                                    ["Connection", root.selectedSnap.connectionString || "—"],
+                                    ["Drone Type", root.selectedSnap.droneType || "generic"]
                                 ]
                                 delegate: Column {
                                     Layout.fillWidth: true
                                     spacing: 2
-                                    Text { text: modelData[0]; color: "#475569"; font.pixelSize: 8; font.weight: Font.Bold }
+                                    Text { text: modelData[0]; color: "#64748b"; font.pixelSize: 8; font.weight: Font.Bold }
                                     Text {
                                         width: parent.width
                                         text: modelData[1]
-                                        color: "#cbd5e1"
+                                        color: "#e2e8f0"
                                         font.pixelSize: 10
-                                        font.family: modelData[0] === "Verbindung" ? "Consolas" : ""
+                                        font.family: modelData[0] === "Connection" ? "Consolas" : ""
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -339,7 +339,7 @@ Item {
 
                         Text {
                             width: parent.width
-                            text: "Hinweis: Firmware/Board erscheint erst, wenn der Flight Controller AUTOPILOT_VERSION beantwortet."
+                            text: "Note: Firmware/Board info appears only after the flight controller responds with AUTOPILOT_VERSION."
                             color: "#64748b"; font.pixelSize: 9; wrapMode: Text.WordWrap
                         }
                     }

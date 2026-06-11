@@ -289,42 +289,42 @@ Item {
             // ── KPI grid ─────────────────────────────────────────────────
             GridLayout {
                 width: parent.width
-                columns: 2
-                columnSpacing: 8; rowSpacing: 8
+                columns: 3
+                columnSpacing: 6; rowSpacing: 6
 
                 Repeater {
                     model: [
                         { label: "ALTITUDE",   icon: "▲", key: "alt_rel",     unit: "m",   fmt: 1, color: "#2563eb" },
                         { label: "SPEED",      icon: "→", key: "groundspeed", unit: "m/s", fmt: 1, color: "#22c55e" },
-                        { label: "HEADING",    icon: "◎", key: "yaw",         unit: "°",   fmt: 2, color: "#8b5cf6" },
-                        { label: "CLIMB",      icon: "↕", key: "climb",       unit: "m/s", fmt: 1, color: "#f59e0b" },
+                        { label: "HEADING",    icon: "◎", key: "yaw",         unit: "°",   fmt: 0, color: "#8b5cf6" },
+                        { label: "CLIMB",      icon: "↕", key: "climb",       unit: "m/s", fmt: 2, color: "#f59e0b" },
                         { label: "SATELLITES", icon: "◈", key: "satellites",  unit: "sat", fmt: 0, color: "#06b6d4" },
-                        { label: "THROTTLE",   icon: "",   key: "throttle",   unit: "%",   fmt: 0, color: "#f97316" },
+                        { label: "THROTTLE",   icon: "⚡", key: "throttle",   unit: "%",   fmt: 0, color: "#f97316" },
                     ]
 
                     delegate: Rectangle {
-                        Layout.fillWidth: true; height: 72; radius: 8
+                        Layout.fillWidth: true; height: 64; radius: 6
                         color: "#1a2035"; border.color: "#2d3748"; border.width: 1
 
-                        Rectangle { width: 3; height: parent.height; radius: 2; color: modelData.color
+                        Rectangle { width: 2; height: parent.height; radius: 1; color: modelData.color
                             anchors { left: parent.left; leftMargin: 0; verticalCenter: parent.verticalCenter } }
 
                         Column {
-                            anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
-                            spacing: 2
+                            anchors { left: parent.left; leftMargin: 10; right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                            spacing: 1
                             Row {
-                                spacing: 4
-                                Text { text: modelData.icon; color: modelData.color; font.pixelSize: 12 }
-                                Text { text: modelData.label; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 0.8 }
+                                spacing: 3
+                                Text { text: modelData.icon; color: modelData.color; font.pixelSize: 10 }
+                                Text { text: modelData.label; color: "#64748b"; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.5 }
                             }
                             Text {
                                 text: {
                                     var v = snap(modelData.key, 0)
                                     return modelData.fmt > 0 ? Number(v).toFixed(modelData.fmt) : String(v)
                                 }
-                                color: modelData.color; font.pixelSize: 22; font.weight: Font.Bold
+                                color: modelData.color; font.pixelSize: 18; font.weight: Font.Bold
                             }
-                            Text { text: modelData.unit; color: "#64748b"; font.pixelSize: 10 }
+                            Text { text: modelData.unit; color: "#64748b"; font.pixelSize: 9 }
                         }
                     }
                 }

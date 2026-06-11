@@ -113,7 +113,7 @@ Item {
             height: 32; color: "#ccf59e0b"
             Text {
                 anchors.centerIn: parent
-                text: "WAYPOINT-MODUS  —  Klick auf Karte um Wegpunkt zu setzen  —  ESC zum Abbrechen"
+                text: "WAYPOINT MODE  —  Click on map to set waypoint  —  ESC to cancel"
                 color: "white"; font.pixelSize: 12; font.weight: Font.Bold
             }
             MouseArea { anchors.fill: parent }
@@ -225,7 +225,7 @@ function setMapType(type) {
   }
 }
 
-var droneMarkers = {}, droneTracks = {}, waypointMarkers = [], geofenceCircle = null;
+var droneMarkers = {}, droneTracks = {}, waypointMarkers = [], waypointLine = null, geofenceCircle = null;
 // "Dispatched" waypoints — already sent to drones via Mission Start.
 // Drawn in a different colour and kept on the map until the user manually
 // clears them (so the user can visually follow what has been flown).
@@ -328,11 +328,27 @@ function updateDrones(data) {
 function updateWaypoints(wps) {
   waypointMarkers.forEach(function(m){ map.removeLayer(m); });
   waypointMarkers = [];
+  if (waypointLine) { map.removeLayer(waypointLine); waypointLine = null; }
+  
+  if (!wps || wps.length === 0) return;
+  
+  var latlngs = [];
   wps.forEach(function(wp, i) {
     var icon = L.divIcon({ className:"", iconSize:[22,22], iconAnchor:[11,11],
       html:\'<div style="width:22px;height:22px;border-radius:50%;border:2px solid #f59e0b;background:#78350f;display:flex;align-items:center;justify-content:center;color:#fcd34d;font-size:9px;font-weight:bold;">\' + (i+1) + \'</div>\'});
     waypointMarkers.push(L.marker([wp.lat,wp.lon],{icon:icon}).bindTooltip("WP"+(i+1)+": "+wp.alt+"m",{direction:"top"}).addTo(map));
+    latlngs.push([wp.lat, wp.lon]);
   });
+  
+  // Draw connecting line between waypoints
+  if (latlngs.length > 1) {
+    waypointLine = L.polyline(latlngs, {
+      color: "#f59e0b",
+      weight: 2,
+      opacity: 0.7,
+      dashArray: "8,4"
+    }).addTo(map);
+  }
 }
 
 function commitDispatchedWaypoints(wps) {
