@@ -56,6 +56,19 @@ Item {
                     if (kv[0] === "lon") lon = parseFloat(kv[1])
                 }
                 root.mapPickSelected(lat, lon)
+            } else if (url.startsWith("qrc://waypoint-moved?")) {
+                req.reject()
+                var params = url.substring("qrc://waypoint-moved?".length).split("&")
+                var index = -1, lat = 0, lon = 0
+                for (var i = 0; i < params.length; i++) {
+                    var kv = params[i].split("=")
+                    if (kv[0] === "index") index = parseInt(kv[1])
+                    if (kv[0] === "lat") lat = parseFloat(kv[1])
+                    if (kv[0] === "lon") lon = parseFloat(kv[1])
+                }
+                if (index >= 0) {
+                    root.waypointMoved(index, lat, lon)
+                }
             } else {
                 req.accept()
             }
@@ -158,6 +171,7 @@ Item {
     }
 
     signal mapPickSelected(real lat, real lon)
+    signal waypointMoved(int index, real lat, real lon)
 
     // Drone-color palette (mirrors Python DRONE_COLORS)
     readonly property var droneColors: [
@@ -336,7 +350,54 @@ function updateWaypoints(wps) {
   wps.forEach(function(wp, i) {
     var icon = L.divIcon({ className:"", iconSize:[22,22], iconAnchor:[11,11],
       html:\'<div style="width:22px;height:22px;border-radius:50%;border:2px solid #f59e0b;background:#78350f;display:flex;align-items:center;justify-content:center;color:#fcd34d;font-size:9px;font-weight:bold;">\' + (i+1) + \'</div>\'});
-    waypointMarkers.push(L.marker([wp.lat,wp.lon],{icon:icon}).bindTooltip("WP"+(i+1)+": "+wp.alt+"m",{direction:"top"}).addTo(map));
+    
+    // Create draggable marker
+    var marker = L.marker([wp.lat,wp.lon], {
+      icon: icon,
+      draggable: true,
+      autoPan: true
+    }).bindTooltip("WP"+(i+1)+": "+wp.alt+"m",{direction:"top"}).addTo(map);
+    
+    // Drag start - visual feedback
+    marker.on("dragstart", function(e) {
+      e.target.setOpacity(0.6);
+      if (waypointLine) waypointLine.setStyle({opacity: 0.3});
+    });
+    
+    // Dragging - update line in real-time
+    marker.on("drag", function(e) {
+      if (waypointLine) {
+        var newLatLngs = [];
+        waypointMarkers.forEach(function(m) {
+          newLatLngs.push(m.getLatLng());
+        });
+        waypointLine.setLatLngs(newLatLngs);
+      }
+    });
+    
+    // Drag end - notify QML and restore opacity
+    marker.on("dragend", function(e) {
+      e.target.setOpacity(1.0);
+      if (waypointLine) waypointLine.setStyle({opacity: 0.7});
+      
+      var newPos = e.target.getLatLng();
+      
+      // Find current index of this marker in the array (in case waypoints were added/removed)
+      var idx = -1;
+      for (var j = 0; j < waypointMarkers.length; j++) {
+        if (waypointMarkers[j] === e.target) {
+          idx = j;
+          break;
+        }
+      }
+      
+      if (idx >= 0) {
+        // Notify QML about waypoint position change
+        window.location = "qrc://waypoint-moved?index=" + idx + "&lat=" + newPos.lat + "&lon=" + newPos.lng;
+      }
+    });
+    
+    waypointMarkers.push(marker);
     latlngs.push([wp.lat, wp.lon]);
   });
   

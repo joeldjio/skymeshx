@@ -154,6 +154,19 @@ Window {
         _mapPickTarget = null
     }
 
+    function handleWaypointMoved(index, lat, lon) {
+        // Update waypoint position when dragged on map
+        if (index >= 0 && index < globalMissionWaypoints.count) {
+            globalMissionWaypoints.set(index, {
+                lat: lat,
+                lon: lon,
+                alt: globalMissionWaypoints.get(index).alt
+            })
+            // No need to call syncWaypointsToMap() - the map already updated visually
+            console.log("Waypoint", index + 1, "moved to", lat.toFixed(6), lon.toFixed(6))
+        }
+    }
+
     // ── Global log handler (encapsulated) ─────────────────────────────────────
     Cmp.GlobalLogHandler { id: globalLog }
     property alias globalLogModel: globalLog.model
@@ -452,7 +465,7 @@ Window {
                                     anchors.centerIn: parent; spacing: 6
                                     Cmp.Icon { name: root.mapWaypointMode ? "check" : "plus"; size: 12; color: "white"; anchors.verticalCenter: parent.verticalCenter }
                                     Text {
-                                        text: root.mapWaypointMode ? "WP-MODUS AKTIV" : "WAYPOINT HINZUFÜGEN"
+                                        text: root.mapWaypointMode ? "WP MODE ACTIVE" : "ADD WAYPOINT"
                                         color: "white"; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 0.5
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
