@@ -9,6 +9,7 @@ NavBar 1.0 NavBar.qml
 InstrBar 1.0 InstrBar.qml
 PanelShell 1.0 PanelShell.qml
 HudOverlays 1.0 HudOverlays.qml
+CompassInstrument 1.0 CompassInstrument.qml
 GlobalLogHandler 1.0 GlobalLogHandler.qml
 LicenseOverlay 1.0 LicenseOverlay.qml
 LicenseStatusBanner 1.0 LicenseStatusBanner.qml

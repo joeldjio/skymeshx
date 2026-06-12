@@ -91,9 +91,7 @@ Rectangle {
             root.t_satellites  = snap("satellites",  0)
             attCanvas.rollVal  = root.t_roll
             attCanvas.pitchVal = root.t_pitch
-            compassCanvas.hdg  = root.t_yaw
             attCanvas.requestPaint()
-            compassCanvas.requestPaint()
         }
     }
 
@@ -368,54 +366,11 @@ Rectangle {
         Item {
             width: 90; height: 90; anchors.verticalCenter: parent.verticalCenter
 
-            Canvas {
-                id: compassCanvas
-                width: 80; height: 80
+            Cmp.CompassInstrument {
                 anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-                property real hdg: 0
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0,0,width,height)
-                    var cx = width/2, cy = height/2, r = 36
-                    // Outer ring
-                    ctx.fillStyle = "#0d1117"; ctx.beginPath(); ctx.arc(cx,cy,r+2,0,Math.PI*2); ctx.fill()
-                    ctx.strokeStyle = "#334155"; ctx.lineWidth = 2
-                    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                    // Tick marks
-                    ctx.strokeStyle = "#475569"; ctx.lineWidth = 1
-                    for (var t = 0; t < 360; t += 45) {
-                        var tr = (t - compassCanvas.hdg) * Math.PI / 180
-                        var inner = t % 90 === 0 ? r-10 : r-6
-                        ctx.beginPath()
-                        ctx.moveTo(cx + Math.sin(tr)*inner, cy - Math.cos(tr)*inner)
-                        ctx.lineTo(cx + Math.sin(tr)*(r-2), cy - Math.cos(tr)*(r-2))
-                        ctx.stroke()
-                    }
-                    // Cardinal labels
-                    var cards = [["N","#ef4444"],["E","#94a3b8"],["S","#94a3b8"],["W","#94a3b8"]]
-                    ctx.font = "bold 9px Consolas"
-                    ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                    for (var ci = 0; ci < 4; ci++) {
-                        var cr = (ci*90 - compassCanvas.hdg) * Math.PI / 180
-                        var lx = cx + Math.sin(cr)*(r-16), ly = cy - Math.cos(cr)*(r-16)
-                        ctx.fillStyle = cards[ci][1]
-                        ctx.fillText(cards[ci][0], lx, ly)
-                    }
-                    // Heading arrow
-                    ctx.save(); ctx.translate(cx,cy)
-                    ctx.fillStyle = "#ef4444"
-                    ctx.beginPath(); ctx.moveTo(0,-(r-4)); ctx.lineTo(-4,-6); ctx.lineTo(4,-6); ctx.closePath(); ctx.fill()
-                    ctx.fillStyle = "#334155"
-                    ctx.beginPath(); ctx.moveTo(0,(r-4)); ctx.lineTo(-4,6); ctx.lineTo(4,6); ctx.closePath(); ctx.fill()
-                    ctx.restore()
-                    // Center dot
-                    ctx.fillStyle = "#e2e8f0"; ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill()
-                }
-            }
-            Text {
-                anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-                text: root.t_yaw.toFixed(0) + "°"
-                color: "#e2e8f0"; font.pixelSize: 10; font.weight: Font.Bold; font.family: "Consolas"
+                heading: root.t_yaw
+                size: 80
+                showLabel: true
             }
         }
 
