@@ -693,3 +693,309 @@ for wp in mission_waypoints:
 3. **Manual override:** Always have RC control available
 4. **Redundant sensors:** Use onboard collision avoidance if available
 5. **Conservative tuning:** Start with large separations, slow speeds
+---
+
+## CollisionPredictor
+
+**New in v0.4.0**
+
+Predicts future collisions based on current drone trajectories or planned waypoints.
+
+### Constructor
+
+```python
+from droneresearch.safety.collision_predictor import CollisionPredictor
+
+predictor = CollisionPredictor(
+    time_horizon=10.0,        # seconds to look ahead
+    min_separation=2.0,       # minimum safe distance (meters)
+    sample_rate=0.5,          # prediction sample interval (seconds)
+    critical_threshold=1.0,   # critical collision distance (meters)
+    warning_threshold=1.5     # warning collision distance (meters)
+)
+```
+
+**Parameters:**
+- `time_horizon` (float): How far into the future to predict (seconds). Default: 10.0
+- `min_separation` (float): Minimum safe distance between drones (meters). Default: 2.0
+- `sample_rate` (float): Time interval for trajectory sampling (seconds). Default: 0.5
+- `critical_threshold` (float): Distance threshold for critical severity (meters). Default: 1.0
+- `warning_threshold` (float): Distance threshold for warning severity (meters). Default: 1.5
+
+### Methods
+
+#### predict()
+
+```python
+def predict(states: Dict[str, DroneState]) -> List[CollisionPrediction]
+```
+
+Predict collisions based on current velocities (velocity-based prediction).
+
+**Parameters:**
+- `states` (Dict[str, DroneState]): Current state of each drone
+
+**Returns:**
+- `List[CollisionPrediction]`: List of predicted collisions, sorted by time_to_collision
+
+**Example:**
+```python
+from droneresearch.safety.collision_predictor import DroneState
+
+states = {
+    "D1": DroneState(x=0, y=0, z=10, vx=2, vy=0, vz=0, armed=True),
+    "D2": DroneState(x=20, y=0, z=10, vx=-2, vy=0, vz=0, armed=True),
+}
+
+predictions = predictor.predict(states)
+for pred in predictions:
+    print(f"Collision: {pred.drone_a} ↔ {pred.drone_b} in {pred.time_to_collision:.1f}s")
+```
+
+#### predict_with_waypoints()
+
+```python
+def predict_with_waypoints(
+    states: Dict[str, DroneState],
+    waypoints: Dict[str, List[Tuple[float, float, float]]],
+    cruise_speed: float = 5.0
+) -> List[CollisionPrediction]
+```
+
+Predict collisions based on planned waypoints (waypoint-aware prediction).
+
+**Parameters:**
+- `states` (Dict[str, DroneState]): Current state of each drone
+- `waypoints` (Dict[str, List[Tuple[float, float, float]]]): Planned waypoints for each drone in local NED coordinates [(x, y, z), ...]
+- `cruise_speed` (float): Expected cruise speed between waypoints (m/s). Default: 5.0
+
+**Returns:**
+- `List[CollisionPrediction]`: List of predicted collisions along planned routes
+
+**Example:**
+```python
+waypoints = {
+    "D1": [(100, 0, 10), (100, 100, 10), (0, 100, 10)],  # Square pattern
+    "D2": [(0, 100, 10), (100, 0, 10)],  # Diagonal crossing
+}
+
+predictions = predictor.predict_with_waypoints(states, waypoints, cruise_speed=5.0)
+```
+
+**Algorithm:**
+1. Builds time-stamped trajectory from waypoints: `[(time, x, y, z), ...]`
+2. Interpolates positions at regular intervals (sample_rate)
+3. Finds minimum distance between all drone pairs
+4. Reports collisions where distance < min_separation
+
+---
+
+## DroneState
+
+**New in v0.4.0**
+
+Current state of a drone for collision prediction.
+
+### Constructor
+
+```python
+@dataclass
+class DroneState:
+    x: float = 0.0      # North (meters)
+    y: float = 0.0      # East (meters)
+    z: float = 0.0      # Altitude above ground (meters, positive up)
+    vx: float = 0.0     # Velocity North (m/s)
+    vy: float = 0.0     # Velocity East (m/s)
+    vz: float = 0.0     # Velocity Up (m/s)
+    armed: bool = False # Armed status
+```
+
+### Methods
+
+#### position_at()
+
+```python
+def position_at(dt: float) -> Tuple[float, float, float]
+```
+
+Predict position after `dt` seconds assuming constant velocity.
+
+**Parameters:**
+- `dt` (float): Time delta in seconds
+
+**Returns:**
+- `Tuple[float, float, float]`: Predicted (x, y, z) position
+
+#### distance_to()
+
+```python
+def distance_to(other: DroneState) -> float
+```
+
+Calculate 3D Euclidean distance to another drone.
+
+**Parameters:**
+- `other` (DroneState): Target drone state
+
+**Returns:**
+- `float`: Distance in meters
+
+---
+
+## CollisionPrediction
+
+**New in v0.4.0**
+
+Predicted collision between two drones.
+
+### Attributes
+
+```python
+@dataclass
+class CollisionPrediction:
+    drone_a: str                                    # First drone ID
+    drone_b: str                                    # Second drone ID
+    time_to_collision: float                        # Seconds until collision
+    min_distance: float                             # Closest approach distance (meters)
+    collision_point: Tuple[float, float, float]     # (x, y, z) in NED
+    severity: str                                   # "critical" | "warning" | "caution"
+```
+
+**Severity Levels:**
+- `"critical"`: distance < critical_threshold (default: 1.0m)
+- `"warning"`: distance < warning_threshold (default: 1.5m)
+- `"caution"`: distance < min_separation (default: 2.0m)
+
+### Methods
+
+#### to_dict()
+
+```python
+def to_dict() -> dict
+```
+
+Convert to QML-friendly dictionary format.
+
+**Returns:**
+```python
+{
+    "droneA": "D1",
+    "droneB": "D2",
+    "timeToCollision": 5.2,
+    "minDistance": 0.8,
+    "collisionPoint": {"x": 50.0, "y": 0.0, "z": 10.0},
+    "severity": "critical"
+}
+```
+
+---
+
+## UI Integration
+
+### SafetyContext (QML)
+
+**New Methods in v0.4.0:**
+
+#### enableCollisionPrediction()
+
+```qml
+safety.enableCollisionPrediction(true)  // Enable
+safety.enableCollisionPrediction(false) // Disable
+```
+
+#### configureCollisionPredictor()
+
+```qml
+safety.configureCollisionPredictor({
+    timeHorizon: 15.0,
+    minSeparation: 3.0,
+    sampleRate: 0.3,
+    criticalThreshold: 1.0,
+    warningThreshold: 2.0
+})
+```
+
+#### enableWaypointAwarePrediction()
+
+```qml
+safety.enableWaypointAwarePrediction(true)  // Use waypoints
+safety.enableWaypointAwarePrediction(false) // Use velocity
+```
+
+#### updateDroneWaypoints()
+
+```qml
+safety.updateDroneWaypoints({
+    "D1": [{lat: 48.137, lon: 11.575, alt: 10}, ...],
+    "D2": [{lat: 48.138, lon: 11.576, alt: 10}, ...]
+})
+```
+
+**Signals:**
+
+```qml
+Connections {
+    target: safety
+    function onCollisionPredicted(predictions) {
+        // predictions: List of collision prediction dicts
+        for (var i = 0; i < predictions.length; i++) {
+            var pred = predictions[i]
+            console.log("Collision:", pred.droneA, "↔", pred.droneB,
+                       "in", pred.timeToCollision, "s")
+        }
+    }
+}
+```
+
+### AppState (QML)
+
+**New in v0.4.0:** Per-drone waypoint storage
+
+#### Waypoint Management
+
+```qml
+// Get waypoints for a drone
+var wps = Cmp.AppState.getWaypoints("D1")
+
+// Set waypoints for a drone
+Cmp.AppState.setWaypoints("D1", [
+    {lat: 48.137, lon: 11.575, alt: 10},
+    {lat: 48.138, lon: 11.576, alt: 15}
+])
+
+// Add single waypoint
+Cmp.AppState.addWaypoint("D1", 48.139, 11.577, 20)
+
+// Clear waypoints
+Cmp.AppState.clearWaypoints("D1")
+
+// Clear all waypoints
+Cmp.AppState.clearAllWaypoints()
+```
+
+#### Multi-Drone Operations
+
+```qml
+// Set same waypoints for multiple drones
+var droneIds = ["D1", "D2", "D3"]
+var waypoints = [{lat: 48.137, lon: 11.575, alt: 10}, ...]
+Cmp.AppState.setWaypointsForMultiple(droneIds, waypoints)
+
+// Add waypoint to multiple drones
+Cmp.AppState.addWaypointForMultiple(droneIds, 48.138, 11.576, 15)
+```
+
+**Signals:**
+
+```qml
+Connections {
+    target: Cmp.AppState
+    function onWaypointsChanged(droneId) {
+        console.log("Waypoints changed for", droneId)
+        var wps = Cmp.AppState.getWaypoints(droneId)
+        console.log("New waypoint count:", wps.length)
+    }
+}
+```
+
+---
