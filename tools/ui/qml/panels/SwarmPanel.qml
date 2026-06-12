@@ -1149,17 +1149,40 @@ Item {
                             }
                         }
 
-                        Row { width: parent.width; spacing: 6
-                            Text { text: "Update Rate"; color: "#64748b"; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter; width: 80 }
-                            Slider {
-                                id: rateSlider
-                                width: parent.width - 130; height: 20
-                                from: 50; to: 1000; stepSize: 50
-                                value: swarm ? swarm.algorithmsUpdateRate : 100
-                                onMoved: if (swarm) swarm.algorithmsUpdateRate = value
-                                anchors.verticalCenter: parent.verticalCenter
+                        Column { width: parent.width; spacing: 2
+                            Text { text: "Update Rate"; color: "#64748b"; font.pixelSize: 9 }
+                            Row { width: parent.width; spacing: 4
+                                Slider {
+                                    id: rateSlider
+                                    width: parent.width - 50; height: 18
+                                    from: 50; to: 1000; stepSize: 50
+                                    value: swarm ? swarm.algorithmsUpdateRate : 100
+                                    onMoved: if (swarm) swarm.algorithmsUpdateRate = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: Math.round(rateSlider.value) + " ms";
+                                    color: "#e2e8f0";
+                                    font.pixelSize: 9;
+                                    font.family: "Consolas";
+                                    width: 42;
+                                    horizontalAlignment: Text.AlignRight;
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
-                            Text { text: Math.round(rateSlider.value) + " ms"; color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; anchors.verticalCenter: parent.verticalCenter; width: 50; horizontalAlignment: Text.AlignRight }
+                            Text {
+                                text: {
+                                    var v = rateSlider.value;
+                                    if (v <= 100) return "Sehr schnell (hohe CPU-Last)";
+                                    if (v <= 200) return "Schnell";
+                                    if (v <= 500) return "Normal";
+                                    if (v <= 750) return "Langsam";
+                                    return "Sehr langsam (niedrige CPU-Last)";
+                                }
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
                         }
 
                         // ── BOIDS / REYNOLDS ──────────────────────────────────────
@@ -1186,7 +1209,28 @@ Item {
                                         onMoved: if (swarm) swarm.separationWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: sepSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: sepSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = sepSlider.value;
+                                        if (v < 0.5) return "Sehr schwach";
+                                        if (v < 1.0) return "Schwach";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Stark";
+                                        return "Sehr stark";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -1200,7 +1244,28 @@ Item {
                                         onMoved: if (swarm) swarm.alignmentWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: alignSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: alignSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = alignSlider.value;
+                                        if (v < 0.5) return "Sehr schwach";
+                                        if (v < 1.0) return "Schwach";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Stark";
+                                        return "Sehr stark";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -1214,7 +1279,28 @@ Item {
                                         onMoved: if (swarm) swarm.cohesionWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: cohSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: cohSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = cohSlider.value;
+                                        if (v < 0.5) return "Sehr schwach";
+                                        if (v < 1.0) return "Schwach";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Stark";
+                                        return "Sehr stark";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
