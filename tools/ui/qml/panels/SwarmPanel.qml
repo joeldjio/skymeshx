@@ -483,19 +483,94 @@ Item {
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
                         spacing: 6
 
-                        // Target drone indicator
+                        // Target drone indicator with mode selector
                         Rectangle {
-                            width: parent.width; height: 26; radius: 5
-                            color: selectedDroneId ? "#0f2d1a" : "#1e2535"
-                            border.color: selectedDroneId ? "#22c55e" : "#334155"; border.width: 1
-                            Row {
-                                anchors { fill: parent; leftMargin: 8 }
+                            width: parent.width; height: wpModeCol.implicitHeight + 12; radius: 5
+                            color: "#1e2535"
+                            border.color: "#334155"; border.width: 1
+                            
+                            Column {
+                                id: wpModeCol
+                                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
                                 spacing: 6
-                                Cmp.Icon { name: "target"; size: 11; color: "#64748b"; anchors.verticalCenter: parent.verticalCenter }
-                                Text {
-                                    text: selectedDroneId || qsTr("No drone selected")
-                                    color: selectedDroneId ? "#22c55e" : "#475569"
-                                    font.pixelSize: 11; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter
+                                
+                                // Mode selector
+                                Row {
+                                    width: parent.width; spacing: 4
+                                    
+                                    Rectangle {
+                                        width: (parent.width - 4) / 2; height: 28; radius: 4
+                                        color: !wpMultiMode.checked ? "#1e3a5f" : "#1e2535"
+                                        border.color: !wpMultiMode.checked ? "#2563eb" : "#334155"; border.width: 1
+                                        Row {
+                                            anchors.centerIn: parent; spacing: 4
+                                            Cmp.Icon { name: "user"; size: 10; color: !wpMultiMode.checked ? "#93c5fd" : "#64748b" }
+                                            Text {
+                                                text: "Single Drone"
+                                                color: !wpMultiMode.checked ? "#93c5fd" : "#64748b"
+                                                font.pixelSize: 9; font.weight: Font.Bold
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: wpMultiMode.checked = false
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: (parent.width - 4) / 2; height: 28; radius: 4
+                                        color: wpMultiMode.checked ? "#1e3a5f" : "#1e2535"
+                                        border.color: wpMultiMode.checked ? "#2563eb" : "#334155"; border.width: 1
+                                        Row {
+                                            anchors.centerIn: parent; spacing: 4
+                                            Cmp.Icon { name: "users"; size: 10; color: wpMultiMode.checked ? "#93c5fd" : "#64748b" }
+                                            Text {
+                                                text: "Multi-Drone"
+                                                color: wpMultiMode.checked ? "#93c5fd" : "#64748b"
+                                                font.pixelSize: 9; font.weight: Font.Bold
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: wpMultiMode.checked = true
+                                        }
+                                    }
+                                    
+                                    CheckBox {
+                                        id: wpMultiMode
+                                        visible: false
+                                        checked: false
+                                    }
+                                }
+                                
+                                // Target indicator
+                                Rectangle {
+                                    width: parent.width; height: 24; radius: 4
+                                    property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
+                                    property bool _hasTarget: _targets.length > 0
+                                    color: _hasTarget ? "#0f2d1a" : "#1a1a1a"
+                                    border.color: _hasTarget ? "#22c55e" : "#374151"; border.width: 1
+                                    Row {
+                                        anchors { fill: parent; leftMargin: 8 }
+                                        spacing: 6
+                                        Cmp.Icon {
+                                            name: parent.parent._targets.length > 1 ? "users" : "target"
+                                            size: 10
+                                            color: parent.parent._hasTarget ? "#22c55e" : "#475569"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                        Text {
+                                            text: {
+                                                var t = parent.parent._targets
+                                                if (t.length === 0) return "No target selected"
+                                                if (t.length === 1) return t[0]
+                                                return t.length + " drones selected"
+                                            }
+                                            color: parent.parent._hasTarget ? "#22c55e" : "#475569"
+                                            font.pixelSize: 10; font.weight: Font.Bold
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -584,13 +659,50 @@ Item {
                             }
                             Rectangle {
                                 width: 80; height: 28; radius: 5
-                                color: addWpM.containsMouse ? "#1e3a5f" : "#1e2535"
-                                border.color: "#2563eb"; border.width: 1
-                                Row { anchors.centerIn: parent; spacing: 4
-                                        Cmp.Icon { name: "plus"; size: 11; color: "#2563eb"; anchors.verticalCenter: parent.verticalCenter }
-                                        Text { text: "Add WP"; color: "#2563eb"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
+                                property bool _hasTarget: _targets.length > 0
+                                color: !_hasTarget ? "#0d1117" : (addWpM.containsMouse ? "#1e3a5f" : "#1e2535")
+                                border.color: _hasTarget ? "#2563eb" : "#374151"; border.width: 1
+                                Row {
+                                    anchors.centerIn: parent; spacing: 4
+                                    Cmp.Icon {
+                                        name: "plus"
+                                        size: 11
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
-                                MouseArea { id: addWpM; anchors.fill: parent; hoverEnabled: true; onClicked: { if (latField.text && lonField.text) root.wps.append({ lat: parseFloat(latField.text), lon: parseFloat(lonField.text), alt: parseFloat(altGotoField.text) || 10 }) } }
+                                    Text {
+                                        text: parent.parent._targets.length > 1 ? ("Add WP (" + parent.parent._targets.length + ")") : "Add WP"
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                MouseArea {
+                                    id: addWpM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: parent._hasTarget
+                                    onClicked: {
+                                        if (!latField.text || !lonField.text) return
+                                        var lat = parseFloat(latField.text)
+                                        var lon = parseFloat(lonField.text)
+                                        var alt = parseFloat(altGotoField.text) || 10
+                                        var targets = parent._targets
+                                        
+                                        if (targets.length === 1) {
+                                            // Single drone mode
+                                            Cmp.AppState.addWaypoint(targets[0], lat, lon, alt)
+                                        } else if (targets.length > 1) {
+                                            // Multi-drone mode - same waypoints for all
+                                            Cmp.AppState.addWaypointForMultiple(targets, lat, lon, alt)
+                                        }
+                                        
+                                        // Also add to global list for backward compatibility
+                                        root.wps.append({ lat: lat, lon: lon, alt: alt })
+                                    }
+                                }
                             }
                             Rectangle {
                                 width: 74; height: 28; radius: 5
@@ -604,12 +716,24 @@ Item {
                             }
                             Rectangle {
                                 width: 60; height: 28; radius: 5
+                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
                                 color: clearWpM.containsMouse ? "#7f1d1d" : "#1e2535"
                                 Row { anchors.centerIn: parent; spacing: 4
                                         Cmp.Icon { name: "trash"; size: 11; color: "#ef4444"; anchors.verticalCenter: parent.verticalCenter }
                                         Text { text: "Clear"; color: "#ef4444"; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
                                     }
-                                MouseArea { id: clearWpM; anchors.fill: parent; hoverEnabled: true; onClicked: root.wps.clear() }
+                                MouseArea {
+                                    id: clearWpM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        root.wps.clear()
+                                        var targets = parent._targets
+                                        for (var i = 0; i < targets.length; i++) {
+                                            Cmp.AppState.clearWaypoints(targets[i])
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

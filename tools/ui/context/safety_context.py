@@ -83,7 +83,9 @@ class SafetyContext(QObject):
         # Collision prediction
         self._predictor = None
         self._prediction_enabled = False
+        self._prediction_waypoint_aware = False
         self._last_predictions: List[Dict] = []
+        self._drone_waypoints: Dict[str, List[Tuple[float, float, float]]] = {}
 
         # Rate-limit tables: key → last_emit_timestamp (monotonic seconds)
         self._violation_log_ts: Dict[Tuple[str, str], float] = {}
@@ -486,6 +488,45 @@ class SafetyContext(QObject):
         except Exception as e:
             self.apfLogMessage.emit(f"[Prediction] Configuration error: {e}")
 
+    @pyqtSlot(bool)
+    def enableWaypointAwarePrediction(self, enabled: bool) -> None:
+        """Enable or disable waypoint-aware collision prediction."""
+        self._prediction_waypoint_aware = enabled
+        if enabled:
+            self.apfLogMessage.emit("[Prediction] Waypoint-aware mode enabled")
+        else:
+            self.apfLogMessage.emit("[Prediction] Velocity-based mode enabled")
+    
+    @pyqtSlot("QVariant")
+    def updateDroneWaypoints(self, waypoints_dict: dict) -> None:
+        """Update waypoint data for collision prediction.
+        
+        waypoints_dict: {droneId: [{lat, lon, alt}, ...], ...}
+        """
+        if not isinstance(waypoints_dict, dict):
+            return
+        
+        # Convert lat/lon/alt to local NED coordinates
+        self._drone_waypoints = {}
+        for did, wps in waypoints_dict.items():
+            if not isinstance(wps, list):
+                continue
+            ned_wps = []
+            for wp in wps:
+                if not isinstance(wp, dict):
+                    continue
+                lat = wp.get("lat", 0.0)
+                lon = wp.get("lon", 0.0)
+                alt = wp.get("alt", 10.0)
+                
+                if self._ref_set and lat != 0.0:
+                    x = (lat - self._ref_lat) * 111_320.0
+                    y = (lon - self._ref_lon) * self._ref_lon_scale
+                    ned_wps.append((x, y, alt))
+            
+            if ned_wps:
+                self._drone_waypoints[did] = ned_wps
+
     def _run_collision_prediction(self) -> None:
         """Run collision prediction and emit results."""
         if not self._prediction_enabled or self._predictor is None:
@@ -511,8 +552,17 @@ class SafetyContext(QObject):
                 armed=pos.armed
             )
 
-        # Run prediction
-        predictions = self._predictor.predict(states)
+        # Run prediction (waypoint-aware or velocity-based)
+        if self._prediction_waypoint_aware and self._drone_waypoints:
+            # Use waypoint-aware prediction
+            predictions = self._predictor.predict_with_waypoints(
+                states=states,
+                waypoints=self._drone_waypoints,
+                cruise_speed=5.0  # m/s, configurable
+            )
+        else:
+            # Use velocity-based prediction
+            predictions = self._predictor.predict(states)
 
         # Convert to QML-friendly format
         pred_list = [p.to_dict() for p in predictions]

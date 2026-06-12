@@ -425,6 +425,89 @@ Item {
                             }
                         }
                     }
+                    
+                    // Waypoint-Aware Prediction Toggle
+                    Rectangle {
+                        width: parent.width
+                        height: wpAwareCol.implicitHeight + 16
+                        radius: 6
+                        color: "#1a2035"
+                        border.color: "#2d3748"
+                        border.width: 1
+                        
+                        Column {
+                            id: wpAwareCol
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+                            spacing: 6
+                            
+                            Row {
+                                width: parent.width
+                                spacing: 8
+                                
+                                Rectangle {
+                                    width: 24; height: 24; radius: 4
+                                    color: wpAwareCheck.checked ? "#15803d" : "#1e2535"
+                                    border.color: wpAwareCheck.checked ? "#22c55e" : "#334155"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: wpAwareCheck.checked ? "✓" : ""
+                                        color: "#22c55e"
+                                        font.pixelSize: 14
+                                        font.weight: Font.Bold
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: wpAwareCheck.checked = !wpAwareCheck.checked
+                                    }
+                                    
+                                    CheckBox {
+                                        id: wpAwareCheck
+                                        visible: false
+                                        checked: false
+                                        onCheckedChanged: {
+                                            if (safety) {
+                                                safety.enableWaypointAwarePrediction(checked)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Column {
+                                    width: parent.width - 32
+                                    spacing: 2
+                                    
+                                    Text {
+                                        text: "Waypoint-Aware Prediction"
+                                        color: "#e2e8f0"
+                                        font.pixelSize: 11
+                                        font.weight: Font.Bold
+                                    }
+                                    
+                                    Text {
+                                        text: wpAwareCheck.checked
+                                              ? "Using planned waypoints for collision prediction"
+                                              : "Using current velocity for collision prediction"
+                                        color: "#64748b"
+                                        font.pixelSize: 9
+                                        wrapMode: Text.WordWrap
+                                        width: parent.width
+                                    }
+                                }
+                            }
+                            
+                            Text {
+                                text: "⚠ Requires waypoints to be set in Swarm Panel"
+                                color: "#f59e0b"
+                                font.pixelSize: 8
+                                visible: wpAwareCheck.checked
+                                width: parent.width
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
                 }
             }
 

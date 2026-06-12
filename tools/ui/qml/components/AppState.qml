@@ -60,6 +60,63 @@ QtObject {
         return ids
     }
 
+    // ── Per-Drone Waypoint Storage ────────────────────────────────────
+    // Structure: { droneId: [{lat, lon, alt}, ...], ... }
+    property var droneWaypoints: ({})
+    
+    signal waypointsChanged(string droneId)
+    
+    function getWaypoints(droneId) {
+        return state.droneWaypoints[droneId] || []
+    }
+    
+    function setWaypoints(droneId, waypoints) {
+        var w = Object.assign({}, state.droneWaypoints)
+        w[droneId] = waypoints
+        state.droneWaypoints = w
+        state.waypointsChanged(droneId)
+    }
+    
+    function addWaypoint(droneId, lat, lon, alt) {
+        var wps = state.getWaypoints(droneId).slice() // copy
+        wps.push({lat: lat, lon: lon, alt: alt})
+        state.setWaypoints(droneId, wps)
+    }
+    
+    function clearWaypoints(droneId) {
+        state.setWaypoints(droneId, [])
+    }
+    
+    function clearAllWaypoints() {
+        state.droneWaypoints = ({})
+    }
+    
+    // ── Multi-Drone Waypoint Operations ───────────────────────────────
+    function setWaypointsForMultiple(droneIds, waypoints) {
+        var w = Object.assign({}, state.droneWaypoints)
+        for (var i = 0; i < droneIds.length; i++) {
+            w[droneIds[i]] = waypoints
+        }
+        state.droneWaypoints = w
+        // Emit for all affected drones
+        for (var i = 0; i < droneIds.length; i++) {
+            state.waypointsChanged(droneIds[i])
+        }
+    }
+    
+    function addWaypointForMultiple(droneIds, lat, lon, alt) {
+        var w = Object.assign({}, state.droneWaypoints)
+        for (var i = 0; i < droneIds.length; i++) {
+            var wps = (w[droneIds[i]] || []).slice()
+            wps.push({lat: lat, lon: lon, alt: alt})
+            w[droneIds[i]] = wps
+        }
+        state.droneWaypoints = w
+        for (var i = 0; i < droneIds.length; i++) {
+            state.waypointsChanged(droneIds[i])
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
     function selectDrone(id) { selectedDroneId = id }
     function clearSelection() { selectedDroneId = "" }

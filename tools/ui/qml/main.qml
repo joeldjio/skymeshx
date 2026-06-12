@@ -167,6 +167,26 @@ Window {
         }
     }
 
+    // ── Waypoint-to-Safety sync ───────────────────────────────────────────────
+    Connections {
+        target: Cmp.AppState
+        function onWaypointsChanged(droneId) {
+            // Sync waypoints to SafetyContext for collision prediction
+            if (typeof safety !== "undefined" && safety) {
+                var waypointsDict = {}
+                var droneIds = (typeof swarm !== "undefined" && swarm) ? swarm.droneIds() : []
+                for (var i = 0; i < droneIds.length; i++) {
+                    var did = droneIds[i]
+                    var wps = Cmp.AppState.getWaypoints(did)
+                    if (wps && wps.length > 0) {
+                        waypointsDict[did] = wps
+                    }
+                }
+                safety.updateDroneWaypoints(waypointsDict)
+            }
+        }
+    }
+
     // ── Global log handler (encapsulated) ─────────────────────────────────────
     Cmp.GlobalLogHandler { id: globalLog }
     property alias globalLogModel: globalLog.model
