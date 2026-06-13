@@ -621,13 +621,28 @@ Window {
                                 color: clrM.containsMouse ? "#7f1d1d" : "#1e2535"
                                 border.color: "#ef4444"; border.width: 1
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: globalMissionWaypoints.count > 0
+                                // Always visible now
                                 Row {
                                     anchors.centerIn: parent; spacing: 4
                                     Cmp.Icon { name: "trash"; size: 11; color: "#fecaca"; anchors.verticalCenter: parent.verticalCenter }
                                     Text { text: "CLEAR"; color: "#fecaca"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                                 }
-                                MouseArea { id: clrM; anchors.fill: parent; hoverEnabled: true; onClicked: { globalMissionWaypoints.clear(); root.syncWaypointsToMap() } }
+                                MouseArea {
+                                    id: clrM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        // Clear everything: waypoints, boundary, coverage
+                                        globalMissionWaypoints.clear()
+                                        root.syncWaypointsToMap()
+                                        if (typeof mission !== "undefined" && mission) {
+                                            mission.clearFieldBoundary()
+                                        }
+                                        if (mapLoader.item && mapLoader.item.clearFieldCoverage) {
+                                            mapLoader.item.clearFieldCoverage()
+                                        }
+                                    }
+                                }
                             }
 
                             // ── MISSION STARTEN ─────────────────────────
