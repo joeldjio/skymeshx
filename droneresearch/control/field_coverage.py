@@ -629,8 +629,14 @@ class FieldCoveragePlanner:
             # Create sub-boundary and generate coverage
             zone_boundary = FieldBoundary(zone_corners_gps)
             zone_waypoints = self.generate_coverage_waypoints(
-                zone_boundary, config, add_rtl=True
+                zone_boundary, config, add_rtl=False  # No RTL for field splitting to avoid collisions
             )
+            
+            # Add zone-specific RTL point (center of zone at end)
+            zone_center_north = (min_north + max_north) / 2
+            zone_center_east = (zone_min_east + zone_max_east) / 2
+            rtl_lat, rtl_lon = self._local_to_gps(zone_center_north, zone_center_east)
+            zone_waypoints.append((rtl_lat, rtl_lon, config.altitude))
             
             result[drone_id] = zone_waypoints
         
