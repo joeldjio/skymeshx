@@ -17,6 +17,7 @@ from droneresearch.control.field_coverage import (
     FieldBoundary,
     CoverageConfig,
     CoveragePattern,
+    MultiDroneStrategy,
 )
 from droneresearch.control.mission import MissionEngine, Waypoint
 
@@ -52,6 +53,11 @@ class MissionContext(QObject):
         self._coverage_line_spacing = 10.0
         self._coverage_overlap = 0.2
         self._coverage_speed = 5.0
+        
+        # Multi-drone strategy
+        self._multi_drone_strategy = MultiDroneStrategy.SINGLE_DRONE.value
+        self._formation_offset = 5.0  # meters between drones in formation
+        self._sequential_delay = 10.0  # seconds between drone starts
         
         # Generated waypoints
         self._coverage_waypoints: List[Tuple[float, float, float]] = []
@@ -131,6 +137,34 @@ class MissionContext(QObject):
 
     @pyqtProperty(bool, notify=coverageGenerated)
     def fieldCoverageActive(self):
+        return len(self._coverage_waypoints) > 0
+
+    @pyqtProperty(int, notify=fieldBoundaryChanged)
+    def multiDroneStrategy(self):
+        return self._multi_drone_strategy
+
+    @multiDroneStrategy.setter
+    def multiDroneStrategy(self, value):
+        self._multi_drone_strategy = value
+        self.fieldBoundaryChanged.emit()
+
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def formationOffset(self):
+        return self._formation_offset
+
+    @formationOffset.setter
+    def formationOffset(self, value):
+        self._formation_offset = value
+        self.fieldBoundaryChanged.emit()
+
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def sequentialDelay(self):
+        return self._sequential_delay
+
+    @sequentialDelay.setter
+    def sequentialDelay(self, value):
+        self._sequential_delay = value
+        self.fieldBoundaryChanged.emit()
         return len(self._coverage_waypoints) > 0
 
     # ── Methods ───────────────────────────────────────────────────────────
@@ -274,14 +308,57 @@ class MissionContext(QObject):
                 self.logMessage.emit("ERROR", "[MISSION] No connected drones found")
                 return
             
+            num_drones = len(target_drones)
+            strategy = MultiDroneStrategy(self._multi_drone_strategy)
+            
+            # Distribute waypoints based on strategy
+            if strategy == MultiDroneStrategy.FIELD_SPLITTING and len(self._boundary_points) >= 3:
+                # Use field splitting (requires boundary)
+                try:
+                    boundary = FieldBoundary(self._boundary_points)
+                    config = CoverageConfig(
+                        pattern=CoveragePattern(self._coverage_pattern),
+                        altitude=self._coverage_altitude,
+                        line_spacing=self._coverage_line_spacing,
+                        overlap=self._coverage_overlap,
+                        speed=self._coverage_speed
+                    )
+                    distributed_waypoints = self._planner.split_field_into_zones(
+                        boundary, num_drones, config
+                    )
+                    self.logMessage.emit(
+                        "INFO",
+                        f"[MISSION] Field split into {num_drones} zones"
+                    )
+                except Exception as e:
+                    self.logMessage.emit("ERROR", f"[MISSION] Field splitting failed: {e}")
+                    return
+            else:
+                # Use waypoint distribution strategies
+                distributed_waypoints = self._planner.distribute_waypoints_for_swarm(
+                    waypoints,
+                    num_drones,
+                    strategy,
+                    formation_offset=self._formation_offset,
+                    sequential_delay=self._sequential_delay
+                )
+            
             self.logMessage.emit(
                 "INFO",
-                f"[MISSION] Uploading {len(waypoints)} waypoints to {len(target_drones)} drone(s)..."
+                f"[MISSION] Strategy: {strategy.name}, uploading to {num_drones} drone(s)..."
             )
             
-            # Upload to each drone
+            # Upload to each drone with its specific waypoints
             success_count = 0
             for drone_id, backend in target_drones:
+                # Get waypoints for this drone
+                drone_waypoints = distributed_waypoints.get(drone_id, [])
+                if not drone_waypoints:
+                    self.logMessage.emit(
+                        "WARN",
+                        f"[{drone_id}] No waypoints assigned, skipping"
+                    )
+                    continue
                 try:
                     # Get the drone's MAVLink connection
                     # backend._drone is GenericUAVModel (inherits from Drone)
@@ -305,8 +382,8 @@ class MissionContext(QObject):
                     mission = MissionEngine(conn)
                     mission.clear()
                     
-                    # Add waypoints
-                    for lat, lon, alt in waypoints:
+                    # Add waypoints for this specific drone
+                    for lat, lon, alt in drone_waypoints:
                         mission.add(Waypoint(
                             lat=lat,
                             lon=lon,
@@ -324,7 +401,7 @@ class MissionContext(QObject):
                     
                     self.logMessage.emit(
                         "INFO",
-                        f"[{drone_id}] ✅ Mission uploaded ({len(waypoints)} waypoints)"
+                        f"[{drone_id}] ✅ Mission uploaded ({len(drone_waypoints)} waypoints)"
                     )
                     
                     # Auto-sequence: ARM → TAKEOFF → START MISSION

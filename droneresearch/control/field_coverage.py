@@ -21,6 +21,15 @@ class CoveragePattern(Enum):
     ZIGZAG = 3          # Zigzag pattern (no turns at ends)
 
 
+class MultiDroneStrategy(Enum):
+    """Multi-drone coverage distribution strategies."""
+    SINGLE_DRONE = 0      # Single drone covers entire field (default)
+    OFFSET_PATTERN = 1    # Distribute lines among drones (D1: lines 1,4,7... D2: lines 2,5,8...)
+    FIELD_SPLITTING = 2   # Divide field into zones based on drone count
+    SEQUENTIAL_APF = 3    # Time-delayed start with APF collision avoidance
+    FORMATION_FLIGHT = 4  # Leader flies pattern, followers maintain formation
+
+
 @dataclass
 class FieldBoundary:
     """Field boundary definition in GPS coordinates."""
@@ -377,3 +386,252 @@ class FieldCoveragePlanner:
         return total_distance / speed
 
 # Made with Bob
+
+    
+    def distribute_waypoints_for_swarm(
+        self,
+        waypoints: List[Tuple[float, float, float]],
+        num_drones: int,
+        strategy: MultiDroneStrategy,
+        formation_offset: float = 5.0,
+        sequential_delay: float = 10.0
+    ) -> dict[str, List[Tuple[float, float, float]]]:
+        """
+        Distribute waypoints among multiple drones based on strategy.
+        
+        Args:
+            waypoints: Full coverage waypoints (lat, lon, alt)
+            num_drones: Number of drones in swarm
+            strategy: Distribution strategy to use
+            formation_offset: Meters between drones in formation (for FORMATION_FLIGHT)
+            sequential_delay: Seconds between drone starts (for SEQUENTIAL_APF)
+            
+        Returns:
+            Dictionary mapping drone_id to waypoint list
+            
+        Example:
+            >>> planner = FieldCoveragePlanner()
+            >>> waypoints = [(lat1, lon1, alt), (lat2, lon2, alt), ...]
+            >>> distributed = planner.distribute_waypoints_for_swarm(
+            ...     waypoints, num_drones=3, strategy=MultiDroneStrategy.OFFSET_PATTERN
+            ... )
+            >>> # distributed = {"D1": [...], "D2": [...], "D3": [...]}
+        """
+        if num_drones <= 0:
+            raise ValueError("Number of drones must be positive")
+        
+        if num_drones == 1 or strategy == MultiDroneStrategy.SINGLE_DRONE:
+            # Single drone gets all waypoints
+            return {"D1": waypoints}
+        
+        if strategy == MultiDroneStrategy.OFFSET_PATTERN:
+            return self._distribute_offset_pattern(waypoints, num_drones)
+        
+        elif strategy == MultiDroneStrategy.FIELD_SPLITTING:
+            # Field splitting requires boundary - not applicable to pre-generated waypoints
+            # Return offset pattern as fallback
+            return self._distribute_offset_pattern(waypoints, num_drones)
+        
+        elif strategy == MultiDroneStrategy.SEQUENTIAL_APF:
+            return self._distribute_sequential(waypoints, num_drones, sequential_delay)
+        
+        elif strategy == MultiDroneStrategy.FORMATION_FLIGHT:
+            return self._distribute_formation(waypoints, num_drones, formation_offset)
+        
+        else:
+            raise ValueError(f"Unsupported strategy: {strategy}")
+    
+    def _distribute_offset_pattern(
+        self,
+        waypoints: List[Tuple[float, float, float]],
+        num_drones: int
+    ) -> dict[str, List[Tuple[float, float, float]]]:
+        """
+        Distribute waypoints using offset pattern (interleaved lines).
+        
+        Drone 1 gets waypoints 0, num_drones, 2*num_drones, ...
+        Drone 2 gets waypoints 1, num_drones+1, 2*num_drones+1, ...
+        etc.
+        
+        Args:
+            waypoints: Full coverage waypoints
+            num_drones: Number of drones
+            
+        Returns:
+            Dictionary mapping drone_id to waypoint list
+        """
+        result = {f"D{i+1}": [] for i in range(num_drones)}
+        
+        for idx, wp in enumerate(waypoints):
+            drone_idx = idx % num_drones
+            drone_id = f"D{drone_idx + 1}"
+            result[drone_id].append(wp)
+        
+        return result
+    
+    def _distribute_sequential(
+        self,
+        waypoints: List[Tuple[float, float, float]],
+        num_drones: int,
+        delay_seconds: float
+    ) -> dict[str, List[Tuple[float, float, float]]]:
+        """
+        Distribute waypoints with time delays (for APF collision avoidance).
+        
+        All drones get same waypoints but with staggered start times.
+        This relies on APF (Artificial Potential Field) for collision avoidance.
+        
+        Args:
+            waypoints: Full coverage waypoints
+            num_drones: Number of drones
+            delay_seconds: Delay between drone starts
+            
+        Returns:
+            Dictionary mapping drone_id to waypoint list
+            
+        Note:
+            Actual time delay must be implemented in mission upload logic.
+            This method just assigns same waypoints to all drones.
+        """
+        result = {}
+        for i in range(num_drones):
+            drone_id = f"D{i+1}"
+            # All drones get same waypoints
+            # Time delay handled by mission upload with (i * delay_seconds) offset
+            result[drone_id] = waypoints.copy()
+        
+        return result
+    
+    def _distribute_formation(
+        self,
+        waypoints: List[Tuple[float, float, float]],
+        num_drones: int,
+        offset_meters: float
+    ) -> dict[str, List[Tuple[float, float, float]]]:
+        """
+        Distribute waypoints for formation flight.
+        
+        Leader (D1) gets original waypoints.
+        Followers get offset waypoints maintaining formation.
+        
+        Args:
+            waypoints: Full coverage waypoints
+            num_drones: Number of drones
+            offset_meters: Distance between drones in formation
+            
+        Returns:
+            Dictionary mapping drone_id to waypoint list
+        """
+        if self._home_position is None:
+            raise ValueError("Home position must be set for formation flight")
+        
+        result = {}
+        
+        # Leader gets original waypoints
+        result["D1"] = waypoints.copy()
+        
+        # Followers get offset waypoints
+        for i in range(1, num_drones):
+            drone_id = f"D{i+1}"
+            offset_waypoints = []
+            
+            for lat, lon, alt in waypoints:
+                # Convert to local NED
+                n, e = self._gps_to_local(lat, lon)
+                
+                # Apply offset (followers fly to the right of leader)
+                # Offset in East direction for simple line formation
+                e_offset = e + (i * offset_meters)
+                
+                # Convert back to GPS
+                lat_offset, lon_offset = self._local_to_gps(n, e_offset)
+                offset_waypoints.append((lat_offset, lon_offset, alt))
+            
+            result[drone_id] = offset_waypoints
+        
+        return result
+    
+    def split_field_into_zones(
+        self,
+        boundary: FieldBoundary,
+        num_zones: int,
+        config: CoverageConfig
+    ) -> dict[str, List[Tuple[float, float, float]]]:
+        """
+        Split field into zones and generate coverage for each zone.
+        
+        Divides field into vertical strips (one per drone) and generates
+        coverage pattern for each strip.
+        
+        Args:
+            boundary: Field boundary definition
+            num_zones: Number of zones (should equal number of drones)
+            config: Coverage configuration
+            
+        Returns:
+            Dictionary mapping drone_id to waypoint list for that zone
+            
+        Example:
+            >>> planner = FieldCoveragePlanner()
+            >>> planner.set_home_position(47.397742, 8.545594)
+            >>> boundary = FieldBoundary([...])
+            >>> zones = planner.split_field_into_zones(boundary, num_zones=3, config)
+            >>> # zones = {"D1": [waypoints for zone 1], "D2": [...], "D3": [...]}
+        """
+        if self._home_position is None:
+            raise ValueError("Home position must be set before splitting field")
+        
+        if num_zones <= 0:
+            raise ValueError("Number of zones must be positive")
+        
+        if num_zones == 1:
+            # Single zone = full field
+            waypoints = self.generate_coverage_waypoints(boundary, config, add_rtl=True)
+            return {"D1": waypoints}
+        
+        # Convert boundary to local NED
+        local_corners = [
+            self._gps_to_local(lat, lon)
+            for lat, lon in boundary.corners
+        ]
+        
+        # Calculate bounding box
+        north_vals = [n for n, e in local_corners]
+        east_vals = [e for n, e in local_corners]
+        min_north, max_north = min(north_vals), max(north_vals)
+        min_east, max_east = min(east_vals), max(east_vals)
+        
+        # Split field into vertical zones (divide East dimension)
+        zone_width = (max_east - min_east) / num_zones
+        
+        result = {}
+        for i in range(num_zones):
+            drone_id = f"D{i+1}"
+            
+            # Define zone boundaries
+            zone_min_east = min_east + (i * zone_width)
+            zone_max_east = min_east + ((i + 1) * zone_width)
+            
+            # Create sub-boundary for this zone (rectangle)
+            zone_corners_local = [
+                (min_north, zone_min_east),
+                (max_north, zone_min_east),
+                (max_north, zone_max_east),
+                (min_north, zone_max_east)
+            ]
+            
+            # Convert back to GPS
+            zone_corners_gps = [
+                self._local_to_gps(n, e)
+                for n, e in zone_corners_local
+            ]
+            
+            # Create sub-boundary and generate coverage
+            zone_boundary = FieldBoundary(zone_corners_gps)
+            zone_waypoints = self.generate_coverage_waypoints(
+                zone_boundary, config, add_rtl=True
+            )
+            
+            result[drone_id] = zone_waypoints
+        
+        return result

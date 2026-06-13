@@ -373,6 +373,186 @@ Rectangle {
                         }
                     }
 
+
+                    // Multi-Drone Strategy
+                    Column {
+                        width: parent.width
+                        spacing: 6
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+
+                            Rectangle {
+                                width: 4
+                                height: 16
+                                color: "#f59e0b"
+                                radius: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: "Multi-Drone Strategy"
+                                color: "#f59e0b"
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        Text {
+                            text: "Select how waypoints are distributed among multiple drones"
+                            color: "#64748b"
+                            font.pixelSize: 8
+                            font.italic: true
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
+
+                        // Strategy buttons
+                        Column {
+                            width: parent.width
+                            spacing: 4
+
+                            Repeater {
+                                model: [
+                                    { name: "Single Drone", value: 0, desc: "One drone covers entire field" },
+                                    { name: "Offset Pattern", value: 1, desc: "Distribute lines among drones (D1: lines 1,4,7... D2: lines 2,5,8...)" },
+                                    { name: "Field Splitting", value: 2, desc: "Divide field into vertical zones (one zone per drone)" },
+                                    { name: "Sequential + APF", value: 3, desc: "All drones fly same path with time delay and collision avoidance" },
+                                    { name: "Formation Flight", value: 4, desc: "Leader flies coverage pattern, followers maintain offset formation" }
+                                ]
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 48
+                                    radius: 6
+                                    color: {
+                                        if (mission && mission.multiDroneStrategy === modelData.value)
+                                            return "#1e40af";
+                                        return strategyMouseArea.containsMouse ? "#1e3a8a" : "#0f172a";
+                                    }
+                                    border.color: mission && mission.multiDroneStrategy === modelData.value ? "#3b82f6" : "#334155"
+                                    border.width: mission && mission.multiDroneStrategy === modelData.value ? 2 : 1
+
+                                    Column {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 12
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 2
+
+                                        Text {
+                                            text: modelData.name
+                                            color: mission && mission.multiDroneStrategy === modelData.value ? "#60a5fa" : "#e2e8f0"
+                                            font.pixelSize: 10
+                                            font.weight: Font.Bold
+                                        }
+
+                                        Text {
+                                            text: modelData.desc
+                                            color: "#94a3b8"
+                                            font.pixelSize: 8
+                                            font.italic: true
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: strategyMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (mission) {
+                                                mission.multiDroneStrategy = modelData.value;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Formation offset (only for Formation Flight)
+                        Column {
+                            width: parent.width
+                            spacing: 2
+                            visible: mission && mission.multiDroneStrategy === 4
+
+                            Text {
+                                text: "Formation Offset (m)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: formationSlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 3
+                                    to: 20
+                                    stepSize: 1
+                                    value: mission ? mission.formationOffset : 5
+                                    onMoved: if (mission) mission.formationOffset = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: Math.round(formationSlider.value) + " m"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+
+                        // Sequential delay (only for Sequential + APF)
+                        Column {
+                            width: parent.width
+                            spacing: 2
+                            visible: mission && mission.multiDroneStrategy === 3
+
+                            Text {
+                                text: "Start Delay (seconds)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: delaySlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 5
+                                    to: 60
+                                    stepSize: 5
+                                    value: mission ? mission.sequentialDelay : 10
+                                    onMoved: if (mission) mission.sequentialDelay = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: Math.round(delaySlider.value) + " s"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
                     Rectangle { width: parent.width; height: 1; color: "#2d3748" }
 
                     // Field Boundary
