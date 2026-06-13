@@ -348,11 +348,17 @@ class MissionContext(QObject):
                 f"[MISSION] Strategy: {strategy.name}, uploading to {num_drones} drone(s)..."
             )
             
+            # Create mapping from actual drone_id to D1, D2, D3... format
+            drone_id_mapping = {}
+            for idx, (drone_id, _) in enumerate(target_drones):
+                drone_id_mapping[drone_id] = f"D{idx + 1}"
+            
             # Upload to each drone with its specific waypoints
             success_count = 0
             for drone_id, backend in target_drones:
-                # Get waypoints for this drone
-                drone_waypoints = distributed_waypoints.get(drone_id, [])
+                # Get waypoints for this drone using mapped ID
+                mapped_id = drone_id_mapping[drone_id]
+                drone_waypoints = distributed_waypoints.get(mapped_id, [])
                 if not drone_waypoints:
                     self.logMessage.emit(
                         "WARN",
