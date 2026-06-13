@@ -1173,11 +1173,11 @@ Item {
                             Text {
                                 text: {
                                     var v = rateSlider.value;
-                                    if (v <= 100) return "Sehr schnell (hohe CPU-Last)";
-                                    if (v <= 200) return "Schnell";
+                                    if (v <= 100) return "Very fast (high CPU load)";
+                                    if (v <= 200) return "Fast";
                                     if (v <= 500) return "Normal";
-                                    if (v <= 750) return "Langsam";
-                                    return "Sehr langsam (niedrige CPU-Last)";
+                                    if (v <= 750) return "Slow";
+                                    return "Very slow (low CPU load)";
                                 }
                                 color: "#94a3b8"
                                 font.pixelSize: 8
@@ -1222,11 +1222,11 @@ Item {
                                 Text {
                                     text: {
                                         var v = sepSlider.value;
-                                        if (v < 0.5) return "Sehr schwach";
-                                        if (v < 1.0) return "Schwach";
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
                                         if (v < 2.0) return "Normal";
-                                        if (v < 2.5) return "Stark";
-                                        return "Sehr stark";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
                                     }
                                     color: "#94a3b8"
                                     font.pixelSize: 8
@@ -1257,11 +1257,11 @@ Item {
                                 Text {
                                     text: {
                                         var v = alignSlider.value;
-                                        if (v < 0.5) return "Sehr schwach";
-                                        if (v < 1.0) return "Schwach";
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
                                         if (v < 2.0) return "Normal";
-                                        if (v < 2.5) return "Stark";
-                                        return "Sehr stark";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
                                     }
                                     color: "#94a3b8"
                                     font.pixelSize: 8
@@ -1292,11 +1292,11 @@ Item {
                                 Text {
                                     text: {
                                         var v = cohSlider.value;
-                                        if (v < 0.5) return "Sehr schwach";
-                                        if (v < 1.0) return "Schwach";
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
                                         if (v < 2.0) return "Normal";
-                                        if (v < 2.5) return "Stark";
-                                        return "Sehr stark";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
                                     }
                                     color: "#94a3b8"
                                     font.pixelSize: 8
