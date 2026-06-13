@@ -34,6 +34,7 @@ class MissionContext(QObject):
     coverageGenerated = pyqtSignal()
     coverageCleared = pyqtSignal()
     drawingModeChanged = pyqtSignal(bool, arguments=["active"])
+    missionLockChanged = pyqtSignal(bool, arguments=["locked"])
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -65,8 +66,17 @@ class MissionContext(QObject):
         self._coverage_time = 0.0
         self._preview_active = False
         
+        # Mission lock state
+        self._mission_locked = False
+        
         # Swarm context reference (injected via wire())
         self._swarm_context: Optional["SwarmContext"] = None
+        
+        # Poll mission status every 500ms to update lock state
+        from PyQt6.QtCore import QTimer
+        self._lock_poll_timer = QTimer(self)
+        self._lock_poll_timer.timeout.connect(self._update_mission_lock)
+        self._lock_poll_timer.start(500)  # 500ms polling interval
 
     # ── Properties ────────────────────────────────────────────────────────
 
@@ -167,7 +177,50 @@ class MissionContext(QObject):
         self.fieldBoundaryChanged.emit()
         return len(self._coverage_waypoints) > 0
 
+    @pyqtProperty(bool, notify=missionLockChanged)
+    def missionLocked(self):
+        """True if any drone is currently executing a mission (prevents editing)."""
+        return self._mission_locked
+
     # ── Methods ───────────────────────────────────────────────────────────
+    
+    def _update_mission_lock(self):
+        """Poll swarm context to check if any drone is in mission mode."""
+        if not self._swarm_context:
+            return
+        
+        # Check if any connected drone is in MISSION state
+        backends = self._swarm_context.backend.all_backends()
+        mission_active = False
+        
+        for drone_id, backend in backends.items():
+            if not backend.is_connected:
+                continue
+            
+            # Check FSM state
+            if hasattr(backend, 'fsm_state'):
+                fsm_state = str(backend.fsm_state).upper()
+                if fsm_state == 'MISSION':
+                    mission_active = True
+                    break
+            
+            # Also check telemetry flight mode
+            if hasattr(backend, 'get_telemetry_snapshot'):
+                snap = backend.get_telemetry_snapshot()
+                if snap:
+                    flight_mode = str(snap.get('flight_mode', '')).upper()
+                    if flight_mode in ('AUTO', 'MISSION'):
+                        mission_active = True
+                        break
+        
+        # Update lock state if changed
+        if mission_active != self._mission_locked:
+            self._mission_locked = mission_active
+            self.missionLockChanged.emit(mission_active)
+            if mission_active:
+                self.logMessage.emit("INFO", "[MISSION] 🔒 Mission lock activated (drone in MISSION mode)")
+            else:
+                self.logMessage.emit("INFO", "[MISSION] 🔓 Mission lock released")
 
     @pyqtSlot(float, float)
     def setHomePosition(self, lat: float, lon: float):

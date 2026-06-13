@@ -97,6 +97,7 @@ Rectangle {
                     Column {
                         width: parent.width
                         spacing: 6
+                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
 
                         Text {
                             text: "Coverage Pattern"
@@ -147,6 +148,7 @@ Rectangle {
 
                                     MouseArea {
                                         anchors.fill: parent
+                                        enabled: !(mission && mission.missionLocked)
                                         onClicked: {
                                             if (!mission) return
                                             mission.coveragePattern = modelData.value
@@ -167,6 +169,8 @@ Rectangle {
                         columns: 2
                         columnSpacing: 12
                         rowSpacing: 12
+                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
+                        enabled: !(mission && mission.missionLocked)
 
                         // Altitude
                         Column {
@@ -378,6 +382,7 @@ Rectangle {
                     Column {
                         width: parent.width
                         spacing: 6
+                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
 
                         Row {
                             width: parent.width
@@ -460,6 +465,7 @@ Rectangle {
                                         id: strategyMouseArea
                                         anchors.fill: parent
                                         hoverEnabled: true
+                                        enabled: !(mission && mission.missionLocked)
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             if (mission) {
@@ -591,20 +597,21 @@ Rectangle {
                                 color: drawBoundaryM.containsMouse ? "#1e40af" : "#1e3a8a"
                                 border.color: "#3b82f6"
                                 border.width: 1
+                                opacity: mission && mission.missionLocked ? 0.4 : 1.0
 
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 6
 
                                     Cmp.Icon {
-                                        name: "edit"
+                                        name: mission && mission.missionLocked ? "lock" : "edit"
                                         size: 12
                                         color: "#93c5fd"
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
 
                                     Text {
-                                        text: "DRAW ON MAP"
+                                        text: mission && mission.missionLocked ? "LOCKED" : "DRAW ON MAP"
                                         color: "#93c5fd"
                                         font.pixelSize: 9
                                         font.weight: Font.Bold
@@ -617,6 +624,7 @@ Rectangle {
                                     id: drawBoundaryM
                                     anchors.fill: parent
                                     hoverEnabled: true
+                                    enabled: !(mission && mission.missionLocked)
                                     onClicked: {
                                         if (mission) {
                                             mission.startDrawingBoundary()
@@ -762,7 +770,7 @@ Rectangle {
                             color: generateM.containsMouse ? "#15803d" : "#166534"
                             border.color: "#22c55e"
                             border.width: 1
-                            opacity: mission && mission.fieldBoundaryPoints >= 3 ? 1 : 0.5
+                            opacity: (mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)) ? 1 : 0.4
 
                             Row {
                                 anchors.centerIn: parent
@@ -789,7 +797,7 @@ Rectangle {
                                 id: generateM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.fieldBoundaryPoints >= 3
+                                enabled: mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)
                                 onClicked: if (mission) mission.generateFieldCoverage()
                             }
                         }
