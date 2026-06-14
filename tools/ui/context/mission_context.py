@@ -78,6 +78,11 @@ class MissionContext(QObject):
         self._lock_poll_timer = QTimer(self)
         self._lock_poll_timer.timeout.connect(self._update_mission_lock)
         self._lock_poll_timer.start(500)  # 500ms polling interval
+        
+        # Boundary drawing timeout (5 minutes)
+        self._drawing_timeout_timer = QTimer(self)
+        self._drawing_timeout_timer.timeout.connect(self._on_drawing_timeout)
+        self._drawing_timeout_timer.setSingleShot(True)
 
     # ── Properties ────────────────────────────────────────────────────────
 
@@ -271,7 +276,31 @@ class MissionContext(QObject):
         with self._lock:
             self._drawing_mode = True
             self.drawingModeChanged.emit(True)
-            self.logMessage.emit("INFO", "[MISSION] Click map to define boundary")
+            self.logMessage.emit("INFO", "[MISSION] Click map to define boundary (5min timeout)")
+            # Start 5-minute timeout
+            self._drawing_timeout_timer.start(300000)  # 300000ms = 5 minutes
+
+    def _on_drawing_timeout(self):
+        """Auto-cancel boundary drawing after 5 minutes."""
+        with self._lock:
+            if self._drawing_mode:
+                self._drawing_mode = False
+                self._boundary_points.clear()
+                self._drawing_timeout_timer.stop()
+                self.drawingModeChanged.emit(False)
+                self.fieldBoundaryChanged.emit()
+                self.logMessage.emit("WARN", "[MISSION] ⏱ Boundary drawing timed out (5min)")
+
+    @pyqtSlot()
+    def cancelDrawingBoundary(self):
+        """Cancel boundary drawing and clear points."""
+        with self._lock:
+            self._drawing_mode = False
+            self._boundary_points.clear()
+            self._drawing_timeout_timer.stop()
+            self.drawingModeChanged.emit(False)
+            self.fieldBoundaryChanged.emit()
+            self.logMessage.emit("INFO", "[MISSION] ❌ Boundary drawing cancelled")
 
     @pyqtSlot(float, float)
     def addBoundaryPoint(self, lat: float, lon: float):
@@ -295,9 +324,10 @@ class MissionContext(QObject):
     def finishDrawingBoundary(self):
         with self._lock:
             self._drawing_mode = False
+            self._drawing_timeout_timer.stop()  # Stop timeout timer
             self.drawingModeChanged.emit(False)
             if len(self._boundary_points) >= 3:
-                self.logMessage.emit("INFO", f"[MISSION] Boundary: {len(self._boundary_points)} points")
+                self.logMessage.emit("INFO", f"[MISSION] ✅ Boundary: {len(self._boundary_points)} points")
             else:
                 self.logMessage.emit("WARNING", "[MISSION] Need ≥3 points")
 
