@@ -32,9 +32,23 @@ class Waypoint:
 
 
 class MissionEngine:
-    _HANDSHAKE_TIMEOUT = 0.25  # seconds to wait for MISSION_REQUEST(0)
+    """
+    Mission upload and execution engine.
+    
+    Args:
+        connection: MAVLink connection to the autopilot
+        handshake_timeout: Seconds to wait for MISSION_REQUEST(0) (default: 0.25)
+        item_timeout: Seconds to wait for each MISSION_REQUEST (default: 3.0)
+        ack_timeout: Seconds to wait for final MISSION_ACK (default: 5.0)
+    """
 
-    def __init__(self, connection: MAVLinkConnection):
+    def __init__(
+        self,
+        connection: MAVLinkConnection,
+        handshake_timeout: float = 0.25,
+        item_timeout: float = 3.0,
+        ack_timeout: float = 5.0
+    ):
         self._conn = connection
         self._waypoints: List[Waypoint] = []
         self._current = -1
@@ -52,6 +66,10 @@ class MissionEngine:
         self._upload_thread: Optional[threading.Thread] = None
         self._upload_progress_callback: Optional[Callable[[int, int], None]] = None
         self._upload_complete_callback: Optional[Callable[[bool], None]] = None
+        # Configurable timeouts
+        self._handshake_timeout = handshake_timeout
+        self._item_timeout = item_timeout
+        self._ack_timeout = ack_timeout
 
         connection.on("message", self._on_message)
 
@@ -192,7 +210,7 @@ class MissionEngine:
             return False
 
         # Wait for MISSION_REQUEST(0), checking abort every 10 ms.
-        deadline = time.time() + self._HANDSHAKE_TIMEOUT
+        deadline = time.time() + self._handshake_timeout
         while time.time() < deadline:
             if self._abort_event.is_set():
                 return False
@@ -213,7 +231,7 @@ class MissionEngine:
             if seq > 0:
                 if self._abort_event.is_set():
                     return False
-                if not self._req_events[seq].wait(timeout=3.0):
+                if not self._req_events[seq].wait(timeout=self._item_timeout):
                     print(f"[mission] timeout waiting for MISSION_REQUEST({seq})")
                     return False
             if not self._send_item(mav, seq):
@@ -225,7 +243,7 @@ class MissionEngine:
                 except Exception as e:
                     print(f"[mission] progress callback error: {e}")
         # Wait for final MISSION_ACK.
-        if not self._ack_event.wait(timeout=5.0):
+        if not self._ack_event.wait(timeout=self._ack_timeout):
             print("[mission] timeout waiting for MISSION_ACK")
             return False
         return self._ack_result == 0  # MAV_MISSION_ACCEPTED

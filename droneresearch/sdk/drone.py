@@ -211,8 +211,37 @@ class Drone:
     def rtl(self):
         self._conn.rtl()
 
-    def goto(self, lat: float, lon: float, alt: float, timeout: float = 60.0) -> bool:
-        """Navigate to GPS coordinates with timeout budget distribution."""
+    def goto(
+        self,
+        lat: float,
+        lon: float,
+        alt: float,
+        timeout: float = 60.0,
+        acceptance_radius: float = 2.0,
+        check_altitude: bool = True,
+        check_velocity: bool = True
+    ) -> bool:
+        """
+        Navigate to GPS coordinates with configurable arrival criteria.
+        
+        Args:
+            lat: Target latitude (degrees)
+            lon: Target longitude (degrees)
+            alt: Target altitude (meters AGL)
+            timeout: Maximum time to wait (seconds)
+            acceptance_radius: Horizontal distance threshold (meters, default: 2.0)
+            check_altitude: If True, also verify altitude within 1.0m (default: True)
+            check_velocity: If True, verify groundspeed < 0.5 m/s (default: True)
+            
+        Returns:
+            True if drone arrived at target within timeout, False otherwise
+            
+        Note:
+            The drone is considered "arrived" when:
+            - Horizontal distance < acceptance_radius
+            - (Optional) Altitude error < 1.0m
+            - (Optional) Groundspeed < 0.5 m/s (drone has stopped)
+        """
         start_time = time.time()
         
         # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
@@ -234,14 +263,30 @@ class Drone:
         # Send goto command
         self._conn.goto(lat, lon, alt)
         
+        # Define arrival condition
+        def _arrived():
+            # Check horizontal distance
+            if self._distance_to(lat, lon) > acceptance_radius:
+                return False
+            
+            # Check altitude if requested
+            if check_altitude:
+                alt_error = abs(self._conn.telemetry.alt_rel - alt)
+                if alt_error > 1.0:
+                    return False
+            
+            # Check velocity if requested (drone has stopped)
+            if check_velocity:
+                if self._conn.telemetry.groundspeed > 0.5:
+                    return False
+            
+            return True
+        
         # Use remaining time to wait for arrival
         elapsed = time.time() - start_time
         remaining = max(timeout - elapsed, 0.1)
         
-        return self._wait_for(
-            lambda: self._distance_to(lat, lon) < 2.0,
-            remaining,
-        )
+        return self._wait_for(_arrived, remaining)
 
     def set_speed(self, speed_ms: float):
         self._conn.set_speed(speed_ms)
