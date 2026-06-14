@@ -163,6 +163,7 @@ class PX4ROS2Bridge:
         # Reconnect logic
         self._auto_reconnect = auto_reconnect
         self._max_reconnect_delay = max_reconnect_delay
+        self._max_reconnect_attempts = 5  # Maximum number of reconnect attempts
         self._reconnect_delay = 1.0  # Start with 1 second
         self._connection_status = ConnectionStatus.DISCONNECTED
         self._last_message_time = 0.0
@@ -499,9 +500,16 @@ class PX4ROS2Bridge:
                     break
                 
                 self._reconnect_attempts += 1
+                
+                # Check if max attempts reached
+                if self._reconnect_attempts > self._max_reconnect_attempts:
+                    print(f"[px4-bridge] Max reconnect attempts ({self._max_reconnect_attempts}) reached - giving up")
+                    self._set_status(ConnectionStatus.FAILED)
+                    break
+                
                 self._set_status(ConnectionStatus.RECONNECTING)
                 
-                print(f"[px4-bridge] Reconnecting in {self._reconnect_delay:.1f}s (attempt {self._reconnect_attempts})...")
+                print(f"[px4-bridge] Reconnecting in {self._reconnect_delay:.1f}s (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts})...")
                 
                 # Wait with early exit check
                 wait_start = time.time()
