@@ -179,4 +179,21 @@ def snap_factory():
         }
         snap.update(overrides)
         return snap
+
+
+@pytest.fixture
+def swarm_ctx(qapp):
+    """Create a SwarmContext for testing swarm algorithms."""
+    try:
+        from tools.ui.context.swarm_context import SwarmContext
+        from tools.ui.backend import MultiDroneBackend
+    except ImportError:
+        pytest.skip("UI modules not available")
+    
+    backend = MultiDroneBackend()
+    ctx = SwarmContext(backend)
+    yield ctx
+    # Cleanup
+    if ctx._swarm_algorithms_active:
+        ctx.stopSwarmAlgorithms()
     return _make

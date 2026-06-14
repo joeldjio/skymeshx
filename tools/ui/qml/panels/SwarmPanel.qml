@@ -928,16 +928,6 @@ Item {
                                 }
                             }
                             Rectangle {
-                                width: 74; height: 28; radius: 5
-                                color: fromMapM.containsMouse ? "#78350f" : "#1e2535"
-                                border.color: "#f59e0b"; border.width: 1
-                                Row { anchors.centerIn: parent; spacing: 4
-                                        Cmp.Icon { name: "map"; size: 11; color: "#f59e0b"; anchors.verticalCenter: parent.verticalCenter }
-                                        Text { text: qsTr("Map"); color: "#f59e0b"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
-                                    }
-                                MouseArea { id: fromMapM; anchors.fill: parent; hoverEnabled: true; onClicked: { if (root.mainWindow && root.mainWindow.startMapPick) root.mainWindow.startMapPick(root) } }
-                            }
-                            Rectangle {
                                 width: 60; height: 28; radius: 5
                                 property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
                                 color: clearWpM.containsMouse ? "#7f1d1d" : "#1e2535"
@@ -1336,7 +1326,22 @@ Item {
                                     model: swarm ? swarm.droneIds() : []
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     contentItem: Text { text: leaderCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: 6; verticalAlignment: Text.AlignVCenter }
-                                    onActivated: if (swarm) swarm.leaderDroneId = currentText
+                                    onActivated: function(index) { if (swarm) swarm.leaderDroneId = currentText }
+                                    
+                                    // Sync currentIndex with swarm.leaderDroneId
+                                    Component.onCompleted: {
+                                        if (swarm && swarm.leaderDroneId) {
+                                            currentIndex = model.indexOf(swarm.leaderDroneId)
+                                        }
+                                    }
+                                    Connections {
+                                        target: swarm
+                                        function onCountsChanged() {
+                                            if (swarm && swarm.leaderDroneId) {
+                                                leaderCombo.currentIndex = leaderCombo.model.indexOf(swarm.leaderDroneId)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -1414,9 +1419,10 @@ Item {
                                 }
                                 droneCount: {
                                     if (!swarm) return 2
-                                    // Always use actual connected drone count (minimum 2)
-                                    const count = telemetryModel ? telemetryModel.count : 0
-                                    return Math.max(count, 2)
+                                    // Show minimum required drones for formation preview
+                                    const mins = {"line": 2, "v": 2, "circle": 4, "grid": 4}
+                                    const minRequired = mins[formationType] || 2
+                                    return minRequired + 1  // +1 for leader
                                 }
                                 spacing: swarm ? swarm.followDistance : 8
                                 
@@ -1529,7 +1535,7 @@ Item {
                                     currentIndex: swarm ? swarm.missionPriority : 1
                                     background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
                                     contentItem: Text { text: prioCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: 6; verticalAlignment: Text.AlignVCenter }
-                                    onActivated: if (swarm) swarm.missionPriority = index
+                                    onActivated: function(index) { if (swarm) swarm.missionPriority = index }
                                 }
                             }
                         }
