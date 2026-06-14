@@ -63,6 +63,9 @@ class Pose3D:
             (self.z - other.z) ** 2
         )
 
+    def __sub__(self, other: "Pose3D") -> "Pose3D":
+        return Pose3D(self.x - other.x, self.y - other.y, self.z - other.z)
+
     def dist_2d(self, other: "Pose3D") -> float:
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
 
@@ -144,6 +147,7 @@ class APFSafetyFilter:
         attraction_gain: float = 1.0,
         obstacle_radius: float = 4.0,
         dt:              float = 0.05,   # 20 Hz
+        damping_coeff:   float = 0.3,    # velocity damping coefficient
     ):
         self.min_separation  = min_separation
         self.max_speed       = max_speed
@@ -151,12 +155,14 @@ class APFSafetyFilter:
         self.attraction_gain = attraction_gain
         self.obstacle_radius = obstacle_radius
         self.dt              = dt
+        self.damping_coeff   = damping_coeff
         self.geofence        = Geofence(
             radius  = geofence_radius,
             alt_min = geofence_alt[0],
             alt_max = geofence_alt[1],
         )
         self._obstacles: List[Pose3D] = []   # static obstacles
+        self._prev_positions: Dict[str, Pose3D] = {}  # for velocity calculation
 
     def add_obstacle(self, x: float, y: float, z: float = 0.0):
         """Add a static obstacle (e.g. building, tree)."""
@@ -174,6 +180,8 @@ class APFSafetyFilter:
         Apply APF to move each drone toward desired position
         while avoiding other drones and obstacles.
 
+        Includes velocity damping to prevent oscillations.
+
         Returns safe waypoints for each drone.
         """
         safe: Dict[str, Pose3D] = {}
@@ -184,6 +192,12 @@ class APFSafetyFilter:
             des = desired.get(drone_id, pos)
             if pos is None:
                 continue
+
+            # Calculate current velocity (if we have previous position)
+            velocity = Pose3D(0, 0, 0)
+            if drone_id in self._prev_positions:
+                prev = self._prev_positions[drone_id]
+                velocity = (pos - prev) * (1.0 / self.dt)  # velocity = delta_pos / dt
 
             # Attractive force: toward desired position
             diff_x = des.x - pos.x
@@ -221,11 +235,32 @@ class APFSafetyFilter:
                     ).normalized()
                     rep = rep + direction * (mag * self.dt)
 
-            # Total force → new position
+            # Velocity damping: reduces oscillations by opposing current velocity
+            # Damping force is proportional to velocity and increases near obstacles
+            damping = Pose3D(0, 0, 0)
+            if velocity.norm() > 1e-6:
+                # Calculate proximity factor: stronger damping when close to other drones
+                min_dist = float('inf')
+                for other_id in ids:
+                    if other_id == drone_id:
+                        continue
+                    d = pos.dist(positions[other_id])
+                    min_dist = min(min_dist, d)
+                
+                # Damping strength increases as distance decreases
+                if min_dist < self.obstacle_radius:
+                    proximity_factor = 1.0 - (min_dist / self.obstacle_radius)
+                    damping_strength = self.damping_coeff * (1.0 + 2.0 * proximity_factor)
+                else:
+                    damping_strength = self.damping_coeff
+                
+                damping = velocity * (-damping_strength * self.dt)
+
+            # Total force → new position (with damping)
             total = Pose3D(
-                attr_clamped.x + rep.x,
-                attr_clamped.y + rep.y,
-                attr_clamped.z + rep.z,
+                attr_clamped.x + rep.x + damping.x,
+                attr_clamped.y + rep.y + damping.y,
+                attr_clamped.z + rep.z + damping.z,
             ).clamp(self.max_speed * self.dt)
 
             candidate = Pose3D(
@@ -236,6 +271,9 @@ class APFSafetyFilter:
 
             # Apply geofence
             safe[drone_id] = self.geofence.clip(candidate)
+            
+            # Store current position for next velocity calculation
+            self._prev_positions[drone_id] = pos
 
         return safe
 
