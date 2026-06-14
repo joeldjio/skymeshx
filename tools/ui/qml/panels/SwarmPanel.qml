@@ -279,68 +279,291 @@ Item {
                 Text { text: "SYSTEM INFO"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
 
                 Rectangle {
-                    width: parent.width; height: sysInfoCol.implicitHeight + 20; radius: 8
-                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                    width: parent.width
+                    height: sysInfoCol.implicitHeight + 24
+                    radius: 8
+                    color: "#1a2035"
+                    border.color: "#2d3748"
+                    border.width: 1
 
                     Column {
                         id: sysInfoCol
-                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
-                        spacing: 7
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
+                        spacing: 12
 
-                        Row {
-                            width: parent.width; spacing: 8
-                            Rectangle {
-                                width: 10; height: 10; radius: 5
-                                color: (root.selectedSnap && root.selectedSnap.connected) ? "#22c55e" : "#ef4444"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            Text {
-                                text: selectedDroneId || qsTr("No drone selected")
-                                color: selectedDroneId ? "#e2e8f0" : "#64748b"
-                                font.pixelSize: 12; font.weight: Font.Bold
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-
-                        GridLayout {
+                        // Header with drone name and status
+                        Rectangle {
                             width: parent.width
-                            columns: 2
-                            columnSpacing: 10
-                            rowSpacing: 6
+                            height: 44
+                            radius: 6
+                            color: (root.selectedSnap && root.selectedSnap.connected) ? "#0f2d1a" : "#2d1a1a"
+                            border.color: (root.selectedSnap && root.selectedSnap.connected) ? "#22c55e" : "#ef4444"
+                            border.width: 1
 
-                            Repeater {
-                                model: [
-                                    ["Autopilot", root.selectedSnap.autopilot || "UNKNOWN"],
-                                    ["Vehicle Type", root.selectedSnap.vehicle_type || "UNKNOWN"],
-                                    ["Firmware", root.selectedSnap.firmware_version || "Not reported yet"],
-                                    ["Board", root.selectedSnap.board_version || "Not reported yet"],
-                                    ["Vendor/Product", ((root.selectedSnap.vendor_id || 0) + " / " + (root.selectedSnap.product_id || 0))],
-                                    ["System Status", root.selectedSnap.system_status !== undefined ? root.selectedSnap.system_status : "UNKNOWN"],
-                                    ["Flight Mode", root.selectedSnap.flight_mode || "UNKNOWN"],
-                                    ["FSM", root.selectedSnap.fsmState || "UNKNOWN"],
-                                    ["Connection", root.selectedSnap.connectionString || "—"],
-                                    ["Drone Type", root.selectedSnap.droneType || "generic"]
-                                ]
-                                delegate: Column {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-                                    Text { text: modelData[0]; color: "#64748b"; font.pixelSize: 8; font.weight: Font.Bold }
+                            Row {
+                                anchors { fill: parent; margins: 10 }
+                                spacing: 10
+
+                                Rectangle {
+                                    width: 24; height: 24; radius: 12
+                                    color: (root.selectedSnap && root.selectedSnap.connected) ? "#22c55e" : "#ef4444"
+                                    anchors.verticalCenter: parent.verticalCenter
+
                                     Text {
-                                        width: parent.width
-                                        text: modelData[1]
-                                        color: "#e2e8f0"
-                                        font.pixelSize: 10
-                                        font.family: modelData[0] === "Connection" ? "Consolas" : ""
-                                        elide: Text.ElideRight
+                                        anchors.centerIn: parent
+                                        text: (root.selectedSnap && root.selectedSnap.connected) ? "✓" : "✕"
+                                        color: "white"
+                                        font.pixelSize: 14
+                                        font.weight: Font.Bold
+                                    }
+                                }
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
+
+                                    Text {
+                                        text: selectedDroneId || "No drone selected"
+                                        color: selectedDroneId ? "#e2e8f0" : "#64748b"
+                                        font.pixelSize: 13
+                                        font.weight: Font.Bold
+                                    }
+
+                                    Text {
+                                        text: (root.selectedSnap && root.selectedSnap.connected) ? "Connected" : "Disconnected"
+                                        color: (root.selectedSnap && root.selectedSnap.connected) ? "#22c55e" : "#ef4444"
+                                        font.pixelSize: 9
                                     }
                                 }
                             }
                         }
 
-                        Text {
+                        // Autopilot Section
+                        Column {
                             width: parent.width
-                            text: "Note: Firmware/Board info appears only after the flight controller responds with AUTOPILOT_VERSION."
-                            color: "#64748b"; font.pixelSize: 9; wrapMode: Text.WordWrap
+                            spacing: 8
+
+                            Text {
+                                text: "AUTOPILOT"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.weight: Font.Bold
+                                font.letterSpacing: 1
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: autopilotGrid.implicitHeight + 16
+                                radius: 6
+                                color: "#0d1117"
+                                border.color: "#1e2535"
+                                border.width: 1
+
+                                GridLayout {
+                                    id: autopilotGrid
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+                                    columns: 2
+                                    columnSpacing: 12
+                                    rowSpacing: 8
+
+                                    Repeater {
+                                        model: [
+                                            ["Autopilot", root.selectedSnap.autopilot || "—", "#2563eb"],
+                                            ["Vehicle", root.selectedSnap.vehicle_type || "—", "#8b5cf6"],
+                                            ["Firmware", root.selectedSnap.firmware_version || "—", "#06b6d4"],
+                                            ["Board", root.selectedSnap.board_version || "—", "#10b981"]
+                                        ]
+                                        delegate: Column {
+                                            Layout.fillWidth: true
+                                            spacing: 3
+
+                                            Text {
+                                                text: modelData[0]
+                                                color: "#64748b"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: modelData[1]
+                                                color: modelData[1] === "—" ? "#475569" : "#e2e8f0"
+                                                font.pixelSize: 10
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Status Section
+                        Column {
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                text: "STATUS"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.weight: Font.Bold
+                                font.letterSpacing: 1
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: statusGrid.implicitHeight + 16
+                                radius: 6
+                                color: "#0d1117"
+                                border.color: "#1e2535"
+                                border.width: 1
+
+                                GridLayout {
+                                    id: statusGrid
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+                                    columns: 2
+                                    columnSpacing: 12
+                                    rowSpacing: 8
+
+                                    Repeater {
+                                        model: [
+                                            ["System", root.selectedSnap.system_status !== undefined ? root.selectedSnap.system_status : "—"],
+                                            ["Flight Mode", root.selectedSnap.flight_mode || "—"],
+                                            ["FSM State", root.selectedSnap.fsmState || "—"],
+                                            ["Drone Type", root.selectedSnap.droneType || "generic"]
+                                        ]
+                                        delegate: Column {
+                                            Layout.fillWidth: true
+                                            spacing: 3
+
+                                            Text {
+                                                text: modelData[0]
+                                                color: "#64748b"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: modelData[1]
+                                                color: "#e2e8f0"
+                                                font.pixelSize: 10
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Connection Section
+                        Column {
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                text: "CONNECTION"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.weight: Font.Bold
+                                font.letterSpacing: 1
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: connCol.implicitHeight + 16
+                                radius: 6
+                                color: "#0d1117"
+                                border.color: "#1e2535"
+                                border.width: 1
+
+                                Column {
+                                    id: connCol
+                                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+                                    spacing: 6
+
+                                    Column {
+                                        width: parent.width
+                                        spacing: 3
+
+                                        Text {
+                                            text: "Connection String"
+                                            color: "#64748b"
+                                            font.pixelSize: 8
+                                            font.weight: Font.Bold
+                                        }
+
+                                        Text {
+                                            width: parent.width
+                                            text: root.selectedSnap.connectionString || "—"
+                                            color: "#e2e8f0"
+                                            font.pixelSize: 9
+                                            font.family: "Consolas"
+                                            wrapMode: Text.WrapAnywhere
+                                        }
+                                    }
+
+                                    Row {
+                                        width: parent.width
+                                        spacing: 12
+
+                                        Column {
+                                            width: (parent.width - 12) / 2
+                                            spacing: 3
+
+                                            Text {
+                                                text: "Vendor ID"
+                                                color: "#64748b"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+
+                                            Text {
+                                                text: String(root.selectedSnap.vendor_id || 0)
+                                                color: "#e2e8f0"
+                                                font.pixelSize: 10
+                                            }
+                                        }
+
+                                        Column {
+                                            width: (parent.width - 12) / 2
+                                            spacing: 3
+
+                                            Text {
+                                                text: "Product ID"
+                                                color: "#64748b"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+
+                                            Text {
+                                                text: String(root.selectedSnap.product_id || 0)
+                                                color: "#e2e8f0"
+                                                font.pixelSize: 10
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Info Note
+                        Rectangle {
+                            width: parent.width
+                            height: noteText.implicitHeight + 12
+                            radius: 4
+                            color: "#1e3a5f"
+                            border.color: "#2563eb"
+                            border.width: 1
+
+                            Text {
+                                id: noteText
+                                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
+                                text: "ℹ Firmware/Board info appears after AUTOPILOT_VERSION response"
+                                color: "#93c5fd"
+                                font.pixelSize: 8
+                                wrapMode: Text.WordWrap
+                            }
                         }
                     }
                 }
@@ -483,19 +706,94 @@ Item {
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
                         spacing: 6
 
-                        // Target drone indicator
+                        // Target drone indicator with mode selector
                         Rectangle {
-                            width: parent.width; height: 26; radius: 5
-                            color: selectedDroneId ? "#0f2d1a" : "#1e2535"
-                            border.color: selectedDroneId ? "#22c55e" : "#334155"; border.width: 1
-                            Row {
-                                anchors { fill: parent; leftMargin: 8 }
+                            width: parent.width; height: wpModeCol.implicitHeight + 12; radius: 5
+                            color: "#1e2535"
+                            border.color: "#334155"; border.width: 1
+                            
+                            Column {
+                                id: wpModeCol
+                                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
                                 spacing: 6
-                                Cmp.Icon { name: "target"; size: 11; color: "#64748b"; anchors.verticalCenter: parent.verticalCenter }
-                                Text {
-                                    text: selectedDroneId || qsTr("No drone selected")
-                                    color: selectedDroneId ? "#22c55e" : "#475569"
-                                    font.pixelSize: 11; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter
+                                
+                                // Mode selector
+                                Row {
+                                    width: parent.width; spacing: 4
+                                    
+                                    Rectangle {
+                                        width: (parent.width - 4) / 2; height: 28; radius: 4
+                                        color: !wpMultiMode.checked ? "#1e3a5f" : "#1e2535"
+                                        border.color: !wpMultiMode.checked ? "#2563eb" : "#334155"; border.width: 1
+                                        Row {
+                                            anchors.centerIn: parent; spacing: 4
+                                            Cmp.Icon { name: "user"; size: 10; color: !wpMultiMode.checked ? "#93c5fd" : "#64748b" }
+                                            Text {
+                                                text: "Single Drone"
+                                                color: !wpMultiMode.checked ? "#93c5fd" : "#64748b"
+                                                font.pixelSize: 9; font.weight: Font.Bold
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: wpMultiMode.checked = false
+                                        }
+                                    }
+                                    
+                                    Rectangle {
+                                        width: (parent.width - 4) / 2; height: 28; radius: 4
+                                        color: wpMultiMode.checked ? "#1e3a5f" : "#1e2535"
+                                        border.color: wpMultiMode.checked ? "#2563eb" : "#334155"; border.width: 1
+                                        Row {
+                                            anchors.centerIn: parent; spacing: 4
+                                            Cmp.Icon { name: "users"; size: 10; color: wpMultiMode.checked ? "#93c5fd" : "#64748b" }
+                                            Text {
+                                                text: "Multi-Drone"
+                                                color: wpMultiMode.checked ? "#93c5fd" : "#64748b"
+                                                font.pixelSize: 9; font.weight: Font.Bold
+                                            }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: wpMultiMode.checked = true
+                                        }
+                                    }
+                                    
+                                    CheckBox {
+                                        id: wpMultiMode
+                                        visible: false
+                                        checked: false
+                                    }
+                                }
+                                
+                                // Target indicator
+                                Rectangle {
+                                    width: parent.width; height: 24; radius: 4
+                                    property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
+                                    property bool _hasTarget: _targets.length > 0
+                                    color: _hasTarget ? "#0f2d1a" : "#1a1a1a"
+                                    border.color: _hasTarget ? "#22c55e" : "#374151"; border.width: 1
+                                    Row {
+                                        anchors { fill: parent; leftMargin: 8 }
+                                        spacing: 6
+                                        Cmp.Icon {
+                                            name: parent.parent._targets.length > 1 ? "users" : "target"
+                                            size: 10
+                                            color: parent.parent._hasTarget ? "#22c55e" : "#475569"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                        Text {
+                                            text: {
+                                                var t = parent.parent._targets
+                                                if (t.length === 0) return "No target selected"
+                                                if (t.length === 1) return t[0]
+                                                return t.length + " drones selected"
+                                            }
+                                            color: parent.parent._hasTarget ? "#22c55e" : "#475569"
+                                            font.pixelSize: 10; font.weight: Font.Bold
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -584,13 +882,50 @@ Item {
                             }
                             Rectangle {
                                 width: 80; height: 28; radius: 5
-                                color: addWpM.containsMouse ? "#1e3a5f" : "#1e2535"
-                                border.color: "#2563eb"; border.width: 1
-                                Row { anchors.centerIn: parent; spacing: 4
-                                        Cmp.Icon { name: "plus"; size: 11; color: "#2563eb"; anchors.verticalCenter: parent.verticalCenter }
-                                        Text { text: "Add WP"; color: "#2563eb"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
+                                property bool _hasTarget: _targets.length > 0
+                                color: !_hasTarget ? "#0d1117" : (addWpM.containsMouse ? "#1e3a5f" : "#1e2535")
+                                border.color: _hasTarget ? "#2563eb" : "#374151"; border.width: 1
+                                Row {
+                                    anchors.centerIn: parent; spacing: 4
+                                    Cmp.Icon {
+                                        name: "plus"
+                                        size: 11
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
-                                MouseArea { id: addWpM; anchors.fill: parent; hoverEnabled: true; onClicked: { if (latField.text && lonField.text) root.wps.append({ lat: parseFloat(latField.text), lon: parseFloat(lonField.text), alt: parseFloat(altGotoField.text) || 10 }) } }
+                                    Text {
+                                        text: parent.parent._targets.length > 1 ? ("Add WP (" + parent.parent._targets.length + ")") : "Add WP"
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                MouseArea {
+                                    id: addWpM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: parent._hasTarget
+                                    onClicked: {
+                                        if (!latField.text || !lonField.text) return
+                                        var lat = parseFloat(latField.text)
+                                        var lon = parseFloat(lonField.text)
+                                        var alt = parseFloat(altGotoField.text) || 10
+                                        var targets = parent._targets
+                                        
+                                        if (targets.length === 1) {
+                                            // Single drone mode
+                                            Cmp.AppState.addWaypoint(targets[0], lat, lon, alt)
+                                        } else if (targets.length > 1) {
+                                            // Multi-drone mode - same waypoints for all
+                                            Cmp.AppState.addWaypointForMultiple(targets, lat, lon, alt)
+                                        }
+                                        
+                                        // Also add to global list for backward compatibility
+                                        root.wps.append({ lat: lat, lon: lon, alt: alt })
+                                    }
+                                }
                             }
                             Rectangle {
                                 width: 74; height: 28; radius: 5
@@ -604,12 +939,24 @@ Item {
                             }
                             Rectangle {
                                 width: 60; height: 28; radius: 5
+                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
                                 color: clearWpM.containsMouse ? "#7f1d1d" : "#1e2535"
                                 Row { anchors.centerIn: parent; spacing: 4
                                         Cmp.Icon { name: "trash"; size: 11; color: "#ef4444"; anchors.verticalCenter: parent.verticalCenter }
                                         Text { text: "Clear"; color: "#ef4444"; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
                                     }
-                                MouseArea { id: clearWpM; anchors.fill: parent; hoverEnabled: true; onClicked: root.wps.clear() }
+                                MouseArea {
+                                    id: clearWpM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        root.wps.clear()
+                                        var targets = parent._targets
+                                        for (var i = 0; i < targets.length; i++) {
+                                            Cmp.AppState.clearWaypoints(targets[i])
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -802,17 +1149,40 @@ Item {
                             }
                         }
 
-                        Row { width: parent.width; spacing: 6
-                            Text { text: "Update Rate"; color: "#64748b"; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter; width: 80 }
-                            Slider {
-                                id: rateSlider
-                                width: parent.width - 130; height: 20
-                                from: 50; to: 1000; stepSize: 50
-                                value: swarm ? swarm.algorithmsUpdateRate : 100
-                                onMoved: if (swarm) swarm.algorithmsUpdateRate = value
-                                anchors.verticalCenter: parent.verticalCenter
+                        Column { width: parent.width; spacing: 2
+                            Text { text: "Update Rate"; color: "#64748b"; font.pixelSize: 9 }
+                            Row { width: parent.width; spacing: 4
+                                Slider {
+                                    id: rateSlider
+                                    width: parent.width - 50; height: 18
+                                    from: 50; to: 1000; stepSize: 50
+                                    value: swarm ? swarm.algorithmsUpdateRate : 100
+                                    onMoved: if (swarm) swarm.algorithmsUpdateRate = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: Math.round(rateSlider.value) + " ms";
+                                    color: "#e2e8f0";
+                                    font.pixelSize: 9;
+                                    font.family: "Consolas";
+                                    width: 42;
+                                    horizontalAlignment: Text.AlignRight;
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
-                            Text { text: Math.round(rateSlider.value) + " ms"; color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; anchors.verticalCenter: parent.verticalCenter; width: 50; horizontalAlignment: Text.AlignRight }
+                            Text {
+                                text: {
+                                    var v = rateSlider.value;
+                                    if (v <= 100) return "Very fast (high CPU load)";
+                                    if (v <= 200) return "Fast";
+                                    if (v <= 500) return "Normal";
+                                    if (v <= 750) return "Slow";
+                                    return "Very slow (low CPU load)";
+                                }
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
                         }
 
                         // ── BOIDS / REYNOLDS ──────────────────────────────────────
@@ -839,7 +1209,28 @@ Item {
                                         onMoved: if (swarm) swarm.separationWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: sepSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: sepSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = sepSlider.value;
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -853,7 +1244,28 @@ Item {
                                         onMoved: if (swarm) swarm.alignmentWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: alignSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: alignSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = alignSlider.value;
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -867,7 +1279,28 @@ Item {
                                         onMoved: if (swarm) swarm.cohesionWeight = value
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Text { text: cohSlider.value.toFixed(1); color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; width: 42; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: cohSlider.value.toFixed(1);
+                                        color: "#e2e8f0";
+                                        font.pixelSize: 9;
+                                        font.family: "Consolas";
+                                        width: 42;
+                                        horizontalAlignment: Text.AlignRight;
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Text {
+                                    text: {
+                                        var v = cohSlider.value;
+                                        if (v < 0.5) return "Very weak";
+                                        if (v < 1.0) return "Weak";
+                                        if (v < 2.0) return "Normal";
+                                        if (v < 2.5) return "Strong";
+                                        return "Very strong";
+                                    }
+                                    color: "#94a3b8"
+                                    font.pixelSize: 8
+                                    font.italic: true
                                 }
                             }
                             Column { width: (parent.width - 6) / 2; spacing: 2
