@@ -223,22 +223,17 @@ def wire(locator: ServiceLocator) -> None:
             b = swarm.backend.get_backend(drone_id)
             if not b or not hasattr(b, "goto"):
                 return
-            # Never override an active or native AUTO mission.
-            if hasattr(swarm, "_is_drone_mission_controlled"):
-                if swarm._is_drone_mission_controlled(drone_id):
-                    return
-            else:
-                mission_active = getattr(swarm, "_mission_active", ())
-                try:
-                    if drone_id in mission_active:
-                        return
-                except TypeError:
-                    pass
+            
+            # Never override an active mission (uses explicit method now)
+            if swarm._is_drone_mission_controlled(drone_id):
+                return
+            
             # Boids owns all drone goto commands while active.
             if getattr(swarm, "_swarm_algorithms_active", False) and getattr(
                 swarm, "_boids_enabled", False
             ):
                 return
+            
             # In Leader-Follower only followers are protected; the leader may
             # still receive an APF push if needed.
             if (
@@ -247,6 +242,7 @@ def wire(locator: ServiceLocator) -> None:
                 and drone_id != getattr(swarm, "_leader_drone_id", "")
             ):
                 return
+            
             # Only push armed/airborne drones — pushing an unarmed drone is a no-op
             snap = (
                 b.get_telemetry_snapshot()
@@ -257,6 +253,7 @@ def wire(locator: ServiceLocator) -> None:
                 snap and snap.get("armed", False) and snap.get("alt_rel", 0.0) > 0.5
             ):
                 return
+            
             b.goto(lat, lon, alt)
             swarm.logMessage.emit(
                 "WARN",
