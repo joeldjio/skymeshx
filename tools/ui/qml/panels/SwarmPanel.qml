@@ -841,10 +841,50 @@ Item {
                         Flow {
                             width: parent.width; spacing: 4
 
+                            // Add WP Button - Opens map in waypoint mode
+                            Rectangle {
+                                width: 100; height: 28; radius: 5
+                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
+                                property bool _hasTarget: _targets.length > 0
+                                color: !_hasTarget ? "#0d1117" : (addWpM.containsMouse ? "#1e3a5f" : "#1e2535")
+                                border.color: _hasTarget ? "#2563eb" : "#374151"; border.width: 1
+                                Row {
+                                    anchors.centerIn: parent; spacing: 4
+                                    Cmp.Icon {
+                                        name: "plus"
+                                        size: 11
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text: parent.parent._targets.length > 1 ? ("Add WP (" + parent.parent._targets.length + ")") : "Add WP"
+                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                MouseArea {
+                                    id: addWpM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: parent._hasTarget
+                                    onClicked: {
+                                        // Switch to map and enable waypoint mode
+                                        if (root.mainWindow) {
+                                            root.mainWindow.mapWaypointMode = true
+                                            root.mainWindow.selectTab(0)  // Switch to Map tab
+                                            if (root.mainWindow.mapLoader.item) {
+                                                root.mainWindow.mapLoader.item.setPickMode(true)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // GOTO Button - Flies to coordinates
                             Rectangle {
                                 width: 90; height: 28; radius: 5
-                                // Fan out to either the multi-drone mission target list or
-                                // the single selected drone. Greyed out only if NOTHING is targeted.
                                 property var _targets: Cmp.AppState.effectiveMissionTargets()
                                 property bool _hasTarget: _targets.length > 0
                                 color: !_hasTarget ? "#0d1117" : gotoBtnM.containsMouse ? "#15803d" : "#22c55e"
@@ -877,53 +917,6 @@ Item {
                                             else
                                                 swarm.smartGotoDrone(did, lat, lon, alt)
                                         }
-                                    }
-                                }
-                            }
-                            Rectangle {
-                                width: 80; height: 28; radius: 5
-                                property var _targets: wpMultiMode.checked ? Cmp.AppState.effectiveMissionTargets() : (selectedDroneId ? [selectedDroneId] : [])
-                                property bool _hasTarget: _targets.length > 0
-                                color: !_hasTarget ? "#0d1117" : (addWpM.containsMouse ? "#1e3a5f" : "#1e2535")
-                                border.color: _hasTarget ? "#2563eb" : "#374151"; border.width: 1
-                                Row {
-                                    anchors.centerIn: parent; spacing: 4
-                                    Cmp.Icon {
-                                        name: "plus"
-                                        size: 11
-                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    Text {
-                                        text: parent.parent._targets.length > 1 ? ("Add WP (" + parent.parent._targets.length + ")") : "Add WP"
-                                        color: parent.parent._hasTarget ? "#2563eb" : "#374151"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-                                MouseArea {
-                                    id: addWpM
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: parent._hasTarget
-                                    onClicked: {
-                                        if (!latField.text || !lonField.text) return
-                                        var lat = parseFloat(latField.text)
-                                        var lon = parseFloat(lonField.text)
-                                        var alt = parseFloat(altGotoField.text) || 10
-                                        var targets = parent._targets
-                                        
-                                        if (targets.length === 1) {
-                                            // Single drone mode
-                                            Cmp.AppState.addWaypoint(targets[0], lat, lon, alt)
-                                        } else if (targets.length > 1) {
-                                            // Multi-drone mode - same waypoints for all
-                                            Cmp.AppState.addWaypointForMultiple(targets, lat, lon, alt)
-                                        }
-                                        
-                                        // Also add to global list for backward compatibility
-                                        root.wps.append({ lat: lat, lon: lon, alt: alt })
                                     }
                                 }
                             }
@@ -1187,6 +1180,13 @@ Item {
                                 indicator: Rectangle { width: 14; height: 14; radius: 3; border.color: "#64748b"; border.width: 1; color: parent.checked ? "#22c55e" : "#1e2535"; anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
+                        Text {
+                            width: parent.width
+                            text: "ℹ️ Emergentes Schwarmverhalten: Separation (Abstand halten), Alignment (gleiche Richtung), Cohesion (zum Zentrum). ⚠️ Inkompatibel mit Leader-Follower."
+                            color: "#94a3b8"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
+                        }
                         Grid { columns: 2; width: parent.width; columnSpacing: 6; rowSpacing: 6
                             Column { width: (parent.width - 6) / 2; spacing: 2
                                 Text { text: "Separation Weight"; color: "#64748b"; font.pixelSize: 9 }
@@ -1316,6 +1316,13 @@ Item {
                                 contentItem: Text { text: parent.text; color: "#cbd5e1"; font.pixelSize: 9; leftPadding: 18; verticalAlignment: Text.AlignVCenter }
                                 indicator: Rectangle { width: 14; height: 14; radius: 3; border.color: "#64748b"; border.width: 1; color: parent.checked ? "#2563eb" : "#1e2535"; anchors.verticalCenter: parent.verticalCenter }
                             }
+                        }
+                        Text {
+                            width: parent.width
+                            text: "ℹ️ Follower folgen dem Leader in fester Formation (Line, V, Circle, Grid). Follow Distance: Abstand zwischen Slots (8m empfohlen). ⚠️ Inkompatibel mit Boids."
+                            color: "#94a3b8"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
                         }
                         Grid { columns: 2; width: parent.width; columnSpacing: 6; rowSpacing: 6
                             Column { width: (parent.width - 6) / 2; spacing: 2
@@ -1458,6 +1465,13 @@ Item {
                                 indicator: Rectangle { width: 14; height: 14; radius: 3; border.color: "#64748b"; border.width: 1; color: parent.checked ? "#f59e0b" : "#1e2535"; anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
+                        Text {
+                            width: parent.width
+                            text: "ℹ️ Demokratische Entscheidungsfindung im Schwarm. Byzantine Tolerance: Anzahl fehlerhafter Drohnen, die toleriert werden. ✅ Kompatibel mit allen Algorithmen."
+                            color: "#94a3b8"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
+                        }
                         Grid { columns: 2; width: parent.width; columnSpacing: 6; rowSpacing: 6
                             Column { width: (parent.width - 6) / 2; spacing: 2
                                 Text { text: "Algorithm"; color: "#64748b"; font.pixelSize: 9 }
@@ -1512,6 +1526,13 @@ Item {
                                 contentItem: Text { text: parent.text; color: "#cbd5e1"; font.pixelSize: 9; leftPadding: 18; verticalAlignment: Text.AlignVCenter }
                                 indicator: Rectangle { width: 14; height: 14; radius: 3; border.color: "#64748b"; border.width: 1; color: parent.checked ? "#8b5cf6" : "#1e2535"; anchors.verticalCenter: parent.verticalCenter }
                             }
+                        }
+                        Text {
+                            width: parent.width
+                            text: "ℹ️ Autonome Mission-Ausführung mit Prioritäten. Safety First (sicher), Mission First (schnell), Balanced. ⚠️ Überschreibt andere Algorithmen während Ausführung."
+                            color: "#94a3b8"
+                            font.pixelSize: 8
+                            wrapMode: Text.WordWrap
                         }
                         Grid { columns: 2; width: parent.width; columnSpacing: 6; rowSpacing: 6
                             Column { width: (parent.width - 6) / 2; spacing: 2
