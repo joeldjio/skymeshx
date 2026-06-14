@@ -100,6 +100,7 @@ class SafetyContext(QObject):
         self._prediction_waypoint_aware = False
         self._last_predictions: List[Dict] = []
         self._drone_waypoints: Dict[str, List[Tuple[float, float, float]]] = {}
+        self._prev_positions: Dict[str, Tuple[float, float, float, float]] = {}  # (x, y, z, timestamp)
 
         # Battery Monitor
         self._battery_monitor = None
@@ -560,15 +561,26 @@ class SafetyContext(QObject):
         # Convert drone positions to DroneState objects
         states = {}
         for did, pos in self._drone_positions.items():
-            # Calculate velocity from position changes (simple finite difference)
-            # In a real implementation, we'd get velocity from telemetry
+            # Calculate velocity from position changes (finite difference)
+            vx, vy, vz = 0.0, 0.0, 0.0
+            if did in self._prev_positions:
+                prev_x, prev_y, prev_z, prev_t = self._prev_positions[did]
+                dt = now - prev_t
+                if dt > 0.01:  # Avoid division by very small dt
+                    vx = (pos.x - prev_x) / dt
+                    vy = (pos.y - prev_y) / dt
+                    vz = (pos.z - prev_z) / dt
+            
+            # Store current position for next iteration
+            self._prev_positions[did] = (pos.x, pos.y, pos.z, now)
+            
             states[did] = _DroneState(
                 x=pos.x,
                 y=pos.y,
                 z=pos.z,
-                vx=0.0,  # TODO: Calculate from position history
-                vy=0.0,
-                vz=0.0,
+                vx=vx,
+                vy=vy,
+                vz=vz,
                 armed=pos.armed
             )
 

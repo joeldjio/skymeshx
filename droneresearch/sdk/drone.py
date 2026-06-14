@@ -41,13 +41,17 @@ class Drone:
 
     def __init__(
         self,
-        connection_string: str,
+        connection_string,  # str or Connection object for testing
         drone_id: str = "drone",
         log_dir: str = "logs",
         auto_log: bool = True,
     ):
         self.id = drone_id
-        self._conn = MAVLinkConnection(connection_string)
+        # Accept either a connection string or a connection object (for testing)
+        if isinstance(connection_string, str):
+            self._conn = MAVLinkConnection(connection_string)
+        else:
+            self._conn = connection_string  # Assume it's a connection object
         self._logger = TelemetryLogger(log_dir) if auto_log else None
         self._store = TelemetryStore()
         self._mission = MissionEngine(self._conn)
@@ -129,14 +133,23 @@ class Drone:
     # ── Commands ──────────────────────────────────────────────────────────
 
     def arm(self, timeout: float = 10.0, force: bool = False) -> bool:
+        """Arm the drone. Returns immediately if already armed."""
+        if self._conn.telemetry.armed:
+            return True
         self._conn.arm(force=force)
         return self._wait_for(lambda: self._conn.telemetry.armed, timeout)
 
     def disarm(self, timeout: float = 5.0, force: bool = False) -> bool:
+        """Disarm the drone. Returns immediately if already disarmed."""
+        if not self._conn.telemetry.armed:
+            return True
         self._conn.disarm(force=force)
         return self._wait_for(lambda: not self._conn.telemetry.armed, timeout)
 
     def set_mode(self, mode: str, timeout: float = 5.0) -> bool:
+        """Set flight mode. Returns immediately if already in target mode."""
+        if self._conn.telemetry.flight_mode.upper() == mode.upper():
+            return True
         self._conn.set_mode(mode)
         return self._wait_for(
             lambda: self._conn.telemetry.flight_mode.upper() == mode.upper(),
@@ -144,19 +157,51 @@ class Drone:
         )
 
     def takeoff(self, altitude: float = 10.0, timeout: float = 30.0) -> bool:
+        """Takeoff to altitude with timeout.
+        
+        Args:
+            altitude: Target altitude in meters AGL
+            timeout: Maximum time to wait for takeoff completion (seconds)
+            
+        Returns:
+            True if takeoff succeeded within timeout, False otherwise
+        """
+        import time
+        start_time = time.time()
+        
+        # Arm with portion of timeout
         if not self.armed:
-            self.arm()
-        # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
+            arm_timeout = min(timeout * 0.3, 10.0)  # 30% of timeout or 10s max
+            if not self.arm(timeout=arm_timeout):
+                return False
+        
+        # Check remaining time
+        elapsed = time.time() - start_time
+        if elapsed >= timeout:
+            return False
+        
+        # Set mode with portion of remaining timeout
         ap = self._conn.telemetry.autopilot
         mode = "OFFBOARD" if ap == "px4" else "GUIDED"
-        self.set_mode(mode)
+        mode_timeout = min((timeout - elapsed) * 0.2, 5.0)  # 20% of remaining or 5s max
+        if not self.set_mode(mode, timeout=mode_timeout):
+            return False
+        
+        # Send takeoff command
         self._conn.takeoff(altitude)
+        
+        # Wait for altitude with remaining timeout
+        elapsed = time.time() - start_time
+        remaining = max(timeout - elapsed, 0.1)  # At least 0.1s
         return self._wait_for(
             lambda: self._conn.telemetry.alt_rel >= altitude * 0.85,
-            timeout,
+            remaining,
         )
 
     def land(self, timeout: float = 60.0) -> bool:
+        """Land the drone. Returns immediately if already disarmed."""
+        if not self._conn.telemetry.armed:
+            return True
         self._conn.land()
         return self._wait_for(
             lambda: not self._conn.telemetry.armed,
@@ -167,14 +212,35 @@ class Drone:
         self._conn.rtl()
 
     def goto(self, lat: float, lon: float, alt: float, timeout: float = 60.0) -> bool:
+        """Navigate to GPS coordinates with timeout budget distribution."""
+        start_time = time.time()
+        
         # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
         ap = self._conn.telemetry.autopilot
         mode = "OFFBOARD" if ap == "px4" else "GUIDED"
-        self.set_mode(mode)
+        
+        # Check if already in correct mode
+        current_mode = self._conn.telemetry.flight_mode.upper()
+        if current_mode != mode.upper():
+            # Use 20% of timeout for mode change (max 5s)
+            mode_timeout = min(timeout * 0.2, 5.0)
+            if not self.set_mode(mode, timeout=mode_timeout):
+                return False
+            
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                return False
+        
+        # Send goto command
         self._conn.goto(lat, lon, alt)
+        
+        # Use remaining time to wait for arrival
+        elapsed = time.time() - start_time
+        remaining = max(timeout - elapsed, 0.1)
+        
         return self._wait_for(
             lambda: self._distance_to(lat, lon) < 2.0,
-            timeout,
+            remaining,
         )
 
     def set_speed(self, speed_ms: float):

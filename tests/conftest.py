@@ -72,6 +72,28 @@ class FakeConnection:
     def rtl(self) -> bool:
         self.rtl_calls += 1
         return True
+    
+    def arm(self, force: bool = False) -> bool:
+        """Arm the drone (test stub)."""
+        self.telemetry.armed = True
+        return True
+    
+    def disarm(self, force: bool = False) -> bool:
+        """Disarm the drone (test stub)."""
+        self.telemetry.armed = False
+        return True
+    
+    def takeoff(self, altitude: float) -> bool:
+        """Takeoff command (test stub)."""
+        return True
+    
+    def land(self) -> bool:
+        """Land command (test stub)."""
+        return True
+    
+    def goto(self, lat: float, lon: float, alt: float) -> bool:
+        """Goto command (test stub)."""
+        return True
 
     # ── Test helpers ─────────────────────────────────────────────────────
     def emit_message(self, msg) -> None:
@@ -157,4 +179,21 @@ def snap_factory():
         }
         snap.update(overrides)
         return snap
+
+
+@pytest.fixture
+def swarm_ctx(qapp):
+    """Create a SwarmContext for testing swarm algorithms."""
+    try:
+        from tools.ui.context.swarm_context import SwarmContext
+        from tools.ui.backend import MultiDroneBackend
+    except ImportError:
+        pytest.skip("UI modules not available")
+    
+    backend = MultiDroneBackend()
+    ctx = SwarmContext(backend)
+    yield ctx
+    # Cleanup
+    if ctx._swarm_algorithms_active:
+        ctx.stopSwarmAlgorithms()
     return _make

@@ -91,17 +91,61 @@ except ImportError:
 
 # ── Frame conversion utilities ─────────────────────────────────────────────────
 
-def ned_to_enu(x: float, y: float, z: float) -> tuple:
-    """NED → ENU: [N,E,D] → [E,N,-D]"""
-    return (y, x, -z)
+def ned_to_enu(north: float, east: float, down: float) -> tuple:
+    """
+    Convert NED (North-East-Down) to ENU (East-North-Up).
+    
+    Args:
+        north: North coordinate in meters (NED frame)
+        east: East coordinate in meters (NED frame)
+        down: Down coordinate in meters (NED frame, positive = below origin)
+    
+    Returns:
+        Tuple of (east, north, up) in ENU frame
+    
+    Example:
+        >>> ned_to_enu(10.0, 20.0, 30.0)  # 10m North, 20m East, 30m Down
+        (20.0, 10.0, -30.0)  # 20m East, 10m North, 30m Up
+    """
+    return (east, north, -down)
 
-def enu_to_ned(x: float, y: float, z: float) -> tuple:
-    """ENU → NED: [E,N,U] → [N,E,-U]"""
-    return (y, x, -z)
+def enu_to_ned(east: float, north: float, up: float) -> tuple:
+    """
+    Convert ENU (East-North-Up) to NED (North-East-Down).
+    
+    Args:
+        east: East coordinate in meters (ENU frame)
+        north: North coordinate in meters (ENU frame)
+        up: Up coordinate in meters (ENU frame, positive = above origin)
+    
+    Returns:
+        Tuple of (north, east, down) in NED frame
+    
+    Example:
+        >>> enu_to_ned(20.0, 10.0, -30.0)  # 20m East, 10m North, 30m Up
+        (10.0, 20.0, 30.0)  # 10m North, 20m East, 30m Down
+    """
+    return (north, east, -up)
 
-def frd_to_flu(x: float, y: float, z: float) -> tuple:
-    """FRD → FLU: pi rotation around X-axis: [F,R,D] → [F,-R,-D]"""
-    return (x, -y, -z)
+def frd_to_flu(forward: float, right: float, down: float) -> tuple:
+    """
+    Convert FRD (Forward-Right-Down) to FLU (Forward-Left-Up) body frame.
+    
+    This is a pi rotation around the X-axis (forward axis).
+    
+    Args:
+        forward: Forward coordinate in meters (FRD frame)
+        right: Right coordinate in meters (FRD frame)
+        down: Down coordinate in meters (FRD frame)
+    
+    Returns:
+        Tuple of (forward, left, up) in FLU frame
+    
+    Example:
+        >>> frd_to_flu(1.0, 2.0, 3.0)  # 1m Forward, 2m Right, 3m Down
+        (1.0, -2.0, -3.0)  # 1m Forward, 2m Left, 3m Up
+    """
+    return (forward, -right, -down)
 
 def quat_ned_to_enu(w: float, x: float, y: float, z: float) -> tuple:
     """Rotate quaternion from NED/FRD to ENU/FLU frame."""
@@ -163,6 +207,7 @@ class PX4ROS2Bridge:
         # Reconnect logic
         self._auto_reconnect = auto_reconnect
         self._max_reconnect_delay = max_reconnect_delay
+        self._max_reconnect_attempts = 5  # Maximum number of reconnect attempts
         self._reconnect_delay = 1.0  # Start with 1 second
         self._connection_status = ConnectionStatus.DISCONNECTED
         self._last_message_time = 0.0
@@ -499,9 +544,16 @@ class PX4ROS2Bridge:
                     break
                 
                 self._reconnect_attempts += 1
+                
+                # Check if max attempts reached
+                if self._reconnect_attempts > self._max_reconnect_attempts:
+                    print(f"[px4-bridge] Max reconnect attempts ({self._max_reconnect_attempts}) reached - giving up")
+                    self._set_status(ConnectionStatus.FAILED)
+                    break
+                
                 self._set_status(ConnectionStatus.RECONNECTING)
                 
-                print(f"[px4-bridge] Reconnecting in {self._reconnect_delay:.1f}s (attempt {self._reconnect_attempts})...")
+                print(f"[px4-bridge] Reconnecting in {self._reconnect_delay:.1f}s (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts})...")
                 
                 # Wait with early exit check
                 wait_start = time.time()

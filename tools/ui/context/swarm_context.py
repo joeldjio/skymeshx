@@ -100,6 +100,22 @@ class SwarmContext(QObject):
         else:
             self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Connection lost or failed")
 
+    def _is_drone_mission_controlled(self, drone_id: str) -> bool:
+        """
+        Check if a drone is currently under mission control.
+        
+        Thread-safe check of _mission_active dict. Used by APF and other
+        features to avoid interfering with autonomous missions.
+        
+        Returns:
+            True if drone is mission-controlled (Event not set), False otherwise
+        """
+        with self._state_lock:
+            if drone_id in self._mission_active:
+                # Event cleared (not set) = mission active
+                return not self._mission_active[drone_id].is_set()
+            return False
+    
     def _clear_drone_runtime_state(self, drone_id: str) -> None:
         """Forget mission/formation bookkeeping for a drone being removed."""
         with self._state_lock:
@@ -910,7 +926,24 @@ class SwarmContext(QObject):
 
     @boidsEnabled.setter
     def boidsEnabled(self, value):
-        self._boids_enabled = value
+        new_val = bool(value)
+        if new_val == self._boids_enabled:
+            return
+        
+        # Mutual exclusion: Boids and Leader-Follower are incompatible
+        if new_val and self._leader_follower_enabled:
+            self.logMessage.emit(
+                "WARN",
+                "[SWARM] Disabling Leader-Follower (incompatible with Boids)",
+            )
+            self._leader_follower_enabled = False
+            # Clear formation bookkeeping
+            with self._state_lock:
+                self._formation_launched.clear()
+                self._formation_cmd_ts.clear()
+        
+        self._boids_enabled = new_val
+        self.countsChanged.emit()
 
     @pyqtProperty(float, notify=countsChanged)
     def separationWeight(self):
@@ -954,6 +987,15 @@ class SwarmContext(QObject):
         new_val = bool(value)
         if new_val == self._leader_follower_enabled:
             return
+        
+        # Mutual exclusion: Leader-Follower and Boids are incompatible
+        if new_val and self._boids_enabled:
+            self.logMessage.emit(
+                "WARN",
+                "[SWARM] Disabling Boids (incompatible with Leader-Follower)",
+            )
+            self._boids_enabled = False
+        
         self._leader_follower_enabled = new_val
         if not new_val:
             # Clear launch bookkeeping so a fresh enable triggers smartGoto
