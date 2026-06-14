@@ -1,136 +1,163 @@
 """
-Tests for NED ↔ ENU frame conversion.
+Tests for NED/ENU frame conversion functions.
+
+Verifies that frame conversions are mathematically correct and consistent
+across different modules.
 """
 import pytest
-from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned, frd_to_flu
+import math
 
 
-def test_ned_to_enu_basic():
-    """Test basic NED to ENU conversion."""
-    # NED: North=1, East=2, Down=3
-    # ENU: East=2, North=1, Up=-3
-    e, n, u = ned_to_enu(1.0, 2.0, 3.0)
-    assert e == pytest.approx(2.0)
-    assert n == pytest.approx(1.0)
-    assert u == pytest.approx(-3.0)
-
-
-def test_enu_to_ned_basic():
-    """Test basic ENU to NED conversion."""
-    # ENU: East=2, North=1, Up=3
-    # NED: North=1, East=2, Down=-3
-    n, e, d = enu_to_ned(2.0, 1.0, 3.0)
-    assert n == pytest.approx(1.0)
-    assert e == pytest.approx(2.0)
-    assert d == pytest.approx(-3.0)
-
-
-def test_ned_enu_roundtrip():
-    """Test that NED → ENU → NED gives original values."""
-    ned_n, ned_e, ned_d = 10.0, 20.0, -5.0
+def test_ned_to_enu_px4_bridge():
+    """Test NED→ENU conversion in px4_bridge."""
+    from droneresearch.ros.px4_bridge import ned_to_enu
     
-    # Convert to ENU
-    enu_e, enu_n, enu_u = ned_to_enu(ned_n, ned_e, ned_d)
+    # Test case: North=1, East=2, Down=3
+    result = ned_to_enu(1.0, 2.0, 3.0)
     
-    # Convert back to NED
-    back_n, back_e, back_d = enu_to_ned(enu_e, enu_n, enu_u)
+    # Expected: ENU = (East, North, -Down) = (2, 1, -3)
+    assert result == (2.0, 1.0, -3.0), f"Expected (2.0, 1.0, -3.0), got {result}"
+
+
+def test_enu_to_ned_px4_bridge():
+    """Test ENU→NED conversion in px4_bridge."""
+    from droneresearch.ros.px4_bridge import enu_to_ned
     
-    assert back_n == pytest.approx(ned_n)
-    assert back_e == pytest.approx(ned_e)
-    assert back_d == pytest.approx(ned_d)
-
-
-def test_enu_ned_roundtrip():
-    """Test that ENU → NED → ENU gives original values."""
-    enu_e, enu_n, enu_u = 15.0, 25.0, 10.0
+    # Test case: East=2, North=1, Up=-3
+    result = enu_to_ned(2.0, 1.0, -3.0)
     
-    # Convert to NED
-    ned_n, ned_e, ned_d = enu_to_ned(enu_e, enu_n, enu_u)
+    # Expected: NED = (North, East, -Up) = (1, 2, 3)
+    assert result == (1.0, 2.0, 3.0), f"Expected (1.0, 2.0, 3.0), got {result}"
+
+
+def test_ned_to_enu_px4_formation():
+    """Test NED→ENU conversion in px4_formation."""
+    from droneresearch.ros.px4_formation import ned_to_enu
     
-    # Convert back to ENU
-    back_e, back_n, back_u = ned_to_enu(ned_n, ned_e, ned_d)
+    # Test case: North=1, East=2, Down=3
+    result = ned_to_enu(1.0, 2.0, 3.0)
     
-    assert back_e == pytest.approx(enu_e)
-    assert back_n == pytest.approx(enu_n)
-    assert back_u == pytest.approx(enu_u)
+    # Expected: ENU = (East, North, -Down) = (2, 1, -3)
+    assert result == (2.0, 1.0, -3.0), f"Expected (2.0, 1.0, -3.0), got {result}"
 
 
-def test_ned_to_enu_zero():
-    """Test conversion at origin."""
-    e, n, u = ned_to_enu(0.0, 0.0, 0.0)
-    assert e == pytest.approx(0.0)
-    assert n == pytest.approx(0.0)
-    assert u == pytest.approx(0.0)
+def test_enu_to_ned_px4_formation():
+    """Test ENU→NED conversion in px4_formation."""
+    from droneresearch.ros.px4_formation import enu_to_ned
+    
+    # Test case: East=2, North=1, Up=-3
+    result = enu_to_ned(2.0, 1.0, -3.0)
+    
+    # Expected: NED = (North, East, -Up) = (1, 2, 3)
+    assert result == (1.0, 2.0, 3.0), f"Expected (1.0, 2.0, 3.0), got {result}"
 
 
-def test_ned_to_enu_negative():
-    """Test conversion with negative values."""
-    # NED: North=-5, East=-10, Down=-2 (above ground)
-    # ENU: East=-10, North=-5, Up=2
-    e, n, u = ned_to_enu(-5.0, -10.0, -2.0)
-    assert e == pytest.approx(-10.0)
-    assert n == pytest.approx(-5.0)
-    assert u == pytest.approx(2.0)
+def test_ned_enu_roundtrip_px4_bridge():
+    """Test NED→ENU→NED roundtrip in px4_bridge."""
+    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
+    
+    # Original NED coordinates
+    n, e, d = 10.0, 20.0, 30.0
+    
+    # Convert to ENU and back
+    enu = ned_to_enu(n, e, d)
+    ned = enu_to_ned(*enu)
+    
+    # Should get back original values
+    assert ned == (n, e, d), f"Roundtrip failed: {(n, e, d)} → {enu} → {ned}"
 
 
-def test_frd_to_flu_basic():
-    """Test FRD to FLU body frame conversion."""
-    # FRD: Forward=1, Right=2, Down=3
-    # FLU: Forward=1, Left=-2, Up=-3
-    f, l, u = frd_to_flu(1.0, 2.0, 3.0)
-    assert f == pytest.approx(1.0)
-    assert l == pytest.approx(-2.0)
-    assert u == pytest.approx(-3.0)
+def test_ned_enu_roundtrip_px4_formation():
+    """Test NED→ENU→NED roundtrip in px4_formation."""
+    from droneresearch.ros.px4_formation import ned_to_enu, enu_to_ned
+    
+    # Original NED coordinates
+    n, e, d = 10.0, 20.0, 30.0
+    
+    # Convert to ENU and back
+    enu = ned_to_enu(n, e, d)
+    ned = enu_to_ned(*enu)
+    
+    # Should get back original values
+    assert ned == (n, e, d), f"Roundtrip failed: {(n, e, d)} → {enu} → {ned}"
 
 
-def test_frd_to_flu_zero():
-    """Test FRD to FLU at zero."""
-    f, l, u = frd_to_flu(0.0, 0.0, 0.0)
-    assert f == pytest.approx(0.0)
-    assert l == pytest.approx(0.0)
-    assert u == pytest.approx(0.0)
+def test_frd_to_flu():
+    """Test FRD→FLU body frame conversion."""
+    from droneresearch.ros.px4_bridge import frd_to_flu
+    
+    # Test case: Forward=1, Right=2, Down=3
+    result = frd_to_flu(1.0, 2.0, 3.0)
+    
+    # Expected: FLU = (Forward, -Right, -Down) = (1, -2, -3)
+    assert result == (1.0, -2.0, -3.0), f"Expected (1.0, -2.0, -3.0), got {result}"
+
+
+def test_consistency_between_modules():
+    """Test that both modules produce identical results."""
+    from droneresearch.ros.px4_bridge import ned_to_enu as ned_to_enu_bridge
+    from droneresearch.ros.px4_bridge import enu_to_ned as enu_to_ned_bridge
+    from droneresearch.ros.px4_formation import ned_to_enu as ned_to_enu_formation
+    from droneresearch.ros.px4_formation import enu_to_ned as enu_to_ned_formation
+    
+    # Test multiple coordinate sets
+    test_cases = [
+        (0.0, 0.0, 0.0),
+        (1.0, 2.0, 3.0),
+        (-5.0, 10.0, -15.0),
+        (100.0, -50.0, 25.0),
+    ]
+    
+    for n, e, d in test_cases:
+        # NED→ENU should be identical
+        enu_bridge = ned_to_enu_bridge(n, e, d)
+        enu_formation = ned_to_enu_formation(n, e, d)
+        assert enu_bridge == enu_formation, \
+            f"NED→ENU mismatch for ({n},{e},{d}): bridge={enu_bridge}, formation={enu_formation}"
+        
+        # ENU→NED should be identical
+        ned_bridge = enu_to_ned_bridge(*enu_bridge)
+        ned_formation = enu_to_ned_formation(*enu_formation)
+        assert ned_bridge == ned_formation, \
+            f"ENU→NED mismatch: bridge={ned_bridge}, formation={ned_formation}"
+
+
+def test_zero_coordinates():
+    """Test conversion of zero coordinates."""
+    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
+    
+    # Zero should remain zero
+    assert ned_to_enu(0.0, 0.0, 0.0) == (0.0, 0.0, 0.0)
+    assert enu_to_ned(0.0, 0.0, 0.0) == (0.0, 0.0, 0.0)
 
 
 def test_altitude_sign_convention():
-    """
-    Test altitude sign convention.
+    """Test that altitude (z-axis) sign is correctly inverted."""
+    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
     
-    PX4 NED: Down is positive (altitude is negative)
-    ROS2 ENU: Up is positive (altitude is positive)
-    """
-    # Drone at 10m altitude
-    ned_down = -10.0  # Negative in NED
-    _, _, enu_up = ned_to_enu(0.0, 0.0, ned_down)
-    assert enu_up == pytest.approx(10.0)  # Positive in ENU
+    # Positive altitude in NED (down) should be negative in ENU (up)
+    n, e, d = 0.0, 0.0, 10.0  # 10m down in NED
+    enu_e, enu_n, enu_u = ned_to_enu(n, e, d)
+    assert enu_u == -10.0, f"Expected -10.0 up in ENU, got {enu_u}"
     
-    # Convert back
-    _, _, back_down = enu_to_ned(0.0, 0.0, enu_up)
-    assert back_down == pytest.approx(ned_down)
+    # Negative altitude in NED (up) should be positive in ENU (up)
+    n, e, d = 0.0, 0.0, -10.0  # 10m up in NED
+    enu_e, enu_n, enu_u = ned_to_enu(n, e, d)
+    assert enu_u == 10.0, f"Expected 10.0 up in ENU, got {enu_u}"
 
 
-def test_position_example():
-    """Test realistic position example."""
-    # Drone is 5m North, 3m East, 10m altitude
-    ned_n, ned_e, ned_d = 5.0, 3.0, -10.0
+def test_north_east_swap():
+    """Test that North and East are correctly swapped."""
+    from droneresearch.ros.px4_bridge import ned_to_enu
     
-    # Convert to ENU
-    enu_e, enu_n, enu_u = ned_to_enu(ned_n, ned_e, ned_d)
+    # Pure North in NED should be pure North in ENU (second component)
+    enu_e, enu_n, enu_u = ned_to_enu(10.0, 0.0, 0.0)
+    assert enu_n == 10.0 and enu_e == 0.0, \
+        f"Pure North failed: expected (0, 10, 0), got ({enu_e}, {enu_n}, {enu_u})"
     
-    # Check ENU values
-    assert enu_e == pytest.approx(3.0)   # East stays East
-    assert enu_n == pytest.approx(5.0)   # North stays North
-    assert enu_u == pytest.approx(10.0)  # Down=-10 becomes Up=10
+    # Pure East in NED should be pure East in ENU (first component)
+    enu_e, enu_n, enu_u = ned_to_enu(0.0, 10.0, 0.0)
+    assert enu_e == 10.0 and enu_n == 0.0, \
+        f"Pure East failed: expected (10, 0, 0), got ({enu_e}, {enu_n}, {enu_u})"
 
-
-def test_velocity_conversion():
-    """Test velocity vector conversion."""
-    # Velocity: 2 m/s North, 1 m/s East, -0.5 m/s Down (climbing)
-    vn, ve, vd = 2.0, 1.0, -0.5
-    
-    # Convert to ENU
-    enu_ve, enu_vn, enu_vu = ned_to_enu(vn, ve, vd)
-    
-    assert enu_ve == pytest.approx(1.0)   # East velocity
-    assert enu_vn == pytest.approx(2.0)   # North velocity
-    assert enu_vu == pytest.approx(0.5)   # Up velocity (climbing)
-
+# Made with Bob
