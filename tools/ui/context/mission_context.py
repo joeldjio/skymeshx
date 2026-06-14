@@ -500,6 +500,21 @@ class MissionContext(QObject):
                             "INFO",
                             f"[{drone_id}] ✅ Mission started! Flying coverage pattern..."
                         )
+                        
+                        # Notify SwarmContext that this drone is now mission-controlled
+                        # This prevents APF/formations from interfering with the mission
+                        if self._swarm_context is not None:
+                            with self._swarm_context._state_lock:
+                                # Mark mission as active for this drone
+                                if drone_id not in self._swarm_context._mission_active:
+                                    self._swarm_context._mission_active[drone_id] = threading.Event()
+                                # Clear the event to indicate mission is running
+                                self._swarm_context._mission_active[drone_id].clear()
+                            
+                            self.logMessage.emit(
+                                "INFO",
+                                f"[{drone_id}] 🔒 Mission lock acquired (APF/formations disabled)"
+                            )
                     else:
                         self.logMessage.emit(
                             "WARN",
