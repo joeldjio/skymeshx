@@ -68,6 +68,7 @@ class MissionContext(QObject):
         
         # Mission lock state
         self._mission_locked = False
+        self._poll_in_progress = False  # Gate to prevent concurrent polls
         
         # Swarm context reference (injected via wire())
         self._swarm_context: Optional["SwarmContext"] = None
@@ -185,42 +186,78 @@ class MissionContext(QObject):
     # ── Methods ───────────────────────────────────────────────────────────
     
     def _update_mission_lock(self):
-        """Poll swarm context to check if any drone is in mission mode."""
+        """
+        Poll swarm context to check if any drone is in mission mode.
+        
+        Thread-safe with gating to prevent concurrent polls.
+        Uses SwarmContext._mission_active dict as primary source of truth.
+        """
+        # Gate: Skip if previous poll still running
+        if self._poll_in_progress:
+            return
+        
         if not self._swarm_context:
             return
         
-        # Check if any connected drone is in MISSION state
-        backends = self._swarm_context.backend.all_backends()
-        mission_active = False
-        
-        for drone_id, backend in backends.items():
-            if not backend.is_connected:
-                continue
+        try:
+            self._poll_in_progress = True
+            mission_active = False
             
-            # Check FSM state
-            if hasattr(backend, 'fsm_state'):
-                fsm_state = str(backend.fsm_state).upper()
-                if fsm_state == 'MISSION':
-                    mission_active = True
-                    break
+            # Primary check: SwarmContext._mission_active dict (set by MissionContext)
+            # This is the authoritative source for mission-controlled drones
+            if hasattr(self._swarm_context, '_mission_active'):
+                with self._swarm_context._state_lock:
+                    # Check if any drone has an active mission (Event not set)
+                    for drone_id, event in self._swarm_context._mission_active.items():
+                        if not event.is_set():  # Event cleared = mission active
+                            mission_active = True
+                            break
             
-            # Also check telemetry flight mode
-            if hasattr(backend, 'get_telemetry_snapshot'):
-                snap = backend.get_telemetry_snapshot()
-                if snap:
-                    flight_mode = str(snap.get('flight_mode', '')).upper()
-                    if flight_mode in ('AUTO', 'MISSION'):
-                        mission_active = True
-                        break
+            # Fallback check: Poll backend FSM states (for missions started externally)
+            if not mission_active:
+                try:
+                    backends = self._swarm_context.backend.all_backends()
+                    
+                    for drone_id, backend in backends.items():
+                        if not backend.is_connected:
+                            continue
+                        
+                        # Check FSM state (non-blocking)
+                        if hasattr(backend, 'fsm_state'):
+                            try:
+                                fsm_state = str(backend.fsm_state).upper()
+                                if fsm_state == 'MISSION':
+                                    mission_active = True
+                                    break
+                            except Exception:
+                                pass  # Ignore errors from individual backends
+                        
+                        # Check telemetry flight mode (with timeout protection)
+                        if hasattr(backend, 'get_telemetry_snapshot'):
+                            try:
+                                snap = backend.get_telemetry_snapshot()
+                                if snap:
+                                    flight_mode = str(snap.get('flight_mode', '')).upper()
+                                    if flight_mode in ('AUTO', 'MISSION'):
+                                        mission_active = True
+                                        break
+                            except Exception:
+                                pass  # Ignore errors from individual backends
+                
+                except Exception:
+                    pass  # Ignore errors from backend iteration
+            
+            # Update lock state if changed (emit signal outside lock)
+            if mission_active != self._mission_locked:
+                self._mission_locked = mission_active
+                self.missionLockChanged.emit(mission_active)
+                if mission_active:
+                    self.logMessage.emit("INFO", "[MISSION] 🔒 Mission lock activated")
+                else:
+                    self.logMessage.emit("INFO", "[MISSION] 🔓 Mission lock released")
         
-        # Update lock state if changed
-        if mission_active != self._mission_locked:
-            self._mission_locked = mission_active
-            self.missionLockChanged.emit(mission_active)
-            if mission_active:
-                self.logMessage.emit("INFO", "[MISSION] 🔒 Mission lock activated (drone in MISSION mode)")
-            else:
-                self.logMessage.emit("INFO", "[MISSION] 🔓 Mission lock released")
+        finally:
+            self._poll_in_progress = False
 
     @pyqtSlot(float, float)
     def setHomePosition(self, lat: float, lon: float):
