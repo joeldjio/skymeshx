@@ -18,6 +18,16 @@ Services called:
     /exploration/toggle        std_srvs/SetBool   (start/stop)
     /exploration/save_octomap  std_srvs/Empty     (save map)
 
+Frame Convention
+----------------
+All positions use local NED (North-East-Down) coordinates:
+- x: North (meters)
+- y: East (meters)
+- z: Altitude above ground (meters, positive UP)
+
+Note: Odometry messages are converted to ROS2 ENU frame for the explorer.
+Frontier points received from the explorer are converted back to NED.
+
 Usage:
     from droneresearch import Drone
     from droneresearch.exploration import FrontierExplorationBridge

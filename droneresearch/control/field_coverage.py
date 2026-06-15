@@ -3,6 +3,12 @@ Field Coverage Planning for Agricultural UAV Operations.
 
 Generates waypoint patterns for efficient field coverage with configurable
 overlap, altitude, and pattern types (parallel lines, spiral, etc.).
+
+Frame Convention
+----------------
+All positions use GPS coordinates (latitude, longitude) for field boundaries.
+Generated waypoints include altitude in meters above ground (positive UP).
+Internal calculations use local NED meters for distance computations.
 """
 
 from __future__ import annotations

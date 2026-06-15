@@ -8,13 +8,24 @@ Reference:
     https://docs.px4.io/main/en/ros2/user_guide.html
     https://docs.px4.io/main/en/middleware/uxrce_dds
 
-IMPORTANT — Frame conventions (PX4 uses FRD/NED, ROS2 uses FLU/ENU):
-    PX4 position:   NED  (North-East-Down)
-    ROS2 position:  ENU  (East-North-Up)
-    PX4 body:       FRD  (Forward-Right-Down)
-    ROS2 body:      FLU  (Forward-Left-Up)
-    Conversion NED→ENU: [x,y,z]_enu = [y, x, -z]_ned
-    Conversion ENU→NED: [x,y,z]_ned = [y, x, -z]_enu
+Frame Convention
+----------------
+PX4 and ROS2 use different coordinate systems:
+
+PX4 Native Frames:
+- Position: NED (North-East-Down)
+- Body: FRD (Forward-Right-Down)
+
+ROS2 Standard Frames:
+- Position: ENU (East-North-Up)
+- Body: FLU (Forward-Left-Up)
+
+Conversions (implemented in ned_to_enu(), enu_to_ned(), frd_to_flu()):
+- NED→ENU: [x,y,z]_enu = [y, x, -z]_ned
+- ENU→NED: [x,y,z]_ned = [y, x, -z]_enu
+- FRD→FLU: [x,y,z]_flu = [x, -y, -z]_frd
+
+This bridge automatically handles all frame conversions between PX4 and ROS2.
 
 Prerequisites:
     1. PX4 v1.14+ firmware on FC

@@ -11,9 +11,16 @@ waypoints and current drone positions, applies repulsive forces to
 prevent collisions, enforces kinematic limits, and clips positions
 within a geo-fence.
 
-All positions in local NED meters (x=North, y=East, z=Down).
-For altitude: use positive z_up (above ground), the filter
-handles inversion internally.
+Frame Convention
+----------------
+All positions use local NED (North-East-Down) coordinates:
+- x: North (meters)
+- y: East (meters)
+- z: Altitude above ground (meters, positive UP)
+
+Note: z is inverted from standard NED (which uses Down positive).
+This matches intuitive "altitude" semantics. The filter handles
+internal NED calculations with proper z-axis inversion.
 
 Usage:
     from droneresearch.safety.apf import APFSafetyFilter, Pose3D
