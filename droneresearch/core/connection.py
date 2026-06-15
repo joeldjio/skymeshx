@@ -154,6 +154,13 @@ class MAVLinkConnection:
         "statustext"   — fired on STATUSTEXT (text, severity)
         "armed"        — fired when armed state changes (bool)
         "mode"         — fired when flight mode changes (str)
+    
+    Thread Safety
+    -------------
+    All public methods are thread-safe and can be called from any thread.
+    Internal state (telemetry, connection status) is protected by locks.
+    Event callbacks are dispatched from the receive thread - keep handlers fast.
+    Command methods (goto, set_mode, arm, etc.) use a command lock to serialize access.
     """
 
     STREAM_RATES = {

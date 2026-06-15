@@ -1,6 +1,12 @@
 """
 TelemetryState — thread-safe snapshot of all drone telemetry.
 Updated by MAVLinkConnection on every incoming message.
+
+Thread Safety
+-------------
+TelemetryState is thread-safe. The update() and snapshot() methods
+use an internal lock to protect concurrent access to telemetry fields.
+Direct field access is NOT thread-safe - always use update()/snapshot().
 """
 import threading
 import time
@@ -10,6 +16,15 @@ from typing import Optional
 
 @dataclass
 class TelemetryState:
+    """
+    Thread-safe telemetry state container.
+    
+    Thread Safety
+    -------------
+    All field updates via update() are protected by an internal lock.
+    snapshot() returns a consistent copy of all fields at a point in time.
+    Direct field access is NOT thread-safe - always use update()/snapshot().
+    """
     # GPS
     lat:           float = 0.0
     lon:           float = 0.0

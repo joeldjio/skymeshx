@@ -73,6 +73,12 @@ class BatteryMonitor:
     
     Tracks power consumption over time and predicts when RTL should
     be triggered to ensure safe return home.
+    
+    Thread Safety
+    -------------
+    All public methods are thread-safe and can be called from any thread.
+    Internal state (history, monitoring status) is protected by a lock.
+    Callbacks are invoked while holding the lock - keep handlers fast.
     """
     
     def __init__(

@@ -41,6 +41,12 @@ class MissionEngine:
         handshake_timeout: Seconds to wait for MISSION_REQUEST(0) (default: 0.25)
         item_timeout: Seconds to wait for each MISSION_REQUEST (default: 3.0)
         ack_timeout: Seconds to wait for final MISSION_ACK (default: 5.0)
+    
+    Thread Safety
+    -------------
+    Mission building (add/clear) is NOT thread-safe - build from one thread only.
+    upload() spawns a background thread and is safe to call from any thread.
+    Progress/completion callbacks are invoked from the upload thread.
     """
 
     def __init__(

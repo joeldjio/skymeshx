@@ -105,6 +105,12 @@ class CollisionPredictor:
         Distance threshold for "critical" severity (meters)
     warning_threshold : float
         Distance threshold for "warning" severity (meters)
+    
+    Thread Safety
+    -------------
+    CollisionPredictor is stateless and thread-safe.
+    The predict() methods can be called concurrently from multiple threads.
+    No internal state is modified during prediction operations.
     """
     
     def __init__(

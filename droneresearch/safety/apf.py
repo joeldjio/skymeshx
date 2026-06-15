@@ -135,6 +135,12 @@ class APFSafetyFilter:
     repulsion_gain  : Strength of repulsive force between drones
     attraction_gain : Strength of attractive force toward waypoints
     obstacle_radius : Safety margin — repulsion activates within this range
+    
+    Thread Safety
+    -------------
+    APFSafetyFilter is stateless and thread-safe.
+    The filter() method can be called concurrently from multiple threads.
+    No internal state is modified during filtering operations.
     """
 
     def __init__(

@@ -19,6 +19,12 @@ Usage:
     bridge = ROS2Bridge(drone)
     bridge.start()
     # runs until bridge.stop()
+
+Thread Safety
+-------------
+start() spawns a background thread running the ROS2 spin loop.
+stop() is safe to call from any thread and will cleanly shut down the bridge.
+ROS2 callbacks are invoked from the ROS2 executor thread.
 """
 import json
 import threading
