@@ -79,20 +79,36 @@ class TelemetryState:
     last_attitude:  float = 0.0
 
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
+    _snapshot_cache: Optional[dict] = field(default=None, repr=False, compare=False)
+    _snapshot_dirty: bool = field(default=True, repr=False, compare=False)
 
     def update(self, **kwargs):
         with self._lock:
             for k, v in kwargs.items():
                 if hasattr(self, k):
                     setattr(self, k, v)
+            # Mark cache as dirty after any update
+            self._snapshot_dirty = True
 
     def snapshot(self) -> dict:
+        """
+        Return a consistent snapshot of all telemetry fields.
+        
+        Performance Optimization
+        ------------------------
+        Uses internal cache to avoid rebuilding the dictionary on every call.
+        Cache is invalidated when update() is called. This reduces CPU overhead
+        when snapshot() is called frequently (e.g., from UI at 10+ Hz).
+        """
         with self._lock:
-            return {
-                k: getattr(self, k)
-                for k in self.__dataclass_fields__
-                if not k.startswith("_")
-            }
+            if self._snapshot_dirty or self._snapshot_cache is None:
+                self._snapshot_cache = {
+                    k: getattr(self, k)
+                    for k in self.__dataclass_fields__
+                    if not k.startswith("_")
+                }
+                self._snapshot_dirty = False
+            return dict(self._snapshot_cache)  # Return copy to prevent external mutation
 
     @property
     def is_stale(self) -> bool:
