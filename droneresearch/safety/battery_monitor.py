@@ -35,12 +35,14 @@ Usage:
     print(f"RTL needs {rtl_time:.1f}s and {battery_required:.1f}% battery")
 """
 
+import json
 import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, Callable
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Dict, Optional, Tuple, Callable, List
 
 
 @dataclass
@@ -79,7 +81,8 @@ class BatteryMonitor:
         warning_threshold: float = 30.0,
         safety_margin: float = 1.2,
         history_size: int = 100,
-        min_samples_for_prediction: int = 10
+        min_samples_for_prediction: int = 10,
+        persistence_path: Optional[str] = None  # Improvement 10: history persistence
     ):
         """
         Initialize battery monitor.
@@ -90,11 +93,14 @@ class BatteryMonitor:
             safety_margin: Multiplier for RTL time (1.2 = 20% safety margin)
             history_size: Number of power samples to keep
             min_samples_for_prediction: Minimum samples needed for prediction
+            persistence_path: Optional path to save/load battery history (Improvement 10)
         """
         self.critical_threshold = critical_threshold
         self.warning_threshold = warning_threshold
         self.safety_margin = safety_margin
         self.min_samples = min_samples_for_prediction
+        self.history_size = history_size
+        self.persistence_path = Path(persistence_path) if persistence_path else None
         
         # Per-drone monitoring data
         self._monitoring: Dict[str, bool] = {}
@@ -104,6 +110,10 @@ class BatteryMonitor:
         self._callbacks: Dict[str, Callable] = {}
         
         self._lock = threading.Lock()
+        
+        # Load persisted history if available (Improvement 10)
+        if self.persistence_path and self.persistence_path.exists():
+            self.load_history()
     
     def start_monitoring(self, drone_id: str, callback: Optional[Callable] = None):
         """
@@ -145,11 +155,12 @@ class BatteryMonitor:
             return
         
         battery_pct = telemetry.get("battery_pct", 0)
-        lat = telemetry.get("lat", 0)
-        lon = telemetry.get("lon", 0)
+        lat = telemetry.get("lat", None)
+        lon = telemetry.get("lon", None)
         alt = telemetry.get("alt_rel", 0)
         
-        if battery_pct <= 0 or lat == 0 or lon == 0:
+        # Skip if battery or position data is missing
+        if battery_pct <= 0 or lat is None or lon is None:
             return
         
         with self._lock:
@@ -377,6 +388,94 @@ class BatteryMonitor:
             return 0.0
         
         return battery_drop / time_elapsed
+    
+    def save_history(self) -> bool:
+        """
+        Save battery history to JSON file.
+        
+        Returns:
+            True if save successful, False otherwise
+        """
+        if not self.persistence_path:
+            return False
+        
+        try:
+            with self._lock:
+                # Convert deques to lists and PowerSample to dicts
+                data = {}
+                for drone_id, history in self._power_history.items():
+                    data[drone_id] = [asdict(sample) for sample in history]
+                
+                # Write to file
+                with open(self.persistence_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+                
+                return True
+        except Exception as e:
+            print(f"Failed to save battery history: {e}")
+            return False
+    
+    def load_history(self) -> bool:
+        """
+        Load battery history from JSON file.
+        
+        Returns:
+            True if load successful, False otherwise
+        """
+        if not self.persistence_path or not Path(self.persistence_path).exists():
+            return False
+        
+        try:
+            with open(self.persistence_path, 'r') as f:
+                data = json.load(f)
+            
+            with self._lock:
+                # Convert dicts back to PowerSample objects
+                for drone_id, samples in data.items():
+                    history = deque(maxlen=self.history_size)
+                    for sample_dict in samples:
+                        # Convert position tuple if it's a list
+                        if isinstance(sample_dict.get('position'), list):
+                            sample_dict['position'] = tuple(sample_dict['position'])
+                        
+                        # Add default distance_traveled if missing (backward compatibility)
+                        if 'distance_traveled' not in sample_dict:
+                            sample_dict['distance_traveled'] = 0.0
+                        
+                        history.append(PowerSample(**sample_dict))
+                    self._power_history[drone_id] = history
+                
+                return True
+        except Exception as e:
+            print(f"Failed to load battery history: {e}")
+            return False
+    
+    def get_history(self, drone_id: str) -> List[PowerSample]:
+        """
+        Get battery history for a specific drone.
+        
+        Args:
+            drone_id: Drone identifier
+            
+        Returns:
+            List of PowerSample objects (copy)
+        """
+        with self._lock:
+            history = self._power_history.get(drone_id, deque())
+            return list(history)
+    
+    def set_history(self, drone_id: str, samples: List[PowerSample]):
+        """
+        Set battery history for a specific drone.
+        
+        Args:
+            drone_id: Drone identifier
+            samples: List of PowerSample objects
+        """
+        with self._lock:
+            history = deque(maxlen=self.history_size)
+            history.extend(samples)
+            self._power_history[drone_id] = history
     
     def reset_rtl_trigger(self, drone_id: str):
         """Reset RTL trigger flag (e.g., after manual override)."""
