@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
@@ -1467,7 +1467,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "ℹ️ Demokratische Entscheidungsfindung im Schwarm. Byzantine Tolerance: Anzahl fehlerhafter Drohnen, die toleriert werden. ✅ Kompatibel mit allen Algorithmen."
+                            text: "ℹ️ Democratic decision-making in the swarm. Byzantine Tolerance: Number of faulty drones that can be tolerated. ✅ Compatible with all algorithms."
                             color: "#94a3b8"
                             font.pixelSize: 8
                             wrapMode: Text.WordWrap
@@ -1529,7 +1529,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "ℹ️ Autonome Mission-Ausführung mit Prioritäten. Safety First (sicher), Mission First (schnell), Balanced. ⚠️ Überschreibt andere Algorithmen während Ausführung."
+                            text: "ℹ️ Autonomous mission execution with priorities. Safety First (safe), Mission First (fast), Balanced. ⚠️ Overrides other algorithms during execution."
                             color: "#94a3b8"
                             font.pixelSize: 8
                             wrapMode: Text.WordWrap
