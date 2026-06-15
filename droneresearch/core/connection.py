@@ -365,7 +365,53 @@ class MAVLinkConnection:
     def set_speed(self, speed_ms: float) -> bool:
         return self._command_long(178, 1, speed_ms, -1, 0)
 
+    # Whitelist of allowed MAVLink message types for send_raw()
+    # This prevents command injection attacks via arbitrary message types
+    ALLOWED_RAW_MESSAGES = {
+        # Position/velocity commands
+        "set_position_target_local_ned",
+        "set_position_target_global_int",
+        "set_attitude_target",
+        # Mission commands
+        "mission_item",
+        "mission_item_int",
+        "mission_count",
+        "mission_request",
+        "mission_ack",
+        "mission_clear_all",
+        # Parameter commands
+        "param_set",
+        "param_request_read",
+        "param_request_list",
+        # Other safe commands
+        "command_long",
+        "command_int",
+        "manual_control",
+        "rc_channels_override",
+        "set_mode",
+        "heartbeat",
+    }
+
     def send_raw(self, msg_type: str, **kwargs):
+        """
+        Send a raw MAVLink message.
+        
+        Security
+        --------
+        Only whitelisted message types are allowed to prevent command injection.
+        If you need to send a message type not in the whitelist, add it to
+        ALLOWED_RAW_MESSAGES after security review.
+        
+        Raises
+        ------
+        ValueError
+            If msg_type is not in the whitelist
+        """
+        if msg_type not in self.ALLOWED_RAW_MESSAGES:
+            raise ValueError(
+                f"Message type '{msg_type}' not in whitelist. "
+                f"Allowed types: {sorted(self.ALLOWED_RAW_MESSAGES)}"
+            )
         if self._mav:
             getattr(self._mav.mav, f"{msg_type}_send")(**kwargs)
 

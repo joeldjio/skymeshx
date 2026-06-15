@@ -102,6 +102,21 @@ class FakeConnection:
     def goto(self, lat: float, lon: float, alt: float) -> bool:
         """Goto command (test stub)."""
         return True
+    
+    def send_raw(self, msg_type: str, **kwargs):
+        """Send raw MAVLink message (test stub with whitelist check)."""
+        # Import here to avoid circular dependency
+        from droneresearch.core.connection import MAVLinkConnection
+        
+        if msg_type not in MAVLinkConnection.ALLOWED_RAW_MESSAGES:
+            raise ValueError(
+                f"Message type '{msg_type}' not in whitelist. "
+                f"Allowed types: {sorted(MAVLinkConnection.ALLOWED_RAW_MESSAGES)}"
+            )
+        # In tests, just record that it was called
+        if not hasattr(self, 'raw_messages_sent'):
+            self.raw_messages_sent = []
+        self.raw_messages_sent.append((msg_type, kwargs))
 
     # ── Test helpers ─────────────────────────────────────────────────────
     def emit_message(self, msg) -> None:
