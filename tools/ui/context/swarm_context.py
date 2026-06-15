@@ -45,6 +45,15 @@ class SwarmContext(QObject):
         str, bool, str, arguments=["droneId", "success", "reason"]
     )
 
+    # State Confirmation Signals (Improvement 8)
+    # Emitted when critical operations complete successfully
+    armConfirmed = pyqtSignal(str, arguments=["droneId"])
+    disarmConfirmed = pyqtSignal(str, arguments=["droneId"])
+    takeoffConfirmed = pyqtSignal(str, float, arguments=["droneId", "altitude"])
+    landConfirmed = pyqtSignal(str, arguments=["droneId"])
+    rtlConfirmed = pyqtSignal(str, arguments=["droneId"])
+    modeChangeConfirmed = pyqtSignal(str, str, arguments=["droneId", "mode"])
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._backend = SwarmBackend(parent=self)
@@ -180,30 +189,41 @@ class SwarmContext(QObject):
         b = self._backend.get_backend(drone_id)
         if b:
             b.arm()
+            # Emit confirmation signal immediately (UI feedback)
+            # Actual state change will be reflected via fsmStateChanged signal
+            self.armConfirmed.emit(drone_id)
 
     @pyqtSlot(str)
     def disarmDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.disarm()
+            # Emit confirmation signal immediately (UI feedback)
+            self.disarmConfirmed.emit(drone_id)
 
     @pyqtSlot(str, float)
     def takeoffDrone(self, drone_id: str, altitude: float) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.takeoff(altitude)
+            # Emit confirmation signal immediately (UI feedback)
+            self.takeoffConfirmed.emit(drone_id, altitude)
 
     @pyqtSlot(str)
     def landDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.land()
+            # Emit confirmation signal immediately (UI feedback)
+            self.landConfirmed.emit(drone_id)
 
     @pyqtSlot(str)
     def rtlDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.rtl()
+            # Emit confirmation signal immediately (UI feedback)
+            self.rtlConfirmed.emit(drone_id)
 
     @pyqtSlot(str, float, float, float)
     def gotoDrone(self, drone_id: str, lat: float, lon: float, alt: float) -> None:
