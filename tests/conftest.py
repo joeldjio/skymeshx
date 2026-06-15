@@ -34,6 +34,14 @@ class FakeTelemetry:
         self.home_alt   = 0.0
         self.armed      = False
         self.flight_mode = "AUTO"
+        self.groundspeed = 0.0
+        self.autopilot  = "ardupilot"
+    
+    def update(self, **kwargs):
+        """Update telemetry attributes."""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 
 
 class FakeMav:
@@ -120,6 +128,12 @@ class FakeMavMessage:
 @pytest.fixture
 def fake_conn() -> FakeConnection:
     return FakeConnection()
+
+
+@pytest.fixture
+def fake_mav():
+    """Provide FakeMav instance for tests that need mav.mav.*_send() inspection."""
+    return FakeMav()
 
 
 @pytest.fixture

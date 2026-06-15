@@ -282,8 +282,23 @@ class PX4ROS2Bridge:
         self._thread = None
         release_ros()
     
+    @property
+    def connection_status(self) -> ConnectionStatus:
+        """
+        Current connection status.
+        
+        Returns:
+            ConnectionStatus enum value (DISCONNECTED, CONNECTING, CONNECTED,
+            RECONNECTING, or FAILED)
+        
+        Example:
+            if bridge.connection_status == ConnectionStatus.CONNECTED:
+                bridge.arm()
+        """
+        return self._connection_status
+    
     def get_connection_status(self) -> ConnectionStatus:
-        """Get current connection status."""
+        """Get current connection status (deprecated: use connection_status property)."""
         return self._connection_status
     
     def is_connected(self) -> bool:
