@@ -7,7 +7,7 @@ Item {
     anchors.fill: parent
 
     // ── State ─────────────────────────────────────────────────────────────
-    property var apfParams: ({ minSeparation: 3.0, maxSpeed: 5.0, repulsionGain: 3.0, attractionGain: 1.0, geofenceRadius: 50.0, geofenceAltMin: 1.0, geofenceAltMax: 30.0, obstacleRadius: 4.0 })
+    property var apfParams: ({ minSeparation: 3.0, maxSpeed: 5.0, repulsionGain: 3.0, attractionGain: 1.0, geofenceRadius: 50.0, geofenceAltMin: 1.0, geofenceAltMax: 30.0, obstacleRadius: 4.0, maxAcceleration: 2.0 })
     property var predParams: ({ timeHorizon: 10.0, minSeparation: 2.0, sampleRate: 0.5, criticalThreshold: 1.0, warningThreshold: 1.5 })
     property var batteryParams: ({ criticalThreshold: 20.0, warningThreshold: 30.0, safetyMargin: 1.2, historySize: 100, minSamplesForPrediction: 10 })
 
@@ -74,7 +74,22 @@ Item {
                         rowSpacing: 6
 
                         // Min Separation
-                        Text { text: "Min Separation"; color: "#94a3b8"; font.pixelSize: 10 }
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Min Separation"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Minimum safe distance between drones"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
                         Row {
                             spacing: 4
                             Slider {
@@ -115,7 +130,22 @@ Item {
                         }
 
                         // Max Speed
-                        Text { text: "Max Speed Step"; color: "#94a3b8"; font.pixelSize: 10 }
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Max Speed Step"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Maximum velocity change per update cycle"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
                         Row {
                             spacing: 4
                             Slider {
@@ -131,8 +161,79 @@ Item {
                             }
                         }
 
+                        // Max Acceleration (Improvement 9)
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Max Acceleration"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Limits rate of velocity change to prevent jerky movements"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
+                        Row {
+                            spacing: 4
+                            Slider {
+                                id: accelSlider
+                                from: 0.5; to: 5.0; value: root.getApfValue("maxAcceleration", 2.0)
+                                width: 120
+                                onValueChanged: if (apfParams) apfParams.maxAcceleration = value
+                            }
+                            Column {
+                                spacing: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                
+                                Text {
+                                    text: accelSlider.value.toFixed(1) + " m/s²"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 10
+                                }
+                                
+                                Text {
+                                    text: {
+                                        var val = accelSlider.value;
+                                        if (val < 1.0) return "Smooth";
+                                        if (val < 2.5) return "Normal";
+                                        if (val < 4.0) return "Responsive";
+                                        return "Aggressive";
+                                    }
+                                    color: {
+                                        var val = accelSlider.value;
+                                        if (val < 1.0) return "#22c55e";
+                                        if (val < 2.5) return "#3b82f6";
+                                        if (val < 4.0) return "#f59e0b";
+                                        return "#ef4444";
+                                    }
+                                    font.pixelSize: 8
+                                    font.italic: true
+                                }
+                            }
+                        }
+
                         // Repulsion Gain
-                        Text { text: "Repulsion Gain"; color: "#94a3b8"; font.pixelSize: 10 }
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Repulsion Gain"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Strength of repulsive force between drones"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
                         Row {
                             spacing: 4
                             Slider {
@@ -173,7 +274,22 @@ Item {
                         }
 
                         // Geofence Radius
-                        Text { text: "Geofence Radius"; color: "#94a3b8"; font.pixelSize: 10 }
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Geofence Radius"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Horizontal boundary limit from origin"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
                         Row {
                             spacing: 4
                             Slider {
@@ -190,7 +306,22 @@ Item {
                         }
 
                         // Altitude Limits
-                        Text { text: "Altitude Range"; color: "#94a3b8"; font.pixelSize: 10 }
+                        Column {
+                            spacing: 2
+                            Text {
+                                text: "Altitude Range"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                            }
+                            Text {
+                                text: "Minimum and maximum flight altitude above ground"
+                                color: "#64748b"
+                                font.pixelSize: 8
+                                font.italic: true
+                                wrapMode: Text.WordWrap
+                                width: 200
+                            }
+                        }
                         Row {
                             spacing: 4
                             TextField {
