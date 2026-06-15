@@ -628,6 +628,8 @@ Rectangle {
                                     onClicked: {
                                         if (mission) {
                                             mission.startDrawingBoundary()
+                                            // Switch to Map tab to draw boundary
+                                            root.Window.window.selectTabById("map")
                                         }
                                     }
                                 }

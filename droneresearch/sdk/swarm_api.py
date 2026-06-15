@@ -114,13 +114,28 @@ class Swarm:
 
     # ── Formation ─────────────────────────────────────────────────────────
 
-    def formation(self, shape: str, spacing: float = 5.0, leader: Optional[str] = None):
+    def formation(
+        self,
+        shape: str,
+        spacing: float = 5.0,
+        leader: Optional[str] = None,
+        use_apf: bool = False,
+        stagger_delay: float = 2.0
+    ):
         """
         Fly formation around leader drone.
 
-        shape: "line" | "v" | "grid" | "circle"
-        spacing: distance between drones in meters
-        leader: drone ID of formation leader (default: first drone)
+        Args:
+            shape: Formation shape ("line" | "v" | "grid" | "circle")
+            spacing: Distance between drones in meters
+            leader: Drone ID of formation leader (default: first drone)
+            use_apf: If True, stagger movements to avoid APF collisions (default: False)
+            stagger_delay: Delay between movements when use_apf=True (seconds)
+        
+        Note:
+            When use_apf=True, drones move sequentially with stagger_delay between
+            each movement to prevent APF safety filter from detecting collisions.
+            This is slower but safer for dense formations.
         """
         drones = self.drones
         if not drones:
@@ -132,20 +147,39 @@ class Swarm:
         # Use a separate follower counter so the leader's list position
         # does not cause an off-by-one when indexing into ``offsets``.
         follower_idx = 0
-        for drone in drones:
-            if drone is leader_drone:
-                continue
-            off = offsets[follower_idx] if follower_idx < len(offsets) else (0.0, 0.0)
-            follower_idx += 1
-            dlat = off[0] / 111320.0
-            dlon = off[1] / (111320.0 * math.cos(math.radians(lat0)) + 1e-9)
-            target_lat = lat0 + dlat
-            target_lon = lon0 + dlon
-            threading.Thread(
-                target=drone.goto,
-                args=(target_lat, target_lon, alt0),
-                daemon=True,
-            ).start()
+        
+        if use_apf:
+            # Sequential movements to avoid APF collisions
+            for i, drone in enumerate(drones):
+                if drone is leader_drone:
+                    continue
+                off = offsets[follower_idx] if follower_idx < len(offsets) else (0.0, 0.0)
+                follower_idx += 1
+                dlat = off[0] / 111320.0
+                dlon = off[1] / (111320.0 * math.cos(math.radians(lat0)) + 1e-9)
+                target_lat = lat0 + dlat
+                target_lon = lon0 + dlon
+                
+                # Move drone and wait before next
+                drone.goto(target_lat, target_lon, alt0)
+                if follower_idx < len(offsets):  # Don't delay after last drone
+                    time.sleep(stagger_delay)
+        else:
+            # Parallel movements (original behavior)
+            for drone in drones:
+                if drone is leader_drone:
+                    continue
+                off = offsets[follower_idx] if follower_idx < len(offsets) else (0.0, 0.0)
+                follower_idx += 1
+                dlat = off[0] / 111320.0
+                dlon = off[1] / (111320.0 * math.cos(math.radians(lat0)) + 1e-9)
+                target_lat = lat0 + dlat
+                target_lon = lon0 + dlon
+                threading.Thread(
+                    target=drone.goto,
+                    args=(target_lat, target_lon, alt0),
+                    daemon=True,
+                ).start()
 
     def start_follow(
         self,

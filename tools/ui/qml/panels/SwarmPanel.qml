@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
@@ -149,11 +149,11 @@ Item {
                     }
                 }
 
-                // ── VERBUNDENE DRONES ─────────────────────────────────────
+                // ── CONNECTED DRONES ──────────────────────────────────────
                 Row {
                     width: parent.width; spacing: 6
                     Text {
-                        text: "VERBUNDENE DRONES"
+                        text: "CONNECTED DRONES"
                         color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -161,8 +161,8 @@ Item {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: (Cmp.AppState.missionTargetCount > 0)
-                              ? (Cmp.AppState.missionTargetCount + " für Mission ausgewählt")
-                              : "Checkbox = Multi-Mission Ziel"
+                              ? (Cmp.AppState.missionTargetCount + " selected for mission")
+                              : "Checkbox = Multi-Mission Target"
                         color: Cmp.AppState.missionTargetCount > 0 ? "#22c55e" : "#475569"
                         font.pixelSize: 9; font.italic: true
                     }
@@ -1467,7 +1467,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "ℹ️ Demokratische Entscheidungsfindung im Schwarm. Byzantine Tolerance: Anzahl fehlerhafter Drohnen, die toleriert werden. ✅ Kompatibel mit allen Algorithmen."
+                            text: "ℹ️ Democratic decision-making in the swarm. Byzantine Tolerance: Number of faulty drones that can be tolerated. ✅ Compatible with all algorithms."
                             color: "#94a3b8"
                             font.pixelSize: 8
                             wrapMode: Text.WordWrap
@@ -1529,7 +1529,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "ℹ️ Autonome Mission-Ausführung mit Prioritäten. Safety First (sicher), Mission First (schnell), Balanced. ⚠️ Überschreibt andere Algorithmen während Ausführung."
+                            text: "ℹ️ Autonomous mission execution with priorities. Safety First (safe), Mission First (fast), Balanced. ⚠️ Overrides other algorithms during execution."
                             color: "#94a3b8"
                             font.pixelSize: 8
                             wrapMode: Text.WordWrap

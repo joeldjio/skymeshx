@@ -15,9 +15,10 @@ Usage:
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from droneresearch.core.connection import MAVLinkConnection
+from droneresearch.control.mission_validation import validate_waypoints, calculate_distance
 
 
 @dataclass
@@ -32,9 +33,29 @@ class Waypoint:
 
 
 class MissionEngine:
-    _HANDSHAKE_TIMEOUT = 0.25  # seconds to wait for MISSION_REQUEST(0)
+    """
+    Mission upload and execution engine.
+    
+    Args:
+        connection: MAVLink connection to the autopilot
+        handshake_timeout: Seconds to wait for MISSION_REQUEST(0) (default: 0.25)
+        item_timeout: Seconds to wait for each MISSION_REQUEST (default: 3.0)
+        ack_timeout: Seconds to wait for final MISSION_ACK (default: 5.0)
+    
+    Thread Safety
+    -------------
+    Mission building (add/clear) is NOT thread-safe - build from one thread only.
+    upload() spawns a background thread and is safe to call from any thread.
+    Progress/completion callbacks are invoked from the upload thread.
+    """
 
-    def __init__(self, connection: MAVLinkConnection):
+    def __init__(
+        self,
+        connection: MAVLinkConnection,
+        handshake_timeout: float = 0.25,
+        item_timeout: float = 3.0,
+        ack_timeout: float = 5.0
+    ):
         self._conn = connection
         self._waypoints: List[Waypoint] = []
         self._current = -1
@@ -52,8 +73,13 @@ class MissionEngine:
         self._upload_thread: Optional[threading.Thread] = None
         self._upload_progress_callback: Optional[Callable[[int, int], None]] = None
         self._upload_complete_callback: Optional[Callable[[bool], None]] = None
+        # Configurable timeouts
+        self._handshake_timeout = handshake_timeout
+        self._item_timeout = item_timeout
+        self._ack_timeout = ack_timeout
 
-        connection.on("message", self._on_message)
+        if connection:
+            connection.on("message", self._on_message)
 
     # ── Build mission ─────────────────────────────────────────────────────
 
@@ -68,9 +94,44 @@ class MissionEngine:
             Waypoint(lat=p["lat"], lon=p["lon"], alt=p.get("alt", 10.0)) for p in points
         ]
 
+    # ── Pre-flight validation ─────────────────────────────────────────────
+    
+    def validate(self) -> Tuple[bool, List[str]]:
+        """
+        Validate mission before upload.
+        
+        Checks:
+        - Minimum waypoint count (at least 1)
+        - Valid coordinates (lat: -90 to 90, lon: -180 to 180)
+        - Reasonable altitudes (0 to 500m)
+        - Waypoint spacing (warn if < 1m apart)
+        - Connection status
+        
+        Returns:
+            (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Check connection
+        if not self._conn or not self._conn._mav:
+            errors.append("No MAVLink connection")
+            return False, errors
+        
+        # Convert Waypoint objects to dicts for validation
+        waypoints_dict = [
+            {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt}
+            for wp in self._waypoints
+        ]
+        
+        # Use shared validation logic
+        is_valid, validation_errors = validate_waypoints(waypoints_dict)
+        errors.extend(validation_errors)
+        
+        return len(errors) == 0, errors
+
     # ── Upload & control ──────────────────────────────────────────────────
 
-    def upload(self) -> bool:
+    def upload(self, validate_first: bool = True) -> bool:
         """Upload all queued waypoints to the autopilot.
 
         .. warning::
@@ -90,7 +151,22 @@ class MissionEngine:
            (ArduPilot-compatible fallback).
 
         Abort via :meth:`abort` is honoured at every step.
+        
+        Args:
+            validate_first: Run pre-flight validation before upload (default: True)
+        
+        Returns:
+            False if validation fails or upload fails, True on success
         """
+        # Pre-flight validation
+        if validate_first:
+            is_valid, errors = self.validate()
+            if not is_valid:
+                print(f"[Mission] Pre-flight validation failed:")
+                for error in errors:
+                    print(f"  - {error}")
+                return False
+        
         mav = self._conn._mav
         if not mav or not self._waypoints:
             return False
@@ -192,7 +268,7 @@ class MissionEngine:
             return False
 
         # Wait for MISSION_REQUEST(0), checking abort every 10 ms.
-        deadline = time.time() + self._HANDSHAKE_TIMEOUT
+        deadline = time.time() + self._handshake_timeout
         while time.time() < deadline:
             if self._abort_event.is_set():
                 return False
@@ -213,7 +289,7 @@ class MissionEngine:
             if seq > 0:
                 if self._abort_event.is_set():
                     return False
-                if not self._req_events[seq].wait(timeout=3.0):
+                if not self._req_events[seq].wait(timeout=self._item_timeout):
                     print(f"[mission] timeout waiting for MISSION_REQUEST({seq})")
                     return False
             if not self._send_item(mav, seq):
@@ -225,7 +301,7 @@ class MissionEngine:
                 except Exception as e:
                     print(f"[mission] progress callback error: {e}")
         # Wait for final MISSION_ACK.
-        if not self._ack_event.wait(timeout=5.0):
+        if not self._ack_event.wait(timeout=self._ack_timeout):
             print("[mission] timeout waiting for MISSION_ACK")
             return False
         return self._ack_result == 0  # MAV_MISSION_ACCEPTED

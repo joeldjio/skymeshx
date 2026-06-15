@@ -18,8 +18,56 @@ Autopilot backends:
 from droneresearch.sdk.drone import Drone
 from droneresearch.sdk.swarm_api import Swarm
 
+# Export common exceptions for convenience
+from droneresearch.exceptions import (
+    DroneResearchError,
+    ConnectionError,
+    HeartbeatTimeoutError,
+    InvalidConnectionStringError,
+    CommandError,
+    CommandRejectedError,
+    CommandTimeoutError,
+    MissionError,
+    MissionUploadError,
+    StateTransitionError,
+    ConfigurationError,
+    InvalidParameterError,
+    ROS2Error,
+    ROS2NotAvailableError,
+    SafetyViolationError,
+    GeofenceBreachError,
+    CollisionRiskError,
+    BatteryLowError,
+    DependencyError,
+    TimeoutError,
+)
+
 __version__ = "0.2.0"
-__all__ = ["Drone", "Swarm"]
+__all__ = [
+    "Drone",
+    "Swarm",
+    # Exceptions
+    "DroneResearchError",
+    "ConnectionError",
+    "HeartbeatTimeoutError",
+    "InvalidConnectionStringError",
+    "CommandError",
+    "CommandRejectedError",
+    "CommandTimeoutError",
+    "MissionError",
+    "MissionUploadError",
+    "StateTransitionError",
+    "ConfigurationError",
+    "InvalidParameterError",
+    "ROS2Error",
+    "ROS2NotAvailableError",
+    "SafetyViolationError",
+    "GeofenceBreachError",
+    "CollisionRiskError",
+    "BatteryLowError",
+    "DependencyError",
+    "TimeoutError",
+]
 
 # Lazy imports — avoids hard dependencies at import time
 def get_backend(autopilot: str = "mavlink"):

@@ -74,6 +74,13 @@ class StateMachine:
         fsm = StateMachine(drone_id="D1")
         fsm.on_transition(lambda old, new: print(f"{old} → {new}"))
         fsm.transition(DroneState.ARMING)
+    
+    Thread Safety
+    -------------
+    All methods are thread-safe and can be called from any thread.
+    State transitions are protected by an internal lock.
+    Callbacks are invoked while holding the lock - keep handlers fast.
+    History tracking is also protected by the same lock.
     """
 
     def __init__(self, drone_id: str = "drone"):

@@ -18,6 +18,16 @@ Services called:
     /exploration/toggle        std_srvs/SetBool   (start/stop)
     /exploration/save_octomap  std_srvs/Empty     (save map)
 
+Frame Convention
+----------------
+All positions use local NED (North-East-Down) coordinates:
+- x: North (meters)
+- y: East (meters)
+- z: Altitude above ground (meters, positive UP)
+
+Note: Odometry messages are converted to ROS2 ENU frame for the explorer.
+Frontier points received from the explorer are converted back to NED.
+
 Usage:
     from droneresearch import Drone
     from droneresearch.exploration import FrontierExplorationBridge
@@ -349,3 +359,5 @@ if _ROS2_OK:
             req = EmptySrv.Request()
             if self._svc_save.wait_for_service(timeout_sec=2.0):
                 self._svc_save.call_async(req)
+            else:
+                self.get_logger().warn("exploration/save_octomap service not available")
