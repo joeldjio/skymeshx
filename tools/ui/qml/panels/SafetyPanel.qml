@@ -789,9 +789,10 @@ Item {
 
                     // Info Text
                     Text {
-                        text: "Monitors battery levels and triggers RTL before critical threshold.\nWorks with all autopilot types (ArduPilot, PX4, etc.)."
+                        text: "Monitors battery levels and triggers RTL before critical threshold.\nWorks with all autopilot types (ArduPilot, PX4, etc.).\nHistory saved to logs/batterylogs/battery_history.json for better predictions."
                         color: "#64748b"
                         font.pixelSize: 9
+                        font.italic: true
                         wrapMode: Text.WordWrap
                         width: parent.width
                     }

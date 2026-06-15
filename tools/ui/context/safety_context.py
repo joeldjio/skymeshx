@@ -20,6 +20,7 @@ QML Slots:
 """
 
 import math
+from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Tuple
 
 from PyQt6.QtCore import QObject, QTimer, pyqtProperty, pyqtSignal, pyqtSlot
@@ -102,11 +103,16 @@ class SafetyContext(QObject):
         self._drone_waypoints: Dict[str, List[Tuple[float, float, float]]] = {}
         self._prev_positions: Dict[str, Tuple[float, float, float, float]] = {}  # (x, y, z, timestamp)
 
-        # Battery Monitor
+        # Battery Monitor with persistence
         self._battery_monitor = None
         self._battery_monitor_enabled = False
         self._battery_home_positions: Dict[str, Tuple[float, float, float]] = {}
         self._last_battery_status: Dict[str, Dict] = {}
+        
+        # Setup battery history persistence path
+        self._battery_history_dir = Path("logs/batterylogs")
+        self._battery_history_dir.mkdir(parents=True, exist_ok=True)
+        self._battery_history_path = self._battery_history_dir / "battery_history.json"
 
         # Rate-limit tables: key → last_emit_timestamp (monotonic seconds)
         self._violation_log_ts: Dict[Tuple[str, str], float] = {}
@@ -698,12 +704,13 @@ class SafetyContext(QObject):
                 warning_threshold=warn_thresh,
                 safety_margin=safety_margin,
                 history_size=history_size,
-                min_samples_for_prediction=min_samples
+                min_samples_for_prediction=min_samples,
+                persistence_path=str(self._battery_history_path)
             )
             self._battery_monitor_enabled = True
             self.batteryMonitorEnabledChanged.emit()
             self.apfLogMessage.emit(
-                f"[Battery] Configured: crit={crit_thresh}%, margin={safety_margin}x"
+                f"[Battery] Configured: crit={crit_thresh}%, margin={safety_margin}x, persistence={self._battery_history_path.name}"
             )
 
         except Exception as e:
@@ -711,11 +718,17 @@ class SafetyContext(QObject):
 
     @pyqtSlot()
     def disableBatteryMonitor(self) -> None:
-        """Disable battery monitoring."""
+        """Disable battery monitoring and save history."""
         if self._battery_monitor:
             # Stop monitoring all drones
             for drone_id in list(self._last_battery_status.keys()):
                 self._battery_monitor.stop_monitoring(drone_id)
+            
+            # Save history before disabling
+            if self._battery_monitor.save_history():
+                self.apfLogMessage.emit(f"[Battery] History saved to {self._battery_history_path.name}")
+            else:
+                self.apfLogMessage.emit("[Battery] Warning: Failed to save history")
         
         self._battery_monitor = None
         self._battery_monitor_enabled = False
