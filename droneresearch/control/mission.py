@@ -12,10 +12,11 @@ Usage:
     mission.wait_done()
 """
 
+import math
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from droneresearch.core.connection import MAVLinkConnection
 
@@ -71,7 +72,8 @@ class MissionEngine:
         self._item_timeout = item_timeout
         self._ack_timeout = ack_timeout
 
-        connection.on("message", self._on_message)
+        if connection:
+            connection.on("message", self._on_message)
 
     # ── Build mission ─────────────────────────────────────────────────────
 
@@ -86,9 +88,77 @@ class MissionEngine:
             Waypoint(lat=p["lat"], lon=p["lon"], alt=p.get("alt", 10.0)) for p in points
         ]
 
+    # ── Pre-flight validation ─────────────────────────────────────────────
+    
+    def validate(self) -> Tuple[bool, List[str]]:
+        """
+        Validate mission before upload.
+        
+        Checks:
+        - Minimum waypoint count (at least 1)
+        - Valid coordinates (lat: -90 to 90, lon: -180 to 180)
+        - Reasonable altitudes (0 to 500m)
+        - Waypoint spacing (warn if < 1m apart)
+        - Connection status
+        
+        Returns:
+            (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Check connection
+        if not self._conn or not self._conn._mav:
+            errors.append("No MAVLink connection")
+            return False, errors
+        
+        # Check waypoint count
+        if len(self._waypoints) == 0:
+            errors.append("Mission has no waypoints")
+            return False, errors
+        
+        # Validate each waypoint
+        for i, wp in enumerate(self._waypoints):
+            # Latitude range
+            if not (-90 <= wp.lat <= 90):
+                errors.append(f"WP{i}: Invalid latitude {wp.lat} (must be -90 to 90)")
+            
+            # Longitude range
+            if not (-180 <= wp.lon <= 180):
+                errors.append(f"WP{i}: Invalid longitude {wp.lon} (must be -180 to 180)")
+            
+            # Altitude range (reasonable limits)
+            if wp.alt < 0:
+                errors.append(f"WP{i}: Negative altitude {wp.alt}m")
+            elif wp.alt > 500:
+                errors.append(f"WP{i}: Altitude {wp.alt}m exceeds 500m limit")
+            
+            # Check spacing to previous waypoint
+            if i > 0:
+                prev = self._waypoints[i - 1]
+                dist = self._calculate_distance(prev.lat, prev.lon, wp.lat, wp.lon)
+                if dist < 1.0:
+                    errors.append(f"WP{i}: Too close to WP{i-1} ({dist:.2f}m < 1m)")
+        
+        is_valid = len(errors) == 0
+        return is_valid, errors
+    
+    def _calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two coordinates in meters (Haversine formula)."""
+        R = 6371000  # Earth radius in meters
+        
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        return R * c
+
     # ── Upload & control ──────────────────────────────────────────────────
 
-    def upload(self) -> bool:
+    def upload(self, validate_first: bool = True) -> bool:
         """Upload all queued waypoints to the autopilot.
 
         .. warning::
@@ -108,7 +178,22 @@ class MissionEngine:
            (ArduPilot-compatible fallback).
 
         Abort via :meth:`abort` is honoured at every step.
+        
+        Args:
+            validate_first: Run pre-flight validation before upload (default: True)
+        
+        Returns:
+            False if validation fails or upload fails, True on success
         """
+        # Pre-flight validation
+        if validate_first:
+            is_valid, errors = self.validate()
+            if not is_valid:
+                print(f"[Mission] Pre-flight validation failed:")
+                for error in errors:
+                    print(f"  - {error}")
+                return False
+        
         mav = self._conn._mav
         if not mav or not self._waypoints:
             return False
