@@ -21,7 +21,7 @@
 
 #define AppName        "uavresearch gcs"
 #define AppPublisher   "UAVResearch"
-#define AppVersion     "0.3.3"
+#define AppVersion     "0.3.4"
 #define AppURL         "https://github.com/joeldjio/uavresearch-gcs-releases"
 #define AppExeName     "uavresearch gcs.exe"
 ; Stable, randomly-generated GUID. DO NOT change this once published
