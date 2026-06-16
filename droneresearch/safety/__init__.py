@@ -1,3 +1,15 @@
-from droneresearch.safety.apf import APFSafetyFilter, APFFilterLoop, Pose3D, Geofence
+from droneresearch.safety.apf import (
+    APFSafetyFilter,
+    AdaptiveAPFSafetyFilter,
+    APFFilterLoop,
+    Pose3D,
+    Geofence,
+)
 
-__all__ = ["APFSafetyFilter", "APFFilterLoop", "Pose3D", "Geofence"]
+__all__ = [
+    "APFSafetyFilter",
+    "AdaptiveAPFSafetyFilter",
+    "APFFilterLoop",
+    "Pose3D",
+    "Geofence",
+]

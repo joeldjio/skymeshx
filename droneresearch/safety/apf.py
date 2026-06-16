@@ -397,3 +397,294 @@ class APFFilterLoop:
                 print(f"[apf] filter error: {e}")
             elapsed = time.monotonic() - t0
             time.sleep(max(0, self._dt - elapsed))
+
+
+class AdaptiveAPFSafetyFilter(APFSafetyFilter):
+    """
+    APF Safety Filter with adaptive safety margins based on context.
+    
+    Extends APFSafetyFilter to dynamically adjust separation distances based on:
+    - Relative velocity between drones (higher speed = larger margin)
+    - Sensor uncertainty (GPS accuracy degradation)
+    - Environmental conditions (wind speed)
+    - Reaction time buffer
+    
+    This provides more robust collision avoidance in dynamic conditions
+    while allowing tighter formations when conditions are favorable.
+    
+    Parameters
+    ----------
+    reaction_time    : Time buffer for drone reaction (seconds)
+    gps_uncertainty  : GPS position uncertainty (meters, 1-sigma)
+    wind_speed       : Current wind speed (m/s)
+    wind_factor_gain : Multiplier for wind contribution to margin
+    velocity_weight  : Weight for velocity-based margin component
+    uncertainty_weight : Weight for uncertainty-based margin component
+    
+    Example
+    -------
+    >>> apf = AdaptiveAPFSafetyFilter(
+    ...     min_separation=2.0,
+    ...     reaction_time=0.5,
+    ...     gps_uncertainty=0.3,
+    ...     wind_speed=2.0
+    ... )
+    >>> # Margins adapt automatically based on drone velocities
+    >>> safe = apf.filter(positions, desired)
+    """
+    
+    def __init__(
+        self,
+        min_separation:    float = 2.0,
+        max_speed:         float = 3.0,
+        geofence_radius:   float = 50.0,
+        geofence_alt:      Tuple[float, float] = (1.0, 30.0),
+        repulsion_gain:    float = 2.0,
+        attraction_gain:   float = 1.0,
+        obstacle_radius:   float = 4.0,
+        dt:                float = 0.05,
+        damping_coeff:     float = 0.3,
+        max_acceleration:  float = 2.0,
+        reaction_time:     float = 0.5,      # seconds
+        gps_uncertainty:   float = 0.3,      # meters (1-sigma)
+        wind_speed:        float = 0.0,      # m/s
+        wind_factor_gain:  float = 0.2,      # wind contribution multiplier
+        velocity_weight:   float = 1.0,      # velocity margin weight
+        uncertainty_weight: float = 2.0,     # uncertainty margin weight (2-sigma)
+    ):
+        super().__init__(
+            min_separation=min_separation,
+            max_speed=max_speed,
+            geofence_radius=geofence_radius,
+            geofence_alt=geofence_alt,
+            repulsion_gain=repulsion_gain,
+            attraction_gain=attraction_gain,
+            obstacle_radius=obstacle_radius,
+            dt=dt,
+            damping_coeff=damping_coeff,
+            max_acceleration=max_acceleration,
+        )
+        self.reaction_time = reaction_time
+        self.gps_uncertainty = gps_uncertainty
+        self.wind_speed = wind_speed
+        self.wind_factor_gain = wind_factor_gain
+        self.velocity_weight = velocity_weight
+        self.uncertainty_weight = uncertainty_weight
+        
+        # Track velocities for adaptive margin calculation
+        self._velocities: Dict[str, Pose3D] = {}
+    
+    def set_wind_speed(self, wind_speed: float):
+        """Update wind speed for adaptive margin calculation."""
+        self.wind_speed = max(0.0, wind_speed)
+    
+    def set_gps_uncertainty(self, uncertainty: float):
+        """Update GPS uncertainty for adaptive margin calculation."""
+        self.gps_uncertainty = max(0.0, uncertainty)
+    
+    def compute_adaptive_margin(
+        self,
+        drone_a_pos: Pose3D,
+        drone_b_pos: Pose3D,
+        drone_a_vel: Pose3D,
+        drone_b_vel: Pose3D,
+    ) -> float:
+        """
+        Compute adaptive safety margin between two drones.
+        
+        The margin increases based on:
+        1. Relative velocity (closing speed requires more separation)
+        2. Sensor uncertainty (GPS degradation requires buffer)
+        3. Environmental factors (wind requires stability margin)
+        4. Reaction time (time to respond to collision threat)
+        
+        Parameters
+        ----------
+        drone_a_pos : Position of first drone
+        drone_b_pos : Position of second drone
+        drone_a_vel : Velocity of first drone
+        drone_b_vel : Velocity of second drone
+        
+        Returns
+        -------
+        float : Adaptive safety margin (meters)
+        """
+        margin = self.min_separation
+        
+        # 1. Relative velocity component
+        # Higher relative velocity = need more separation for reaction time
+        rel_vel = math.sqrt(
+            (drone_a_vel.x - drone_b_vel.x) ** 2 +
+            (drone_a_vel.y - drone_b_vel.y) ** 2 +
+            (drone_a_vel.z - drone_b_vel.z) ** 2
+        )
+        
+        # Add reaction time buffer: distance traveled during reaction
+        velocity_margin = rel_vel * self.reaction_time * self.velocity_weight
+        margin += velocity_margin
+        
+        # 2. Sensor uncertainty component (2-sigma for 95% confidence)
+        # GPS uncertainty affects both drones, so we use combined uncertainty
+        uncertainty_margin = self.gps_uncertainty * self.uncertainty_weight
+        margin += uncertainty_margin
+        
+        # 3. Environmental factors (wind)
+        # Wind can cause position drift, requiring additional margin
+        wind_margin = self.wind_speed * self.wind_factor_gain
+        margin += wind_margin
+        
+        # Ensure margin never drops below minimum separation
+        return max(margin, self.min_separation)
+    
+    def filter(
+        self,
+        positions: Dict[str, Pose3D],
+        desired: Dict[str, Pose3D],
+    ) -> Dict[str, Pose3D]:
+        """
+        Apply APF with adaptive safety margins.
+        
+        Overrides parent filter() to use adaptive obstacle_radius
+        based on relative velocities between drones.
+        """
+        # Update velocities for all drones
+        for drone_id, pos in positions.items():
+            if drone_id in self._prev_positions:
+                prev = self._prev_positions[drone_id]
+                velocity = (pos - prev) * (1.0 / self.dt)
+                self._velocities[drone_id] = velocity
+            else:
+                self._velocities[drone_id] = Pose3D(0, 0, 0)
+        
+        # Compute adaptive margins for each drone pair
+        # Store original obstacle_radius to restore later
+        original_obstacle_radius = self.obstacle_radius
+        
+        safe: Dict[str, Pose3D] = {}
+        ids = list(positions.keys())
+        
+        for drone_id in ids:
+            pos = positions.get(drone_id)
+            des = desired.get(drone_id, pos)
+            if pos is None:
+                continue
+            
+            vel = self._velocities.get(drone_id, Pose3D(0, 0, 0))
+            prev_velocity = self._prev_velocities.get(drone_id, Pose3D(0, 0, 0))
+            
+            # Attractive force
+            diff_x = des.x - pos.x
+            diff_y = des.y - pos.y
+            diff_z = des.z - pos.z
+            attr = Pose3D(diff_x, diff_y, diff_z)
+            attr_clamped = attr.clamp(self.max_speed * self.dt) * self.attraction_gain
+            
+            # Repulsive force with adaptive margins
+            rep = Pose3D(0, 0, 0)
+            for other_id in ids:
+                if other_id == drone_id:
+                    continue
+                other = positions[other_id]
+                other_vel = self._velocities.get(other_id, Pose3D(0, 0, 0))
+                
+                # Compute adaptive margin for this drone pair
+                adaptive_margin = self.compute_adaptive_margin(
+                    pos, other, vel, other_vel
+                )
+                
+                # Use adaptive margin as obstacle radius for this pair
+                d = pos.dist(other)
+                if d < adaptive_margin and d > 1e-6:
+                    # Repulsion magnitude inversely proportional to distance
+                    mag = self.repulsion_gain * (1.0 / d - 1.0 / adaptive_margin) / (d ** 2)
+                    direction = Pose3D(
+                        pos.x - other.x,
+                        pos.y - other.y,
+                        pos.z - other.z,
+                    ).normalized()
+                    rep = rep + direction * (mag * self.dt)
+            
+            # Static obstacles (use original obstacle_radius)
+            for obs in self._obstacles:
+                d = pos.dist(obs)
+                if d < original_obstacle_radius and d > 1e-6:
+                    mag = self.repulsion_gain * (1.0 / d - 1.0 / original_obstacle_radius) / (d ** 2)
+                    direction = Pose3D(
+                        pos.x - obs.x,
+                        pos.y - obs.y,
+                        pos.z - obs.z,
+                    ).normalized()
+                    rep = rep + direction * (mag * self.dt)
+            
+            # Velocity damping
+            damping = Pose3D(0, 0, 0)
+            if vel.norm() > 1e-6:
+                min_dist = float('inf')
+                for other_id in ids:
+                    if other_id == drone_id:
+                        continue
+                    d = pos.dist(positions[other_id])
+                    min_dist = min(min_dist, d)
+                
+                if min_dist < original_obstacle_radius:
+                    proximity_factor = 1.0 - (min_dist / original_obstacle_radius)
+                    damping_strength = self.damping_coeff * (1.0 + 2.0 * proximity_factor)
+                else:
+                    damping_strength = self.damping_coeff
+                
+                damping = vel * (-damping_strength * self.dt)
+            
+            # Total force
+            total = Pose3D(
+                attr_clamped.x + rep.x + damping.x,
+                attr_clamped.y + rep.y + damping.y,
+                attr_clamped.z + rep.z + damping.z,
+            ).clamp(self.max_speed * self.dt)
+            
+            # Acceleration limiting
+            desired_velocity = total * (1.0 / self.dt)
+            delta_v = desired_velocity - prev_velocity
+            acceleration = delta_v * (1.0 / self.dt)
+            
+            if acceleration.norm() > self.max_acceleration:
+                acceleration = acceleration.normalized() * self.max_acceleration
+                delta_v = acceleration * self.dt
+            
+            new_velocity = prev_velocity + delta_v
+            
+            if new_velocity.norm() > self.max_speed:
+                new_velocity = new_velocity.normalized() * self.max_speed
+            
+            limited_displacement = new_velocity * self.dt
+            candidate = Pose3D(
+                pos.x + limited_displacement.x,
+                pos.y + limited_displacement.y,
+                pos.z + limited_displacement.z,
+            )
+            
+            # Apply geofence
+            safe[drone_id] = self.geofence.clip(candidate)
+            
+            # Store for next iteration
+            self._prev_positions[drone_id] = pos
+            self._prev_velocities[drone_id] = new_velocity
+        
+        return safe
+    
+    def get_current_margin(self, drone_a_id: str, drone_b_id: str) -> Optional[float]:
+        """
+        Get the current adaptive margin between two drones.
+        
+        Returns None if either drone has no velocity data yet.
+        """
+        if drone_a_id not in self._velocities or drone_b_id not in self._velocities:
+            return None
+        if drone_a_id not in self._prev_positions or drone_b_id not in self._prev_positions:
+            return None
+        
+        return self.compute_adaptive_margin(
+            self._prev_positions[drone_a_id],
+            self._prev_positions[drone_b_id],
+            self._velocities[drone_a_id],
+            self._velocities[drone_b_id],
+        )
