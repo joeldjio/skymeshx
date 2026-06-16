@@ -173,6 +173,7 @@ def wire(locator: ServiceLocator) -> None:
         lambda snap: tele_model.update_all(snap) if isinstance(snap, dict) else None
     )
     swarm.telemetryUpdated.connect(safety.updateDronePositions)
+    swarm.telemetryUpdated.connect(safety.updateBatteryTelemetry)
     
     # Mission logs → swarm log
     mission.logMessage.connect(swarm.logMessage)
