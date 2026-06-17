@@ -837,130 +837,6 @@ Rectangle {
                         }
                     }
 
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-
-                    // Action Buttons
-                    Row {
-                        width: parent.width
-                        spacing: 6
-
-                        Rectangle {
-                            width: (parent.width - 12) / 3
-                            height: 36
-                            radius: 6
-                            color: generateM.containsMouse ? "#15803d" : "#166534"
-                            border.color: "#22c55e"
-                            border.width: 1
-                            opacity: (mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)) ? 1 : 0.4
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Cmp.Icon {
-                                    name: "zap"
-                                    size: 14
-                                    color: "#bbf7d0"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: "GENERATE"
-                                    color: "#bbf7d0"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 0.5
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            MouseArea {
-                                id: generateM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)
-                                onClicked: if (mission) mission.generateMission()
-                            }
-                        }
-
-                        Rectangle {
-                            width: (parent.width - 12) / 3
-                            height: 36
-                            radius: 6
-                            color: uploadM.containsMouse ? "#1e40af" : "#1e3a8a"
-                            border.color: "#3b82f6"
-                            border.width: 1
-                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Cmp.Icon {
-                                    name: "upload"
-                                    size: 14
-                                    color: "#93c5fd"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: "UPLOAD"
-                                    color: "#93c5fd"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 0.5
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            MouseArea {
-                                id: uploadM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
-                                onClicked: if (mission) mission.uploadMission()
-                            }
-                        }
-
-                        Rectangle {
-                            width: (parent.width - 12) / 3
-                            height: 36
-                            radius: 6
-                            color: previewM.containsMouse ? "#713f12" : "#78350f"
-                            border.color: "#f59e0b"
-                            border.width: 1
-                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Cmp.Icon {
-                                    name: "eye"
-                                    size: 14
-                                    color: "#fde68a"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: "PREVIEW"
-                                    color: "#fde68a"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 0.5
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            MouseArea {
-                                id: previewM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
-                                onClicked: if (mission) mission.togglePreview()
-                            }
-                        }
-                    }
                 }
             }
 
@@ -1491,10 +1367,32 @@ Rectangle {
                             }
                         }
                     }
+                }
+            }
+            // ── UNIFIED ACTION BUTTONS ────────────────────────────────────
+            Rectangle {
+                width: parent.width
+                height: 120
+                color: "#1e293b"
+                radius: 8
+                border.color: "#334155"
+                border.width: 1
+
+                Column {
+                    width: parent.width - 24
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    Text {
+                        text: "MISSION ACTIONS"
+                        color: "#94a3b8"
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        font.letterSpacing: 1
+                    }
 
                     Rectangle { width: parent.width; height: 1; color: "#2d3748" }
 
-                    // Action Buttons
                     Row {
                         width: parent.width
                         spacing: 6
@@ -1503,8 +1401,8 @@ Rectangle {
                             width: (parent.width - 12) / 3
                             height: 36
                             radius: 6
-                            color: generateSeedingM.containsMouse ? "#6d28d9" : "#5b21b6"
-                            border.color: "#8b5cf6"
+                            color: generateM.containsMouse ? "#15803d" : "#166534"
+                            border.color: "#22c55e"
                             border.width: 1
                             opacity: (mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)) ? 1 : 0.4
 
@@ -1515,13 +1413,13 @@ Rectangle {
                                 Cmp.Icon {
                                     name: "zap"
                                     size: 14
-                                    color: "#ddd6fe"
+                                    color: "#bbf7d0"
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
                                 Text {
                                     text: "GENERATE"
-                                    color: "#ddd6fe"
+                                    color: "#bbf7d0"
                                     font.pixelSize: 10
                                     font.weight: Font.Bold
                                     font.letterSpacing: 0.5
@@ -1530,11 +1428,11 @@ Rectangle {
                             }
 
                             MouseArea {
-                                id: generateSeedingM
+                                id: generateM
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)
-                                onClicked: if (mission) mission.generateSeedingMission()
+                                onClicked: if (mission) mission.generateMission()
                             }
                         }
 
@@ -1542,10 +1440,10 @@ Rectangle {
                             width: (parent.width - 12) / 3
                             height: 36
                             radius: 6
-                            color: uploadSeedingM.containsMouse ? "#1e40af" : "#1e3a8a"
+                            color: uploadM.containsMouse ? "#1e40af" : "#1e3a8a"
                             border.color: "#3b82f6"
                             border.width: 1
-                            opacity: mission && mission.seedingWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -1569,11 +1467,11 @@ Rectangle {
                             }
 
                             MouseArea {
-                                id: uploadSeedingM
+                                id: uploadM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.seedingWaypointCount > 0
-                                onClicked: if (mission) mission.uploadSeedingMission()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.uploadMission()
                             }
                         }
 
@@ -1581,10 +1479,10 @@ Rectangle {
                             width: (parent.width - 12) / 3
                             height: 36
                             radius: 6
-                            color: previewSeedingM.containsMouse ? "#713f12" : "#78350f"
+                            color: previewM.containsMouse ? "#713f12" : "#78350f"
                             border.color: "#f59e0b"
                             border.width: 1
-                            opacity: mission && mission.seedingWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -1608,16 +1506,17 @@ Rectangle {
                             }
 
                             MouseArea {
-                                id: previewSeedingM
+                                id: previewM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.seedingWaypointCount > 0
-                                onClicked: if (mission) mission.toggleSeedingPreview()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.togglePreview()
                             }
                         }
                     }
                 }
             }
+
 
             // Spacer
             Item { width: 1; height: 20 }
