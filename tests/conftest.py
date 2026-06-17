@@ -169,8 +169,8 @@ def qapp():
     to be set BEFORE any QtWebEngine imports.
     """
     try:
-        from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtCore import Qt
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import Qt
         import sys
         
         # CRITICAL: Set AA_ShareOpenGLContexts BEFORE importing QtWebEngine
@@ -180,12 +180,12 @@ def qapp():
         
         # Now safe to import QtWebEngine components
         try:
-            from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+            from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
         except ImportError:
             pass  # QtWebEngine not installed, tests will skip if needed
         
     except ImportError:
-        pytest.skip("PyQt6 not installed — skipping UI tests")
+        pytest.skip("PySide6 not installed — skipping UI tests")
 
     app = QApplication.instance()
     if app is None:
