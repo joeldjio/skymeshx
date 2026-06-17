@@ -20,6 +20,7 @@ from droneresearch.control.field_coverage import (
     MultiDroneStrategy,
 )
 from droneresearch.control.mission import MissionEngine, Waypoint
+from droneresearch.control.seeding_planner import SeedingMissionPlanner, SeedingConfig
 
 if TYPE_CHECKING:
     from tools.ui.context.swarm_context import SwarmContext
@@ -43,6 +44,14 @@ class MissionContext(QObject):
         # Field Coverage Planner
         self._planner = FieldCoveragePlanner()
         self._home_set = False
+        self._home_lat = 0.0
+        self._home_lon = 0.0
+        
+        # Seeding Mission Planner
+        self._seeding_planner = SeedingMissionPlanner()
+        
+        # Mission mode: False = coverage, True = seeding
+        self._seeding_mode_enabled = False
         
         # Field boundary
         self._boundary_points: List[Tuple[float, float]] = []
@@ -65,6 +74,22 @@ class MissionContext(QObject):
         self._coverage_distance = 0.0
         self._coverage_time = 0.0
         self._preview_active = False
+        
+        # Seeding mission configuration
+        self._seed_spacing = 2.0  # meters between seed drops
+        self._seed_row_spacing = 5.0  # meters between rows
+        self._seed_altitude = 10.0  # seeding altitude
+        self._seed_drop_duration = 0.5  # seconds dispenser stays open
+        self._servo_channel = 9  # servo channel for dispenser
+        self._servo_open_pwm = 1900  # PWM value to open dispenser
+        self._servo_close_pwm = 1100  # PWM value to close dispenser
+        
+        # Generated seeding waypoints
+        self._seeding_waypoints: List[Waypoint] = []
+        self._seeding_distance = 0.0
+        self._seeding_time = 0.0
+        self._seeding_drop_count = 0
+        self._seeding_preview_active = False
         
         # Mission lock state
         self._mission_locked = False
@@ -289,13 +314,17 @@ class MissionContext(QObject):
     def setHomePosition(self, lat: float, lon: float):
         with self._lock:
             self._planner.set_home_position(lat, lon)
+            self._seeding_planner.set_home_position(lat, lon)
             self._home_set = True
+            self._home_lat = lat
+            self._home_lon = lon
             self.logMessage.emit("INFO", f"[MISSION] Home: {lat:.6f}, {lon:.6f}")
 
     @pyqtSlot()
     def startDrawingBoundary(self):
         with self._lock:
             self._drawing_mode = True
+            self.logMessage.emit("INFO", f"[MISSION] Drawing mode set to: {self._drawing_mode}")
             self.drawingModeChanged.emit(True)
             self.logMessage.emit("INFO", "[MISSION] Click map to define boundary (5min timeout)")
             # Start 5-minute timeout
@@ -365,6 +394,14 @@ class MissionContext(QObject):
         self.logMessage.emit("INFO", "[MISSION] Boundary cleared")
 
     @pyqtSlot()
+    def generateMission(self):
+        """Unified generate method - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.generateSeedingMission()
+        else:
+            self.generateFieldCoverage()
+    
+    @pyqtSlot()
     def generateFieldCoverage(self):
         try:
             with self._lock:
@@ -404,6 +441,14 @@ class MissionContext(QObject):
         """Inject SwarmContext reference for mission upload."""
         self._swarm_context = swarm_context
 
+    @pyqtSlot()
+    def uploadMission(self):
+        """Unified upload method - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.uploadSeedingMission()
+        else:
+            self.uploadCoverageMission()
+    
     @pyqtSlot()
     def uploadCoverageMission(self):
         """Upload coverage mission to selected drones (via AppState.missionTargets)."""
@@ -631,6 +676,14 @@ class MissionContext(QObject):
             self.logMessage.emit("ERROR", f"[MISSION] Upload worker error: {e}")
 
     @pyqtSlot()
+    def togglePreview(self):
+        """Unified preview toggle - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.toggleSeedingPreview()
+        else:
+            self.toggleCoveragePreview()
+    
+    @pyqtSlot()
     def toggleCoveragePreview(self):
         """Toggle coverage preview visibility on map."""
         with self._lock:
@@ -663,6 +716,379 @@ class MissionContext(QObject):
                 return [{"lat": float(lat), "lon": float(lon)} for lat, lon in self._boundary_points]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getBoundaryPoints failed: {e}")
+            return []
+
+    # ── Seeding Mission Properties ────────────────────────────────────────
+    
+    @pyqtProperty(bool, notify=fieldBoundaryChanged)
+    def seedingModeEnabled(self):
+        return self._seeding_mode_enabled
+    
+    @seedingModeEnabled.setter
+    def seedingModeEnabled(self, value):
+        self._seeding_mode_enabled = value
+        self.fieldBoundaryChanged.emit()
+        if value:
+            self.logMessage.emit("INFO", "[MISSION] 🌱 Seeding mode enabled")
+        else:
+            self.logMessage.emit("INFO", "[MISSION] 📐 Coverage mode enabled")
+    
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def seedSpacing(self):
+        return self._seed_spacing
+    
+    @seedSpacing.setter
+    def seedSpacing(self, value):
+        self._seed_spacing = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def seedRowSpacing(self):
+        return self._seed_row_spacing
+    
+    @seedRowSpacing.setter
+    def seedRowSpacing(self, value):
+        self._seed_row_spacing = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def seedAltitude(self):
+        return self._seed_altitude
+    
+    @seedAltitude.setter
+    def seedAltitude(self, value):
+        self._seed_altitude = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(float, notify=fieldBoundaryChanged)
+    def seedDropDuration(self):
+        return self._seed_drop_duration
+    
+    @seedDropDuration.setter
+    def seedDropDuration(self, value):
+        self._seed_drop_duration = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(int, notify=fieldBoundaryChanged)
+    def servoChannel(self):
+        return self._servo_channel
+    
+    @servoChannel.setter
+    def servoChannel(self, value):
+        self._servo_channel = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(int, notify=fieldBoundaryChanged)
+    def servoOpenPWM(self):
+        return self._servo_open_pwm
+    
+    @servoOpenPWM.setter
+    def servoOpenPWM(self, value):
+        self._servo_open_pwm = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(int, notify=fieldBoundaryChanged)
+    def servoClosePWM(self):
+        return self._servo_close_pwm
+    
+    @servoClosePWM.setter
+    def servoClosePWM(self, value):
+        self._servo_close_pwm = value
+        self.fieldBoundaryChanged.emit()
+    
+    @pyqtProperty(int, notify=coverageGenerated)
+    def seedingWaypointCount(self):
+        return len(self._seeding_waypoints)
+    
+    @pyqtProperty(int, notify=coverageGenerated)
+    def seedingDropCount(self):
+        return self._seeding_drop_count
+    
+    @pyqtProperty(float, notify=coverageGenerated)
+    def seedingDistance(self):
+        return self._seeding_distance
+    
+    @pyqtProperty(float, notify=coverageGenerated)
+    def seedingTime(self):
+        return self._seeding_time
+    
+    @pyqtProperty(bool, notify=coverageGenerated)
+    def seedingMissionActive(self):
+        return len(self._seeding_waypoints) > 0
+    
+    # ── Seeding Mission Methods ───────────────────────────────────────────
+    
+    @pyqtSlot()
+    def generateSeedingMission(self):
+        """Generate seeding mission with servo commands for seed drops."""
+        try:
+            with self._lock:
+                if not self._home_set:
+                    self.logMessage.emit("ERROR", "[SEEDING] Home not set")
+                    return
+                if len(self._boundary_points) < 3:
+                    self.logMessage.emit("ERROR", "[SEEDING] Need ≥3 boundary points")
+                    return
+                
+                # Create boundary and config
+                boundary = FieldBoundary(corners=self._boundary_points)
+                
+                # Generate seeding mission
+                self._seeding_waypoints = self._seeding_planner.plan_seeding_mission(
+                    boundary=boundary,
+                    seed_spacing=self._seed_spacing,
+                    row_spacing=self._seed_row_spacing,
+                    altitude=self._seed_altitude,
+                    servo_channel=self._servo_channel,
+                    servo_open_pwm=self._servo_open_pwm,
+                    servo_close_pwm=self._servo_close_pwm,
+                    drop_duration=self._seed_drop_duration,
+                    add_rtl=True
+                )
+                
+                # Calculate statistics
+                seeding_config = SeedingConfig(
+                    seed_spacing=self._seed_spacing,
+                    row_spacing=self._seed_row_spacing,
+                    altitude=self._seed_altitude,
+                    servo_channel=self._servo_channel,
+                    servo_open_pwm=self._servo_open_pwm,
+                    servo_close_pwm=self._servo_close_pwm,
+                    drop_duration=self._seed_drop_duration,
+                    speed=self._coverage_speed
+                )
+                
+                stats = self._seeding_planner.estimate_mission_stats(
+                    boundary=boundary,
+                    config=seeding_config
+                )
+                
+                self._seeding_distance = stats["total_distance"]
+                self._seeding_time = stats["estimated_time"]
+                self._seeding_drop_count = stats["seed_count"]
+            
+            # Emit signals AFTER releasing lock
+            self.coverageGenerated.emit()
+            self.logMessage.emit(
+                "INFO",
+                f"[SEEDING] {len(self._seeding_waypoints)} WP, "
+                f"{self._seeding_drop_count} seeds, "
+                f"{self._seeding_distance/1000:.2f} km, "
+                f"{self._seeding_time/60:.1f} min"
+            )
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SEEDING] Generation failed: {e}")
+    
+    @pyqtSlot()
+    def uploadSeedingMission(self):
+        """Upload seeding mission to selected drones."""
+        with self._lock:
+            if not self._seeding_waypoints:
+                self.logMessage.emit("ERROR", "[SEEDING] No waypoints to upload")
+                return
+            
+            if not self._swarm_context:
+                self.logMessage.emit("ERROR", "[SEEDING] SwarmContext not available")
+                return
+            
+            waypoints = list(self._seeding_waypoints)
+        
+        # Run upload in background thread
+        threading.Thread(
+            target=self._upload_seeding_mission_worker,
+            args=(waypoints,),
+            daemon=True
+        ).start()
+    
+    def _upload_seeding_mission_worker(self, waypoints: List[Waypoint]) -> None:
+        """Background worker for seeding mission upload."""
+        try:
+            if not self._swarm_context:
+                return
+            
+            backends = self._swarm_context.backend.all_backends()
+            target_drones = [
+                (drone_id, backend)
+                for drone_id, backend in backends.items()
+                if backend.is_connected
+            ]
+            
+            if not target_drones:
+                self.logMessage.emit("ERROR", "[SEEDING] No connected drones")
+                return
+            
+            self.logMessage.emit(
+                "INFO",
+                f"[SEEDING] Uploading to {len(target_drones)} drone(s)..."
+            )
+            
+            success_count = 0
+            for drone_id, backend in target_drones:
+                try:
+                    if not backend._drone or not hasattr(backend._drone, '_conn'):
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] No connection, skipping"
+                        )
+                        continue
+                    
+                    conn = backend._drone._conn
+                    if not conn or not conn.connected:
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] Connection not active, skipping"
+                        )
+                        continue
+                    
+                    # Create mission engine and upload
+                    mission = MissionEngine(conn)
+                    mission.clear()
+                    
+                    for wp in waypoints:
+                        mission.add(wp)
+                    
+                    # Validate before upload
+                    is_valid, errors = mission.validate()
+                    if not is_valid:
+                        self.logMessage.emit(
+                            "ERROR",
+                            f"[{drone_id}] ❌ Validation failed:"
+                        )
+                        for error in errors[:5]:  # Show first 5 errors
+                            self.logMessage.emit("ERROR", f"  - {error}")
+                        if len(errors) > 5:
+                            self.logMessage.emit("ERROR", f"  ... and {len(errors)-5} more errors")
+                        continue
+                    
+                    if not mission.upload(validate_first=False):  # Already validated
+                        self.logMessage.emit(
+                            "ERROR",
+                            f"[{drone_id}] ❌ Upload failed (protocol error)"
+                        )
+                        continue
+                    
+                    self.logMessage.emit(
+                        "INFO",
+                        f"[{drone_id}] ✅ Seeding mission uploaded ({len(waypoints)} WP)"
+                    )
+                    
+                    # Check drone state and execute appropriate sequence
+                    drone_obj = backend._drone
+                    fsm_state = backend.fsm_state if hasattr(backend, 'fsm_state') else "UNKNOWN"
+                    
+                    self.logMessage.emit("INFO", f"[{drone_id}] Current state: {fsm_state}")
+                    
+                    # If already flying, just start the mission
+                    if fsm_state in ["FLYING", "MISSION"]:
+                        self.logMessage.emit("INFO", f"[{drone_id}] 🌱 Starting seeding mission...")
+                        if mission.start():
+                            success_count += 1
+                            self.logMessage.emit(
+                                "INFO",
+                                f"[{drone_id}] ✅ Seeding mission started!"
+                            )
+                            
+                            # Mark mission as active
+                            if self._swarm_context is not None:
+                                with self._swarm_context._state_lock:
+                                    if drone_id not in self._swarm_context._mission_active:
+                                        self._swarm_context._mission_active[drone_id] = threading.Event()
+                                    self._swarm_context._mission_active[drone_id].clear()
+                        else:
+                            self.logMessage.emit(
+                                "WARN",
+                                f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
+                            )
+                        continue
+                    
+                    # If on ground, execute full sequence: ARM → TAKEOFF → START
+                    if not drone_obj.armed:
+                        self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
+                        if not drone_obj.arm(timeout=10.0):
+                            self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Arm failed")
+                            continue
+                        self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
+                    
+                    if drone_obj.altitude < 2.0:
+                        self.logMessage.emit(
+                            "INFO",
+                            f"[{drone_id}] 🚁 Taking off to {self._seed_altitude}m..."
+                        )
+                        if not drone_obj.takeoff(altitude=self._seed_altitude, timeout=30.0):
+                            self.logMessage.emit(
+                                "WARN",
+                                f"[{drone_id}] ⚠ Takeoff timeout, continuing..."
+                            )
+                        else:
+                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
+                    
+                    self.logMessage.emit("INFO", f"[{drone_id}] 🌱 Starting seeding mission...")
+                    if mission.start():
+                        success_count += 1
+                        self.logMessage.emit(
+                            "INFO",
+                            f"[{drone_id}] ✅ Seeding mission started!"
+                        )
+                        
+                        # Mark mission as active
+                        if self._swarm_context is not None:
+                            with self._swarm_context._state_lock:
+                                if drone_id not in self._swarm_context._mission_active:
+                                    self._swarm_context._mission_active[drone_id] = threading.Event()
+                                self._swarm_context._mission_active[drone_id].clear()
+                    else:
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
+                        )
+                
+                except Exception as e:
+                    self.logMessage.emit("ERROR", f"[{drone_id}] Upload error: {e}")
+            
+            if success_count > 0:
+                self.logMessage.emit(
+                    "INFO",
+                    f"[SEEDING] ✅ {success_count}/{len(target_drones)} successful"
+                )
+            else:
+                self.logMessage.emit("ERROR", "[SEEDING] ❌ All uploads failed")
+        
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SEEDING] Worker error: {e}")
+    
+    @pyqtSlot()
+    def toggleSeedingPreview(self):
+        """Toggle seeding mission preview on map."""
+        with self._lock:
+            self._seeding_preview_active = not self._seeding_preview_active
+        
+        if self._seeding_preview_active:
+            self.coverageGenerated.emit()
+            self.logMessage.emit("INFO", "[SEEDING] Preview enabled")
+        else:
+            self.coverageCleared.emit()
+            self.logMessage.emit("INFO", "[SEEDING] Preview disabled")
+    
+    @pyqtSlot(result="QVariantList")
+    def getSeedingWaypoints(self):
+        """Return seeding waypoints for QML/JavaScript map display.
+        
+        Returns NAV waypoints with 'isSeedPoint' flag for visualization.
+        """
+        try:
+            with self._lock:
+                waypoints = []
+                for wp in self._seeding_waypoints:
+                    if wp.cmd == 16:  # MAV_CMD_NAV_WAYPOINT only
+                        waypoints.append({
+                            "lat": float(wp.lat),
+                            "lon": float(wp.lon),
+                            "alt": float(wp.alt),
+                            "isSeedPoint": wp.hold > 0.0  # Seed points have hold time
+                        })
+                return waypoints
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SEEDING] getSeedingWaypoints failed: {e}")
             return []
 
     def _calculate_distance(self) -> float:

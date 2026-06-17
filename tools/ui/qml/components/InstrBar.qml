@@ -279,12 +279,7 @@ Rectangle {
                     }
                 }
 
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.selectedDroneId || "no drone"
-                    color: root.selectedDroneId ? "#f59e0b" : "#374151"
-                    font.pixelSize: 8; font.family: "Consolas"
-                }
+                // Drone name removed - now shown in map overlay at top-center
             }
         }
 

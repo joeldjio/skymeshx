@@ -42,6 +42,85 @@ Rectangle {
             }
 
             Rectangle { width: parent.width; height: 1; color: "#1e293b" }
+            // ── MISSION MODE TOGGLE ───────────────────────────────────────
+            Rectangle {
+                width: parent.width
+                height: 60
+                color: "#1e293b"
+                radius: 8
+                border.color: "#334155"
+                border.width: 1
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    Text {
+                        text: "Mission Type:"
+                        color: "#94a3b8"
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Rectangle {
+                        width: 200
+                        height: 36
+                        radius: 6
+                        color: "#0f172a"
+                        border.color: "#334155"
+                        border.width: 1
+
+                        Row {
+                            anchors.fill: parent
+                            spacing: 0
+
+                            Rectangle {
+                                width: parent.width / 2
+                                height: parent.height
+                                radius: 6
+                                color: mission && !mission.seedingModeEnabled ? "#22c55e" : "transparent"
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "▦ Coverage"
+                                    color: mission && !mission.seedingModeEnabled ? "#0f172a" : "#94a3b8"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: !(mission && mission.missionLocked)
+                                    onClicked: if (mission) mission.seedingModeEnabled = false
+                                }
+                            }
+
+                            Rectangle {
+                                width: parent.width / 2
+                                height: parent.height
+                                radius: 6
+                                color: mission && mission.seedingModeEnabled ? "#8b5cf6" : "transparent"
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "◉ Seeding"
+                                    color: mission && mission.seedingModeEnabled ? "#ffffff" : "#94a3b8"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: !(mission && mission.missionLocked)
+                                    onClicked: if (mission) mission.seedingModeEnabled = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
 
             // ── FIELD COVERAGE PLANNING ───────────────────────────────────
             Rectangle {
@@ -51,6 +130,7 @@ Rectangle {
                 radius: 8
                 border.color: "#334155"
                 border.width: 1
+                visible: mission && !mission.seedingModeEnabled
 
                 Column {
                     id: coverageColumn
@@ -758,9 +838,691 @@ Rectangle {
                         }
                     }
 
+                }
+            }
+
+            // ── SEEDING MISSION PLANNER ───────────────────────────────────
+            Rectangle {
+                width: parent.width
+                height: seedingColumn.height + 24
+                color: "#1e293b"
+                radius: 8
+                border.color: "#334155"
+                border.width: 1
+                visible: mission && mission.seedingModeEnabled
+
+                Column {
+                    id: seedingColumn
+                    width: parent.width - 24
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    // Header
+                    Row {
+                        width: parent.width
+                        spacing: 8
+
+                        Rectangle {
+                            width: 4
+                            height: 20
+                            color: "#8b5cf6"
+                            radius: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                            text: "SEEDING MISSION"
+                            color: "#8b5cf6"
+                            font.pixelSize: 12
+                            font.weight: Font.Bold
+                            font.letterSpacing: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Item { width: parent.width - 200; height: 1 }
+
+                        Text {
+                            text: mission && mission.seedingMissionActive ? "ACTIVE" : "INACTIVE"
+                            color: mission && mission.seedingMissionActive ? "#8b5cf6" : "#64748b"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
                     Rectangle { width: parent.width; height: 1; color: "#2d3748" }
 
-                    // Action Buttons
+                    Text {
+                        text: "Generate precision seeding missions with automated seed dispenser control"
+                        color: "#94a3b8"
+                        font.pixelSize: 9
+                        font.italic: true
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+
+                    // Field Boundary (shared with coverage mode)
+                    Column {
+                        width: parent.width
+                        spacing: 6
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                text: "Field Boundary"
+                                color: "#94a3b8"
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: mission ? mission.fieldBoundaryPoints + " points" : "0 points"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        Row {
+                            width: parent.width
+                            spacing: 6
+
+                            Rectangle {
+                                width: (parent.width - 6) / 2
+                                height: 32
+                                radius: 6
+                                color: drawBoundarySeedingM.containsMouse ? "#1e40af" : "#1e3a8a"
+                                border.color: "#3b82f6"
+                                border.width: 1
+                                opacity: mission && mission.missionLocked ? 0.4 : 1.0
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 6
+
+                                    Cmp.Icon {
+                                        name: mission && mission.missionLocked ? "lock" : "edit"
+                                        size: 12
+                                        color: "#93c5fd"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    Text {
+                                        text: mission && mission.missionLocked ? "LOCKED" : "DRAW ON MAP"
+                                        color: "#93c5fd"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 0.5
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: drawBoundarySeedingM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: !(mission && mission.missionLocked)
+                                    onClicked: {
+                                        if (mission) {
+                                            mission.startDrawingBoundary()
+                                            root.Window.window.selectTabById("map")
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                width: (parent.width - 6) / 2
+                                height: 32
+                                radius: 6
+                                color: mission && mission.drawingMode
+                                    ? (finishSeedingM.containsMouse ? "#15803d" : "#166534")
+                                    : (clearBoundarySeedingM.containsMouse ? "#991b1b" : "#7f1d1d")
+                                border.color: mission && mission.drawingMode ? "#22c55e" : "#ef4444"
+                                border.width: 1
+                                opacity: (mission && mission.drawingMode) || (mission && mission.fieldBoundaryPoints > 0) ? 1 : 0.5
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 6
+
+                                    Cmp.Icon {
+                                        name: mission && mission.drawingMode ? "check" : "x"
+                                        size: 12
+                                        color: mission && mission.drawingMode ? "#bbf7d0" : "#fecaca"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    Text {
+                                        text: mission && mission.drawingMode ? "FINISH" : "CLEAR"
+                                        color: mission && mission.drawingMode ? "#bbf7d0" : "#fecaca"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 0.5
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: finishSeedingM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    visible: mission && mission.drawingMode
+                                    onClicked: if (mission) mission.finishDrawingBoundary()
+                                }
+
+                                MouseArea {
+                                    id: clearBoundarySeedingM
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    visible: !(mission && mission.drawingMode)
+                                    enabled: mission && mission.fieldBoundaryPoints > 0
+                                    onClicked: if (mission) mission.clearBoundary()
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+
+                    // Seeding Parameters
+                    Grid {
+                        width: parent.width
+                        columns: 2
+                        columnSpacing: 12
+                        rowSpacing: 12
+                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
+                        enabled: !(mission && mission.missionLocked)
+
+                        // Seed Spacing
+                        Column {
+                            width: (parent.width - 12) / 2
+                            spacing: 2
+
+                            Text {
+                                text: "Seed Spacing (m)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: seedSpacingSlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 0.5
+                                    to: 10
+                                    stepSize: 0.5
+                                    value: mission ? mission.seedSpacing : 2.0
+                                    onMoved: if (mission) mission.seedSpacing = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: seedSpacingSlider.value.toFixed(1) + " m"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Text {
+                                text: {
+                                    var v = seedSpacingSlider.value;
+                                    if (v < 1.5) return "Dense planting";
+                                    if (v < 3.0) return "Standard spacing";
+                                    return "Wide spacing";
+                                }
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
+                        }
+
+                        // Row Spacing
+                        Column {
+                            width: (parent.width - 12) / 2
+                            spacing: 2
+
+                            Text {
+                                text: "Row Spacing (m)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: rowSpacingSlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 3
+                                    to: 15
+                                    stepSize: 1
+                                    value: mission ? mission.seedRowSpacing : 5.0
+                                    onMoved: if (mission) mission.seedRowSpacing = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: Math.round(rowSpacingSlider.value) + " m"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Text {
+                                text: {
+                                    var v = rowSpacingSlider.value;
+                                    if (v < 5) return "Narrow rows";
+                                    if (v < 10) return "Standard rows";
+                                    return "Wide rows";
+                                }
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
+                        }
+
+                        // Seeding Altitude
+                        Column {
+                            width: (parent.width - 12) / 2
+                            spacing: 2
+
+                            Text {
+                                text: "Seeding Altitude (m)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: seedAltSlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 5
+                                    to: 30
+                                    stepSize: 1
+                                    value: mission ? mission.seedAltitude : 10.0
+                                    onMoved: if (mission) mission.seedAltitude = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: Math.round(seedAltSlider.value) + " m"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Text {
+                                text: {
+                                    var v = seedAltSlider.value;
+                                    if (v < 10) return "Low (precise)";
+                                    if (v < 20) return "Medium";
+                                    return "High (fast)";
+                                }
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
+                        }
+
+                        // Drop Duration
+                        Column {
+                            width: (parent.width - 12) / 2
+                            spacing: 2
+
+                            Text {
+                                text: "Drop Duration (s)"
+                                color: "#64748b"
+                                font.pixelSize: 9
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+
+                                Slider {
+                                    id: dropDurationSlider
+                                    width: parent.width - 50
+                                    height: 18
+                                    from: 0.1
+                                    to: 2.0
+                                    stepSize: 0.1
+                                    value: mission ? mission.seedDropDuration : 0.5
+                                    onMoved: if (mission) mission.seedDropDuration = value
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: dropDurationSlider.value.toFixed(1) + " s"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 9
+                                    font.family: "Consolas"
+                                    width: 42
+                                    horizontalAlignment: Text.AlignRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Text {
+                                text: "Time dispenser stays open per seed"
+                                color: "#94a3b8"
+                                font.pixelSize: 8
+                                font.italic: true
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+
+                    // Servo Configuration
+                    Column {
+                        width: parent.width
+                        spacing: 6
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+
+                            Rectangle {
+                                width: 4
+                                height: 16
+                                color: "#f59e0b"
+                                radius: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: "Servo Configuration"
+                                color: "#f59e0b"
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        Text {
+                            text: "Configure seed dispenser servo parameters (PWM values: 900-2100)"
+                            color: "#64748b"
+                            font.pixelSize: 8
+                            font.italic: true
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
+
+                        Grid {
+                            width: parent.width
+                            columns: 3
+                            columnSpacing: 8
+                            rowSpacing: 8
+                            opacity: mission && mission.missionLocked ? 0.4 : 1.0
+                            enabled: !(mission && mission.missionLocked)
+
+                            // Servo Channel
+                            Column {
+                                width: (parent.width - 16) / 3
+                                spacing: 2
+
+                                Text {
+                                    text: "Channel"
+                                    color: "#64748b"
+                                    font.pixelSize: 9
+                                }
+
+                                SpinBox {
+                                    id: servoChannelSpin
+                                    width: parent.width
+                                    height: 28
+                                    from: 1
+                                    to: 16
+                                    value: mission ? mission.servoChannel : 9
+                                    onValueModified: if (mission) mission.servoChannel = value
+                                    
+                                    contentItem: TextInput {
+                                        text: servoChannelSpin.textFromValue(servoChannelSpin.value, servoChannelSpin.locale)
+                                        font.pixelSize: 10
+                                        font.family: "Consolas"
+                                        color: "#e2e8f0"
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        readOnly: !servoChannelSpin.editable
+                                        validator: servoChannelSpin.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                    
+                                    background: Rectangle {
+                                        color: "#0f172a"
+                                        border.color: "#334155"
+                                        border.width: 1
+                                        radius: 4
+                                    }
+                                }
+                            }
+
+                            // Servo Open PWM
+                            Column {
+                                width: (parent.width - 16) / 3
+                                spacing: 2
+
+                                Text {
+                                    text: "Open PWM"
+                                    color: "#64748b"
+                                    font.pixelSize: 9
+                                }
+
+                                SpinBox {
+                                    id: servoOpenSpin
+                                    width: parent.width
+                                    height: 28
+                                    from: 900
+                                    to: 2100
+                                    stepSize: 50
+                                    value: mission ? mission.servoOpenPWM : 1900
+                                    onValueModified: if (mission) mission.servoOpenPWM = value
+                                    
+                                    contentItem: TextInput {
+                                        text: servoOpenSpin.textFromValue(servoOpenSpin.value, servoOpenSpin.locale)
+                                        font.pixelSize: 10
+                                        font.family: "Consolas"
+                                        color: "#e2e8f0"
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        readOnly: !servoOpenSpin.editable
+                                        validator: servoOpenSpin.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                    
+                                    background: Rectangle {
+                                        color: "#0f172a"
+                                        border.color: "#334155"
+                                        border.width: 1
+                                        radius: 4
+                                    }
+                                }
+                            }
+
+                            // Servo Close PWM
+                            Column {
+                                width: (parent.width - 16) / 3
+                                spacing: 2
+
+                                Text {
+                                    text: "Close PWM"
+                                    color: "#64748b"
+                                    font.pixelSize: 9
+                                }
+
+                                SpinBox {
+                                    id: servoCloseSpin
+                                    width: parent.width
+                                    height: 28
+                                    from: 900
+                                    to: 2100
+                                    stepSize: 50
+                                    value: mission ? mission.servoClosePWM : 1100
+                                    onValueModified: if (mission) mission.servoClosePWM = value
+                                    
+                                    contentItem: TextInput {
+                                        text: servoCloseSpin.textFromValue(servoCloseSpin.value, servoCloseSpin.locale)
+                                        font.pixelSize: 10
+                                        font.family: "Consolas"
+                                        color: "#e2e8f0"
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        readOnly: !servoCloseSpin.editable
+                                        validator: servoCloseSpin.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                    
+                                    background: Rectangle {
+                                        color: "#0f172a"
+                                        border.color: "#334155"
+                                        border.width: 1
+                                        radius: 4
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+
+                    // Mission Statistics
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        visible: mission && mission.seedingWaypointCount > 0
+
+                        Text {
+                            text: "Seeding Mission Statistics"
+                            color: "#94a3b8"
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                        }
+
+                        Grid {
+                            width: parent.width
+                            columns: 4
+                            columnSpacing: 8
+                            rowSpacing: 6
+
+                            Column {
+                                spacing: 2
+                                Text {
+                                    text: "Waypoints"
+                                    color: "#64748b"
+                                    font.pixelSize: 8
+                                }
+                                Text {
+                                    text: mission ? mission.seedingWaypointCount.toString() : "0"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    font.family: "Consolas"
+                                }
+                            }
+
+                            Column {
+                                spacing: 2
+                                Text {
+                                    text: "Seed Drops"
+                                    color: "#64748b"
+                                    font.pixelSize: 8
+                                }
+                                Text {
+                                    text: mission ? mission.seedingDropCount.toString() : "0"
+                                    color: "#8b5cf6"
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    font.family: "Consolas"
+                                }
+                            }
+
+                            Column {
+                                spacing: 2
+                                Text {
+                                    text: "Distance"
+                                    color: "#64748b"
+                                    font.pixelSize: 8
+                                }
+                                Text {
+                                    text: mission ? (mission.seedingDistance / 1000).toFixed(2) + " km" : "0 km"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    font.family: "Consolas"
+                                }
+                            }
+
+                            Column {
+                                spacing: 2
+                                Text {
+                                    text: "Est. Time"
+                                    color: "#64748b"
+                                    font.pixelSize: 8
+                                }
+                                Text {
+                                    text: mission ? (mission.seedingTime / 60).toFixed(1) + " min" : "0 min"
+                                    color: "#e2e8f0"
+                                    font.pixelSize: 14
+                                    font.weight: Font.Bold
+                                    font.family: "Consolas"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // ── UNIFIED ACTION BUTTONS ────────────────────────────────────
+            Rectangle {
+                width: parent.width
+                height: 120
+                color: "#1e293b"
+                radius: 8
+                border.color: "#334155"
+                border.width: 1
+
+                Column {
+                    width: parent.width - 24
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    Text {
+                        text: "MISSION ACTIONS"
+                        color: "#94a3b8"
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        font.letterSpacing: 1
+                    }
+
+                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
+
                     Row {
                         width: parent.width
                         spacing: 6
@@ -800,7 +1562,7 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)
-                                onClicked: if (mission) mission.generateFieldCoverage()
+                                onClicked: if (mission) mission.generateMission()
                             }
                         }
 
@@ -811,7 +1573,7 @@ Rectangle {
                             color: uploadM.containsMouse ? "#1e40af" : "#1e3a8a"
                             border.color: "#3b82f6"
                             border.width: 1
-                            opacity: mission && mission.coverageWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -838,8 +1600,8 @@ Rectangle {
                                 id: uploadM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.coverageWaypointCount > 0
-                                onClicked: if (mission) mission.uploadCoverageMission()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.uploadMission()
                             }
                         }
 
@@ -850,7 +1612,7 @@ Rectangle {
                             color: previewM.containsMouse ? "#713f12" : "#78350f"
                             border.color: "#f59e0b"
                             border.width: 1
-                            opacity: mission && mission.coverageWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -877,13 +1639,14 @@ Rectangle {
                                 id: previewM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.coverageWaypointCount > 0
-                                onClicked: if (mission) mission.toggleCoveragePreview()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.togglePreview()
                             }
                         }
                     }
                 }
             }
+
 
             // Spacer
             Item { width: 1; height: 20 }

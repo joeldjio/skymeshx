@@ -1,13 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtWebEngine
+import "components" as Cmp
 
 // Full-screen OSM map + HUD instruments + 3D drone overlay
 Item {
     id: root
 
     // ── live telemetry helpers (first drone or selected) ──────────────────
-    property string selectedDroneId: ""
+    // Use global selectedDroneId from AppState (set by Header dropdown)
+    property string selectedDroneId: Cmp.AppState.selectedDroneId
 
     function snap(key, def) {
         if (telemetryModel.count === 0) return def
@@ -121,7 +123,7 @@ Item {
             model: [
                 { id: "dark",      label: "Dark",      icon: "◐" },
                 { id: "street",    label: "Street",    icon: "▢" },
-                { id: "satellite", label: "Satellite", icon: "🛰" },
+                { id: "satellite", label: "Satellite", icon: "◈" },
                 { id: "hybrid",    label: "Hybrid",    icon: "◆" },
                 { id: "topo",      label: "Topo",      icon: "⛰" },
             ]
@@ -324,7 +326,9 @@ Item {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   html,body,#map { margin:0;padding:0;width:100%;height:100%;background:#0f1117; }
-  .drone-label { background:transparent;border:none;color:#e2e8f0;font-size:11px;font-weight:700;font-family:Consolas,monospace;white-space:nowrap; }
+  /* Hide ALL Leaflet tooltips - drone names shown in QML overlay */
+  .leaflet-tooltip { display:none !important; visibility:hidden !important; }
+  .drone-label { display:none !important; visibility:hidden !important; }
 </style>
 </head>
 <body>
@@ -336,6 +340,15 @@ var map = L.map("map", {
   zoomControl: true,
   attributionControl: false
 });
+
+// Remove all drone tooltips on map load (name shown in QML overlay instead)
+function removeAllDroneTooltips() {
+  Object.keys(droneMarkers).forEach(function(id) {
+    if (droneMarkers[id] && droneMarkers[id].getTooltip()) {
+      droneMarkers[id].unbindTooltip();
+    }
+  });
+}
 
 var mapLayers = {
   dark: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.85}),
@@ -391,9 +404,14 @@ function droneColor(id) {
 
 function setSelectedDrone(did) {
   selectedDroneId = did;
+  // Remove all tooltips first
+  removeAllDroneTooltips();
+  // Update icons
   Object.keys(droneMarkers).forEach(function(id) {
     var m = droneMarkers[id];
-    if (m && m._lastData) m.setIcon(makeDroneIcon(id, m._lastData, id === did));
+    if (m && m._lastData) {
+      m.setIcon(makeDroneIcon(id, m._lastData, id === did));
+    }
   });
 }
 
@@ -449,10 +467,8 @@ function updateDrones(data) {
     var sel = (id === selectedDroneId);
     var icon = makeDroneIcon(id, d, sel);
     if (!droneMarkers[id]) {
+      // Create marker WITHOUT tooltip (name shown in QML overlay instead)
       droneMarkers[id] = L.marker([d.lat,d.lon],{icon:icon,zIndexOffset: sel?1000:0}).addTo(map);
-      // Tooltip: show type icon + id
-      var typeIcon = droneTypes[id] === "observation" ? "[OBS] " : "";
-      droneMarkers[id].bindTooltip(typeIcon + id,{permanent:true,className:"drone-label",direction:"right",offset:[sel?26:20,0]});
       droneTracks[id] = L.polyline([[d.lat,d.lon]],{color:col,weight:2,opacity:0.55}).addTo(map);
     } else {
       droneMarkers[id].setLatLng([d.lat,d.lon]).setIcon(icon);
@@ -460,6 +476,10 @@ function updateDrones(data) {
       if (prevType !== droneTypes[id] && droneTracks[id]) {
         droneTracks[id].setStyle({color: col});
       }
+    }
+    // ALWAYS remove tooltip after marker update
+    if (droneMarkers[id] && droneMarkers[id].getTooltip()) {
+      droneMarkers[id].unbindTooltip();
     }
     droneMarkers[id]._lastData = d;
     droneTracks[id].addLatLng([d.lat,d.lon]);
@@ -650,15 +670,26 @@ function updateCoverageWaypoints(waypoints) {
   
   var latlngs = [];
   waypoints.forEach(function(wp, i) {
+    // Different styling for seed drop points
+    var isSeedPoint = wp.isSeedPoint === true;
+    var seedSvg = \'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1C6 1 4 3 4 5C4 6.1 4.9 7 6 7C7.1 7 8 6.1 8 5C8 3 6 1 6 1Z" fill="#86efac"/><path d="M6 7V11" stroke="#86efac" stroke-width="1.5" stroke-linecap="round"/><path d="M4 9C4 9 5 8.5 6 8.5C7 8.5 8 9 8 9" stroke="#86efac" stroke-width="1" stroke-linecap="round"/></svg>\';
+    var iconHtml = isSeedPoint
+      ? \'<div style="width:20px;height:20px;border-radius:50%;border:2px solid #22c55e;background:#14532d;display:flex;align-items:center;justify-content:center;">\' + seedSvg + \'</div>\'
+      : \'<div style="width:16px;height:16px;border-radius:50%;border:2px solid #3b82f6;background:#1e3a8a;display:flex;align-items:center;justify-content:center;color:#93c5fd;font-size:7px;font-weight:bold;">\' + (i+1) + \'</div>\';
+    
     var icon = L.divIcon({
       className:"",
-      iconSize:[16,16],
-      iconAnchor:[8,8],
-      html:\'<div style="width:16px;height:16px;border-radius:50%;border:2px solid #3b82f6;background:#1e3a8a;display:flex;align-items:center;justify-content:center;color:#93c5fd;font-size:7px;font-weight:bold;">\' + (i+1) + \'</div>\'
+      iconSize: isSeedPoint ? [20,20] : [16,16],
+      iconAnchor: isSeedPoint ? [10,10] : [8,8],
+      html: iconHtml
     });
     
+    var tooltipText = isSeedPoint
+      ? "Seed Drop #" + (i+1) + ": " + wp.alt + "m"
+      : "Coverage WP" + (i+1) + ": " + wp.alt + "m";
+    
     var marker = L.marker([wp.lat, wp.lon], {icon: icon})
-      .bindTooltip("Coverage WP" + (i+1) + ": " + wp.alt + "m", {direction:"top"})
+      .bindTooltip(tooltipText, {direction:"top"})
       .addTo(map);
     
     coverageWaypointMarkers.push(marker);
