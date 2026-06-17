@@ -36,6 +36,9 @@ class MissionContext(QObject):
     coverageCleared = pyqtSignal()
     drawingModeChanged = pyqtSignal(bool, arguments=["active"])
     missionLockChanged = pyqtSignal(bool, arguments=["locked"])
+    solarPanelRowsChanged = pyqtSignal()
+    solarStatsChanged = pyqtSignal()
+    solarRowDrawingModeChanged = pyqtSignal(bool, arguments=["active"])
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,8 +53,9 @@ class MissionContext(QObject):
         # Seeding Mission Planner
         self._seeding_planner = SeedingMissionPlanner()
         
-        # Mission mode: False = coverage, True = seeding
-        self._seeding_mode_enabled = False
+        # Mission mode: 0 = coverage, 1 = seeding, 2 = solar inspection
+        self._mission_mode = 0
+        self._seeding_mode_enabled = False  # Kept for backward compatibility
         
         # Field boundary
         self._boundary_points: List[Tuple[float, float]] = []
@@ -90,6 +94,21 @@ class MissionContext(QObject):
         self._seeding_time = 0.0
         self._seeding_drop_count = 0
         self._seeding_preview_active = False
+        
+        # Solar inspection configuration
+        self._solar_panel_rows: List[dict] = []  # List of {start_lat, start_lon, end_lat, end_lon, length}
+        self._solar_altitude = 15.0
+        self._solar_gimbal_pitch = -90.0
+        self._solar_trigger_distance = 5.0
+        self._solar_overlap = 0.3
+        self._solar_coverage_area = 0.0
+        self._solar_mission_time = 0.0
+        self._solar_waypoint_count = 0
+        self._solar_photo_count = 0
+        self._solar_waypoints: List[Waypoint] = []
+        self._adding_solar_row = False  # True when waiting for user to click two points on map
+        self._solar_row_start_lat = 0.0
+        self._solar_row_start_lon = 0.0
         
         # Mission lock state
         self._mission_locked = False
@@ -395,9 +414,11 @@ class MissionContext(QObject):
 
     @pyqtSlot()
     def generateMission(self):
-        """Unified generate method - calls coverage or seeding based on mode."""
-        if self._seeding_mode_enabled:
+        """Unified generate method - calls coverage, seeding, or solar based on mode."""
+        if self._mission_mode == 1:
             self.generateSeedingMission()
+        elif self._mission_mode == 2:
+            self.generateSolarInspection()
         else:
             self.generateFieldCoverage()
     
@@ -443,9 +464,11 @@ class MissionContext(QObject):
 
     @pyqtSlot()
     def uploadMission(self):
-        """Unified upload method - calls coverage or seeding based on mode."""
-        if self._seeding_mode_enabled:
+        """Unified upload method - calls coverage, seeding, or solar based on mode."""
+        if self._mission_mode == 1:
             self.uploadSeedingMission()
+        elif self._mission_mode == 2:
+            self.uploadSolarMission()
         else:
             self.uploadCoverageMission()
     
@@ -718,20 +741,38 @@ class MissionContext(QObject):
             self.logMessage.emit("ERROR", f"[MISSION] getBoundaryPoints failed: {e}")
             return []
 
-    # ── Seeding Mission Properties ────────────────────────────────────────
+    # ── Mission Mode Properties ───────────────────────────────────────────
+    
+    @pyqtProperty(int, notify=fieldBoundaryChanged)
+    def missionMode(self):
+        """Mission mode: 0=Coverage, 1=Seeding, 2=Solar Inspection."""
+        return self._mission_mode
+    
+    @missionMode.setter
+    def missionMode(self, value):
+        if self._mission_mode != value:
+            self._mission_mode = value
+            # Update legacy seedingModeEnabled for backward compatibility
+            self._seeding_mode_enabled = (value == 1)
+            self.fieldBoundaryChanged.emit()
+            if value == 0:
+                self.logMessage.emit("INFO", "[MISSION] 📐 Coverage mode enabled")
+            elif value == 1:
+                self.logMessage.emit("INFO", "[MISSION] 🌱 Seeding mode enabled")
+            elif value == 2:
+                self.logMessage.emit("INFO", "[MISSION] ☀ Solar Inspection mode enabled")
     
     @pyqtProperty(bool, notify=fieldBoundaryChanged)
     def seedingModeEnabled(self):
+        """Legacy property for backward compatibility. Use missionMode instead."""
         return self._seeding_mode_enabled
     
     @seedingModeEnabled.setter
     def seedingModeEnabled(self, value):
-        self._seeding_mode_enabled = value
-        self.fieldBoundaryChanged.emit()
-        if value:
-            self.logMessage.emit("INFO", "[MISSION] 🌱 Seeding mode enabled")
-        else:
-            self.logMessage.emit("INFO", "[MISSION] 📐 Coverage mode enabled")
+        # Map to missionMode: False=0 (Coverage), True=1 (Seeding)
+        self.missionMode = 1 if value else 0
+    
+    # ── Seeding Mission Properties ────────────────────────────────────────
     
     @pyqtProperty(float, notify=fieldBoundaryChanged)
     def seedSpacing(self):
@@ -1090,6 +1131,418 @@ class MissionContext(QObject):
         except Exception as e:
             self.logMessage.emit("ERROR", f"[SEEDING] getSeedingWaypoints failed: {e}")
             return []
+
+    # ── Solar Inspection Properties ────────────────────────────────────────
+    
+    @pyqtProperty(bool, notify=solarStatsChanged)
+    def solarInspectionActive(self):
+        return self._mission_mode == 2 and len(self._solar_panel_rows) > 0
+    
+    @pyqtProperty(int, notify=solarPanelRowsChanged)
+    def solarPanelRowCount(self):
+        return len(self._solar_panel_rows)
+    
+    @pyqtProperty("QVariantList", notify=solarPanelRowsChanged)
+    def solarPanelRows(self):
+        """Return list of solar panel rows for QML/Map display."""
+        # Convert to format expected by MapView JavaScript
+        rows = []
+        for row in self._solar_panel_rows:
+            rows.append({
+                "start": {"lat": row["start_lat"], "lon": row["start_lon"]},
+                "end": {"lat": row["end_lat"], "lon": row["end_lon"]},
+                "length": row["length"],
+                "panelCount": 0  # TODO: Calculate based on panel size
+            })
+        return rows
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarAltitude(self):
+        return self._solar_altitude
+    
+    @solarAltitude.setter
+    def solarAltitude(self, value):
+        if self._solar_altitude != value:
+            self._solar_altitude = value
+            self.solarStatsChanged.emit()
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarGimbalPitch(self):
+        return self._solar_gimbal_pitch
+    
+    @solarGimbalPitch.setter
+    def solarGimbalPitch(self, value):
+        if self._solar_gimbal_pitch != value:
+            self._solar_gimbal_pitch = value
+            self.solarStatsChanged.emit()
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarTriggerDistance(self):
+        return self._solar_trigger_distance
+    
+    @solarTriggerDistance.setter
+    def solarTriggerDistance(self, value):
+        if self._solar_trigger_distance != value:
+            self._solar_trigger_distance = value
+            self.solarStatsChanged.emit()
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarOverlap(self):
+        return self._solar_overlap
+    
+    @solarOverlap.setter
+    def solarOverlap(self, value):
+        if self._solar_overlap != value:
+            self._solar_overlap = value
+            self.solarStatsChanged.emit()
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarCoverageArea(self):
+        return self._solar_coverage_area
+    
+    @pyqtProperty(float, notify=solarStatsChanged)
+    def solarMissionTime(self):
+        return self._solar_mission_time
+    
+    @pyqtProperty(int, notify=solarStatsChanged)
+    def solarWaypointCount(self):
+        return self._solar_waypoint_count
+    
+    @pyqtProperty(int, notify=solarStatsChanged)
+    def solarPhotoCount(self):
+        return self._solar_photo_count
+    
+    # ── Solar Inspection Methods ───────────────────────────────────────────
+    
+    @pyqtSlot()
+    def startAddingSolarRow(self):
+        """Start interactive solar row addition on map."""
+        self._adding_solar_row = True
+        self._solar_row_start_lat = 0.0
+        self._solar_row_start_lon = 0.0
+        self.solarRowDrawingModeChanged.emit(True)
+        self.logMessage.emit("INFO", "[SOLAR] Click two points on map to define panel row")
+    
+    @pyqtSlot(float, float)
+    def addSolarRowPoint(self, lat: float, lon: float):
+        """Handle a click point for solar row drawing."""
+        try:
+            if self._solar_row_start_lat == 0.0 and self._solar_row_start_lon == 0.0:
+                # First click - store start point
+                self._solar_row_start_lat = lat
+                self._solar_row_start_lon = lon
+                self.logMessage.emit("INFO", "[SOLAR] Start point set, click end point")
+            else:
+                # Second click - complete the row
+                self.addSolarRow(self._solar_row_start_lat, self._solar_row_start_lon, lat, lon)
+                # Reset for next row but keep drawing mode active
+                self._solar_row_start_lat = 0.0
+                self._solar_row_start_lon = 0.0
+                self.logMessage.emit("INFO", "[SOLAR] Row added. Click to add another row, or press ESC to finish")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] addSolarRowPoint failed: {e}")
+    
+    @pyqtSlot(float, float, float, float)
+    def addSolarRow(self, start_lat: float, start_lon: float, end_lat: float, end_lon: float):
+        """Add a solar panel row defined by start and end coordinates."""
+        try:
+            # Calculate row length
+            R = 6371000  # Earth radius in meters
+            dlat = math.radians(end_lat - start_lat)
+            dlon = math.radians(end_lon - start_lon)
+            a = (math.sin(dlat / 2) ** 2 +
+                 math.cos(math.radians(start_lat)) * math.cos(math.radians(end_lat)) *
+                 math.sin(dlon / 2) ** 2)
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+            length = R * c
+            
+            row = {
+                "start_lat": start_lat,
+                "start_lon": start_lon,
+                "end_lat": end_lat,
+                "end_lon": end_lon,
+                "length": length
+            }
+            
+            with self._lock:
+                self._solar_panel_rows.append(row)
+                self._adding_solar_row = False
+            
+            self.solarPanelRowsChanged.emit()
+            self.logMessage.emit("INFO", f"[SOLAR] Added row {len(self._solar_panel_rows)} ({length:.1f}m)")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] Failed to add row: {e}")
+    
+    @pyqtSlot()
+    def clearSolarPanelRows(self):
+        """Clear all solar panel rows and map visualization."""
+        try:
+            with self._lock:
+                self._solar_panel_rows.clear()
+                self._solar_waypoints.clear()
+                self._solar_coverage_area = 0.0
+                self._solar_mission_time = 0.0
+                self._solar_waypoint_count = 0
+                self._solar_photo_count = 0
+            
+            self.solarPanelRowsChanged.emit()
+            self.solarStatsChanged.emit()
+            self.logMessage.emit("INFO", "[SOLAR] Cleared all panel rows")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] clearSolarPanelRows failed: {e}")
+    
+    @pyqtSlot(int)
+    def removeSolarRow(self, index: int):
+        """Remove a solar panel row by index."""
+        try:
+            with self._lock:
+                if 0 <= index < len(self._solar_panel_rows):
+                    self._solar_panel_rows.pop(index)
+                    self.solarPanelRowsChanged.emit()
+                    self.logMessage.emit("INFO", f"[SOLAR] Removed row {index + 1}")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] Failed to remove row: {e}")
+    
+    @pyqtSlot()
+    def generateSolarInspection(self):
+        """Generate solar inspection mission waypoints."""
+        try:
+            from droneresearch.control.solar_inspection import (
+                SolarParkInspectionPlanner,
+                PanelRow,
+                InspectionConfig
+            )
+            
+            with self._lock:
+                if len(self._solar_panel_rows) == 0:
+                    self.logMessage.emit("ERROR", "[SOLAR] No panel rows defined")
+                    return
+                
+                planner = SolarParkInspectionPlanner()
+                
+                # Convert UI rows to PanelRow objects
+                rows = [
+                    PanelRow(
+                        start=(row['start_lat'], row['start_lon']),
+                        end=(row['end_lat'], row['end_lon'])
+                    )
+                    for row in self._solar_panel_rows
+                ]
+                
+                # Create config
+                config = InspectionConfig(
+                    altitude=self._solar_altitude,
+                    gimbal_pitch=self._solar_gimbal_pitch,
+                    trigger_distance=self._solar_trigger_distance,
+                    overlap=self._solar_overlap
+                )
+                
+                # Generate waypoints
+                self._solar_waypoints = planner.plan_inspection(rows, config, add_rtl=True)
+                
+                # Update stats
+                self._solar_waypoint_count = len(self._solar_waypoints)
+                self._solar_photo_count = sum(1 for wp in self._solar_waypoints if wp.cmd == 203)
+                self._solar_coverage_area = planner.calculate_coverage_area(rows, config)
+                self._solar_mission_time = planner.estimate_mission_time(rows, config)
+            
+            # Emit signals AFTER releasing lock
+            self.solarStatsChanged.emit()
+            self.coverageGenerated.emit()
+            self.logMessage.emit(
+                "INFO",
+                f"[SOLAR] {self._solar_waypoint_count} WP, "
+                f"{self._solar_photo_count} photos, "
+                f"{self._solar_coverage_area:.1f} m², "
+                f"{self._solar_mission_time/60:.1f} min"
+            )
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] Generation failed: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    @pyqtSlot(result="QVariantList")
+    def getSolarWaypoints(self):
+        """Return solar inspection waypoints for QML/JavaScript map display."""
+        try:
+            with self._lock:
+                waypoints = []
+                for wp in self._solar_waypoints:
+                    if wp.cmd == 16:  # MAV_CMD_NAV_WAYPOINT only
+                        waypoints.append({
+                            "lat": float(wp.lat),
+                            "lon": float(wp.lon),
+                            "alt": float(wp.alt),
+                            "isPhotoPoint": False
+                        })
+                    elif wp.cmd == 203:  # MAV_CMD_DO_DIGICAM_CONTROL (photo trigger)
+                        # Photo triggers use previous waypoint's position
+                        if waypoints:
+                            waypoints[-1]["isPhotoPoint"] = True
+                return waypoints
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] getSolarWaypoints failed: {e}")
+            return []
+    
+    @pyqtSlot()
+    def uploadSolarMission(self):
+        """Upload solar inspection mission to selected drones."""
+        with self._lock:
+            if not self._solar_waypoints:
+                self.logMessage.emit("ERROR", "[SOLAR] No waypoints to upload")
+                return
+            
+            if not self._swarm_context:
+                self.logMessage.emit("ERROR", "[SOLAR] SwarmContext not available")
+                return
+            
+            waypoints = list(self._solar_waypoints)
+        
+        # Run upload in background thread
+        threading.Thread(
+            target=self._upload_solar_mission_worker,
+            args=(waypoints,),
+            daemon=True
+        ).start()
+    
+    def _upload_solar_mission_worker(self, waypoints: List[Waypoint]) -> None:
+        """Background worker for solar mission upload."""
+        try:
+            if not self._swarm_context:
+                return
+            
+            backends = self._swarm_context.backend.all_backends()
+            target_drones = [
+                (drone_id, backend)
+                for drone_id, backend in backends.items()
+                if backend.is_connected
+            ]
+            
+            if not target_drones:
+                self.logMessage.emit("ERROR", "[SOLAR] No connected drones")
+                return
+            
+            self.logMessage.emit(
+                "INFO",
+                f"[SOLAR] Uploading to {len(target_drones)} drone(s)..."
+            )
+            
+            success_count = 0
+            for drone_id, backend in target_drones:
+                try:
+                    if not backend._drone or not hasattr(backend._drone, '_conn'):
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] No connection, skipping"
+                        )
+                        continue
+                    
+                    conn = backend._drone._conn
+                    if not conn or not conn.connected:
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] Connection not active, skipping"
+                        )
+                        continue
+                    
+                    # Create mission engine and upload
+                    mission = MissionEngine(conn)
+                    mission.clear()
+                    
+                    for wp in waypoints:
+                        mission.add(wp)
+                    
+                    # Validate before upload
+                    is_valid, errors = mission.validate()
+                    if not is_valid:
+                        self.logMessage.emit(
+                            "ERROR",
+                            f"[{drone_id}] ❌ Validation failed:"
+                        )
+                        for error in errors[:5]:
+                            self.logMessage.emit("ERROR", f"  - {error}")
+                        if len(errors) > 5:
+                            self.logMessage.emit("ERROR", f"  ... and {len(errors)-5} more errors")
+                        continue
+                    
+                    if not mission.upload(validate_first=False):
+                        self.logMessage.emit(
+                            "ERROR",
+                            f"[{drone_id}] ❌ Upload failed (protocol error)"
+                        )
+                        continue
+                    
+                    self.logMessage.emit(
+                        "INFO",
+                        f"[{drone_id}] ✅ {len(waypoints)} waypoints uploaded"
+                    )
+                    
+                    # Get drone object for arm/takeoff
+                    drone_obj = backend._drone
+                    if not drone_obj:
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] No drone object, skipping auto-start"
+                        )
+                        success_count += 1
+                        continue
+                    
+                    # Auto-arm if not armed
+                    if not drone_obj.armed:
+                        self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
+                        if not drone_obj.arm(timeout=10.0):
+                            self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Arm failed")
+                            continue
+                        self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
+                    
+                    # Auto-takeoff if on ground
+                    if drone_obj.altitude < 2.0:
+                        self.logMessage.emit(
+                            "INFO",
+                            f"[{drone_id}] 🚁 Taking off to {self._solar_altitude}m..."
+                        )
+                        if not drone_obj.takeoff(altitude=self._solar_altitude, timeout=30.0):
+                            self.logMessage.emit(
+                                "WARN",
+                                f"[{drone_id}] ⚠ Takeoff timeout, continuing..."
+                            )
+                        else:
+                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
+                    
+                    # Start mission
+                    self.logMessage.emit("INFO", f"[{drone_id}] ☀ Starting solar inspection...")
+                    if mission.start():
+                        success_count += 1
+                        self.logMessage.emit(
+                            "INFO",
+                            f"[{drone_id}] ✅ Solar inspection started!"
+                        )
+                        
+                        # Mark mission as active
+                        if self._swarm_context is not None:
+                            with self._swarm_context._state_lock:
+                                if drone_id not in self._swarm_context._mission_active:
+                                    self._swarm_context._mission_active[drone_id] = threading.Event()
+                                self._swarm_context._mission_active[drone_id].clear()
+                    else:
+                        self.logMessage.emit(
+                            "WARN",
+                            f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
+                        )
+                
+                except Exception as e:
+                    self.logMessage.emit("ERROR", f"[{drone_id}] Upload error: {e}")
+            
+            if success_count > 0:
+                self.logMessage.emit(
+                    "INFO",
+                    f"[SOLAR] ✅ {success_count}/{len(target_drones)} successful"
+                )
+            else:
+                self.logMessage.emit("ERROR", "[SOLAR] ❌ All uploads failed")
+        
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] Worker error: {e}")
 
     def _calculate_distance(self) -> float:
         if len(self._coverage_waypoints) < 2:

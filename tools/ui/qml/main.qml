@@ -200,6 +200,16 @@ Window {
         }
     }
 
+    function handleSolarRowPoint(lat, lon) {
+        try {
+            if (typeof mission !== "undefined" && mission) {
+                mission.addSolarRowPoint(lat, lon)
+            }
+        } catch (e) {
+            console.error("[MAIN] handleSolarRowPoint error:", e)
+        }
+    }
+
     function syncFieldBoundaryToMap() {
         try {
             if (!mapLoader.item || typeof mission === "undefined" || !mission) return
@@ -217,8 +227,10 @@ Window {
             if (!mapLoader.item || typeof mission === "undefined" || !mission) return
             
             // Get waypoints based on current mission mode
-            var waypoints = mission.seedingModeEnabled
+            var waypoints = mission.missionMode === 1
                 ? mission.getSeedingWaypoints()
+                : mission.missionMode === 2
+                ? mission.getSolarWaypoints()
                 : mission.getCoverageWaypoints()
             
             if (waypoints && mapLoader.item.updateCoverageWaypoints) {
@@ -226,6 +238,33 @@ Window {
             }
         } catch (e) {
             console.error("[MAIN] syncCoverageWaypointsToMap error:", e)
+        }
+    }
+
+    function syncSolarPanelRowsToMap() {
+        try {
+            if (!mapLoader.item || typeof mission === "undefined" || !mission) return
+            if (mission.missionMode !== 2) return // Only for solar inspection mode
+            
+            var rows = mission.solarPanelRows
+            if (rows && mapLoader.item.updateSolarPanelRows) {
+                mapLoader.item.updateSolarPanelRows(rows)
+            }
+        } catch (e) {
+            console.error("[MAIN] syncSolarPanelRowsToMap error:", e)
+        }
+    }
+
+    function syncThermalHotspotsToMap() {
+        try {
+            if (!mapLoader.item || typeof thermal === "undefined" || !thermal) return
+            
+            var hotspots = thermal.getHotspots()
+            if (hotspots && mapLoader.item.updateThermalHotspots) {
+                mapLoader.item.updateThermalHotspots(hotspots)
+            }
+        } catch (e) {
+            console.error("[MAIN] syncThermalHotspotsToMap error:", e)
         }
     }
 
@@ -540,7 +579,8 @@ Window {
                             item.mapPickSelected.connect(root.deliverMapPick)
                             item.waypointMoved.connect(root.handleWaypointMoved)
                             item.boundaryPointSelected.connect(root.handleBoundaryPoint)
-                            
+                            item.solarRowPointSelected.connect(root.handleSolarRowPoint)
+
                             // Connect collision prediction visualization
                             if (typeof safety !== "undefined" && safety) {
                                 safety.collisionPredicted.connect(function(predictions) {
@@ -569,6 +609,17 @@ Window {
                                         mission.drawingModeChanged.connect(function(active) {
                                             if (mapLoader.item && mapLoader.item.setBoundaryDrawMode) {
                                                 mapLoader.item.setBoundaryDrawMode(active)
+                                            }
+                                            if (active) {
+                                                root.selectTab(0)
+                                            }
+                                        })
+                                        // Solar inspection signals
+                                        mission.solarPanelRowsChanged.connect(root.syncSolarPanelRowsToMap)
+                                        mission.solarStatsChanged.connect(root.syncCoverageWaypointsToMap)
+                                        mission.solarRowDrawingModeChanged.connect(function(active) {
+                                            if (mapLoader.item && mapLoader.item.setSolarRowDrawMode) {
+                                                mapLoader.item.setSolarRowDrawMode(active)
                                             }
                                             if (active) {
                                                 root.selectTab(0)

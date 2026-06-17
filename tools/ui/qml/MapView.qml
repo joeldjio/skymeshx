@@ -25,6 +25,8 @@ Item {
 
     property bool pickMode: false
     property bool boundaryDrawMode: false
+    property bool solarRowDrawMode: false
+    property var solarRowStart: null
     property string currentMapType: "dark"
 
     function setMapType(typeName) {
@@ -40,6 +42,12 @@ Item {
     function setBoundaryDrawMode(enabled) {
         boundaryDrawMode = enabled
         webView.runJavaScript("setBoundaryDrawMode(" + enabled + ")")
+    }
+
+    function setSolarRowDrawMode(enabled) {
+        solarRowDrawMode = enabled
+        solarRowStart = null
+        webView.runJavaScript("setSolarRowDrawMode(" + enabled + ")")
     }
 
     function updateFieldBoundary(points) {
@@ -60,6 +68,18 @@ Item {
 
     function clearCollisionPredictions() {
         webView.runJavaScript("clearCollisionVisualization()")
+    }
+
+    function updateSolarPanelRows(rows) {
+        webView.runJavaScript("updateSolarPanelRows(" + JSON.stringify(rows) + ")")
+    }
+
+    function updateThermalHotspots(hotspots) {
+        webView.runJavaScript("updateThermalHotspots(" + JSON.stringify(hotspots) + ")")
+    }
+
+    function clearSolarInspection() {
+        webView.runJavaScript("clearSolarInspection()")
     }
 
     // ── Map ──────────────────────────────────────────────────────────────
@@ -94,6 +114,16 @@ Item {
                     if (kv[0] === "lon") lon = parseFloat(kv[1])
                 }
                 root.boundaryPointSelected(lat, lon)
+            } else if (url.startsWith("qrc://solar-row-point?")) {
+                req.reject()
+                var params = url.substring("qrc://solar-row-point?".length).split("&")
+                var lat = 0, lon = 0
+                for (var i = 0; i < params.length; i++) {
+                    var kv = params[i].split("=")
+                    if (kv[0] === "lat") lat = parseFloat(kv[1])
+                    if (kv[0] === "lon") lon = parseFloat(kv[1])
+                }
+                root.solarRowPointSelected(lat, lon)
             } else if (url.startsWith("qrc://waypoint-moved?")) {
                 req.reject()
                 var params = url.substring("qrc://waypoint-moved?".length).split("&")
@@ -170,6 +200,26 @@ Item {
             MouseArea { anchors.fill: parent }
         }
         Keys.onEscapePressed: root.deliverMapPick(0, 0)
+        focus: visible
+    }
+
+    // Solar Row Drawing mode overlay
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        visible: root.solarRowDrawMode
+        border.color: "#3b82f6"; border.width: 2
+        Rectangle {
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            height: 32; color: "#cc3b82f6"
+            Text {
+                anchors.centerIn: parent
+                text: root.solarRowStart ? "SOLAR ROW  —  Click end point  —  ESC to cancel" : "SOLAR ROW  —  Click start point  —  ESC to cancel"
+                color: "white"; font.pixelSize: 12; font.weight: Font.Bold
+            }
+            MouseArea { anchors.fill: parent }
+        }
+        Keys.onEscapePressed: root.setSolarRowDrawMode(false)
         focus: visible
 
     // ── ESCAPE 3D Visualization Overlays ──────────────────────────────────
@@ -309,6 +359,7 @@ Item {
     signal mapPickSelected(real lat, real lon)
     signal waypointMoved(int index, real lat, real lon)
     signal boundaryPointSelected(real lat, real lon)
+    signal solarRowPointSelected(real lat, real lon)
 
     // Drone-color palette (mirrors Python DRONE_COLORS)
     readonly property var droneColors: [
@@ -616,6 +667,19 @@ function setPickMode(enabled) {
 // ── Field Coverage Planning ──────────────────────────────────────────────────
 var _boundaryDrawMode = false;
 var boundaryMarkers = [], boundaryLine = null;
+
+var _solarRowDrawMode = false;
+var _solarRowStart = null;
+var solarRowTempLine = null;
+
+function setSolarRowDrawMode(enabled) {
+  _solarRowDrawMode = enabled;
+  _solarRowStart = null;
+  if (solarRowTempLine) {
+    map.removeLayer(solarRowTempLine);
+    solarRowTempLine = null;
+  }
+}
 var coverageWaypointMarkers = [], coverageWaypointLine = null;
 
 function setBoundaryDrawMode(enabled) {
@@ -722,6 +786,9 @@ map.on("click", function(e) {
     window.location = "qrc://pick?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng;
   } else if (_boundaryDrawMode) {
     window.location = "qrc://boundary-point?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng;
+  } else if (_solarRowDrawMode) {
+    // Always send the click to backend - it will handle start/end logic
+    window.location = "qrc://solar-row-point?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng;
   }
 });
 
@@ -977,6 +1044,132 @@ function updateCollisionPredictions(predictions) {
       }).addTo(map);
       collisionZones.push(pulseCircle);
     }
+  });
+}
+
+// ── Solar Inspection Visualization ──────────────────────────────────────
+var solarPanelLines = [], thermalHotspotMarkers = [];
+
+function clearSolarInspection() {
+  solarPanelLines.forEach(function(line) { map.removeLayer(line); });
+  solarPanelLines = [];
+  thermalHotspotMarkers.forEach(function(marker) { map.removeLayer(marker); });
+  thermalHotspotMarkers = [];
+}
+
+function updateSolarPanelRows(rows) {
+  // Clear existing solar panel visualization
+  solarPanelLines.forEach(function(line) { map.removeLayer(line); });
+  solarPanelLines = [];
+  
+  if (!rows || rows.length === 0) return;
+  
+  rows.forEach(function(row, index) {
+    if (!row.start || !row.end) return;
+    
+    var startPos = [row.start.lat, row.start.lon];
+    var endPos = [row.end.lat, row.end.lon];
+    
+    // Draw solar panel row as thick blue line
+    var line = L.polyline([startPos, endPos], {
+      color: "#3b82f6",
+      weight: 4,
+      opacity: 0.8
+    }).addTo(map);
+    
+    // Add tooltip showing row info
+    var tooltipText = "Solar Row " + (index + 1) +
+                     "<br>Length: " + (row.length || 0).toFixed(1) + "m" +
+                     "<br>Panels: " + (row.panelCount || 0);
+    line.bindTooltip(tooltipText, {permanent: false, sticky: true});
+    
+    solarPanelLines.push(line);
+    
+    // Add start/end markers
+    var startIcon = L.divIcon({
+      className: "",
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      html: \'<div style="width:16px;height:16px;border-radius:50%;border:2px solid #3b82f6;background:#1e40af;"></div>\'
+    });
+    
+    var startMarker = L.marker(startPos, {
+      icon: startIcon,
+      zIndexOffset: 100
+    }).addTo(map);
+    solarPanelLines.push(startMarker);
+    
+    var endIcon = L.divIcon({
+      className: "",
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      html: \'<div style="width:16px;height:16px;border-radius:50%;border:2px solid #3b82f6;background:#3b82f6;"></div>\'
+    });
+    
+    var endMarker = L.marker(endPos, {
+      icon: endIcon,
+      zIndexOffset: 100
+    }).addTo(map);
+    solarPanelLines.push(endMarker);
+  });
+}
+
+function updateThermalHotspots(hotspots) {
+  // Clear existing thermal hotspot markers
+  thermalHotspotMarkers.forEach(function(marker) { map.removeLayer(marker); });
+  thermalHotspotMarkers = [];
+  
+  if (!hotspots || hotspots.length === 0) return;
+  
+  hotspots.forEach(function(hotspot, index) {
+    if (!hotspot.lat || !hotspot.lon) return;
+    
+    var pos = [hotspot.lat, hotspot.lon];
+    
+    // Determine color based on temperature severity
+    var temp = hotspot.temperature || 0;
+    var color = "#ef4444"; // red for hot
+    var severity = "HOT";
+    
+    if (temp < 50) {
+      color = "#f59e0b"; // amber for warm
+      severity = "WARM";
+    } else if (temp < 40) {
+      color = "#eab308"; // yellow for mild
+      severity = "MILD";
+    }
+    
+    // Draw thermal hotspot as pulsing circle
+    var circle = L.circle(pos, {
+      radius: hotspot.radius || 2,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.4,
+      weight: 2
+    }).addTo(map);
+    thermalHotspotMarkers.push(circle);
+    
+    // Add hotspot marker icon
+    var icon = L.divIcon({
+      className: "",
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      html: \'<svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="\' + color + \'" opacity="0.6"/><circle cx="12" cy="12" r="4" fill="\' + color + \'" opacity="0.9"/></svg>\'
+    });
+    
+    var marker = L.marker(pos, {
+      icon: icon,
+      zIndexOffset: 1000
+    }).addTo(map);
+    
+    // Add tooltip with hotspot details
+    var tooltipText = "Thermal Hotspot #" + (index + 1) +
+                     "<br>Temperature: " + temp.toFixed(1) + "°C" +
+                     "<br>Severity: " + severity +
+                     "<br>Panel: " + (hotspot.panelId || "Unknown");
+    marker.bindTooltip(tooltipText, {permanent: false, direction: "top"});
+    
+    thermalHotspotMarkers.push(marker);
   });
 }
 </script>
