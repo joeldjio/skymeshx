@@ -44,9 +44,14 @@ class MissionContext(QObject):
         # Field Coverage Planner
         self._planner = FieldCoveragePlanner()
         self._home_set = False
+        self._home_lat = 0.0
+        self._home_lon = 0.0
         
         # Seeding Mission Planner
         self._seeding_planner = SeedingMissionPlanner()
+        
+        # Mission mode: False = coverage, True = seeding
+        self._seeding_mode_enabled = False
         
         # Field boundary
         self._boundary_points: List[Tuple[float, float]] = []
@@ -309,7 +314,10 @@ class MissionContext(QObject):
     def setHomePosition(self, lat: float, lon: float):
         with self._lock:
             self._planner.set_home_position(lat, lon)
+            self._seeding_planner.set_home_position(lat, lon)
             self._home_set = True
+            self._home_lat = lat
+            self._home_lon = lon
             self.logMessage.emit("INFO", f"[MISSION] Home: {lat:.6f}, {lon:.6f}")
 
     @pyqtSlot()
@@ -385,6 +393,14 @@ class MissionContext(QObject):
         self.logMessage.emit("INFO", "[MISSION] Boundary cleared")
 
     @pyqtSlot()
+    def generateMission(self):
+        """Unified generate method - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.generateSeedingMission()
+        else:
+            self.generateFieldCoverage()
+    
+    @pyqtSlot()
     def generateFieldCoverage(self):
         try:
             with self._lock:
@@ -424,6 +440,14 @@ class MissionContext(QObject):
         """Inject SwarmContext reference for mission upload."""
         self._swarm_context = swarm_context
 
+    @pyqtSlot()
+    def uploadMission(self):
+        """Unified upload method - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.uploadSeedingMission()
+        else:
+            self.uploadCoverageMission()
+    
     @pyqtSlot()
     def uploadCoverageMission(self):
         """Upload coverage mission to selected drones (via AppState.missionTargets)."""
@@ -651,6 +675,14 @@ class MissionContext(QObject):
             self.logMessage.emit("ERROR", f"[MISSION] Upload worker error: {e}")
 
     @pyqtSlot()
+    def togglePreview(self):
+        """Unified preview toggle - calls coverage or seeding based on mode."""
+        if self._seeding_mode_enabled:
+            self.toggleSeedingPreview()
+        else:
+            self.toggleCoveragePreview()
+    
+    @pyqtSlot()
     def toggleCoveragePreview(self):
         """Toggle coverage preview visibility on map."""
         with self._lock:
@@ -686,6 +718,19 @@ class MissionContext(QObject):
             return []
 
     # ── Seeding Mission Properties ────────────────────────────────────────
+    
+    @pyqtProperty(bool, notify=fieldBoundaryChanged)
+    def seedingModeEnabled(self):
+        return self._seeding_mode_enabled
+    
+    @seedingModeEnabled.setter
+    def seedingModeEnabled(self, value):
+        self._seeding_mode_enabled = value
+        self.fieldBoundaryChanged.emit()
+        if value:
+            self.logMessage.emit("INFO", "[MISSION] 🌱 Seeding mode enabled")
+        else:
+            self.logMessage.emit("INFO", "[MISSION] 📐 Coverage mode enabled")
     
     @pyqtProperty(float, notify=fieldBoundaryChanged)
     def seedSpacing(self):

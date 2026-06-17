@@ -42,6 +42,85 @@ Rectangle {
             }
 
             Rectangle { width: parent.width; height: 1; color: "#1e293b" }
+            // ── MISSION MODE TOGGLE ───────────────────────────────────────
+            Rectangle {
+                width: parent.width
+                height: 60
+                color: "#1e293b"
+                radius: 8
+                border.color: "#334155"
+                border.width: 1
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    Text {
+                        text: "Mission Type:"
+                        color: "#94a3b8"
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Rectangle {
+                        width: 200
+                        height: 36
+                        radius: 6
+                        color: "#0f172a"
+                        border.color: "#334155"
+                        border.width: 1
+
+                        Row {
+                            anchors.fill: parent
+                            spacing: 0
+
+                            Rectangle {
+                                width: parent.width / 2
+                                height: parent.height
+                                radius: 6
+                                color: mission && !mission.seedingModeEnabled ? "#22c55e" : "transparent"
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "📐 Coverage"
+                                    color: mission && !mission.seedingModeEnabled ? "#0f172a" : "#94a3b8"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: !(mission && mission.missionLocked)
+                                    onClicked: if (mission) mission.seedingModeEnabled = false
+                                }
+                            }
+
+                            Rectangle {
+                                width: parent.width / 2
+                                height: parent.height
+                                radius: 6
+                                color: mission && mission.seedingModeEnabled ? "#8b5cf6" : "transparent"
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "🌱 Seeding"
+                                    color: mission && mission.seedingModeEnabled ? "#ffffff" : "#94a3b8"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: !(mission && mission.missionLocked)
+                                    onClicked: if (mission) mission.seedingModeEnabled = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
 
             // ── FIELD COVERAGE PLANNING ───────────────────────────────────
             Rectangle {
@@ -800,7 +879,7 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: mission && mission.fieldBoundaryPoints >= 3 && !(mission && mission.missionLocked)
-                                onClicked: if (mission) mission.generateFieldCoverage()
+                                onClicked: if (mission) mission.generateMission()
                             }
                         }
 
@@ -811,7 +890,7 @@ Rectangle {
                             color: uploadM.containsMouse ? "#1e40af" : "#1e3a8a"
                             border.color: "#3b82f6"
                             border.width: 1
-                            opacity: mission && mission.coverageWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -838,8 +917,8 @@ Rectangle {
                                 id: uploadM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.coverageWaypointCount > 0
-                                onClicked: if (mission) mission.uploadCoverageMission()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.uploadMission()
                             }
                         }
 
@@ -850,7 +929,7 @@ Rectangle {
                             color: previewM.containsMouse ? "#713f12" : "#78350f"
                             border.color: "#f59e0b"
                             border.width: 1
-                            opacity: mission && mission.coverageWaypointCount > 0 ? 1 : 0.5
+                            opacity: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0) ? 1 : 0.5
 
                             Row {
                                 anchors.centerIn: parent
@@ -877,8 +956,8 @@ Rectangle {
                                 id: previewM
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: mission && mission.coverageWaypointCount > 0
-                                onClicked: if (mission) mission.toggleCoveragePreview()
+                                enabled: mission && (mission.coverageWaypointCount > 0 || mission.seedingWaypointCount > 0)
+                                onClicked: if (mission) mission.togglePreview()
                             }
                         }
                     }
@@ -893,6 +972,7 @@ Rectangle {
                 radius: 8
                 border.color: "#334155"
                 border.width: 1
+                visible: mission && mission.seedingModeEnabled
 
                 Column {
                     id: seedingColumn
