@@ -24,7 +24,7 @@ Update procedure
 
 from __future__ import annotations
 
-VERSION: str = "0.3.4"
+VERSION: str = "0.3.5"
 
 # Asset-name prefix the in-app updater looks for when scanning a
 # GitHub release. Must match ``OutputBaseFilename`` in the .iss file.
