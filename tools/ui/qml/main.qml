@@ -267,6 +267,10 @@ Window {
             onLoaded: {
                 item.droneSelected.connect(function(did) {
                     Cmp.AppState.selectedDroneId = did
+                    // Also update map to remove tooltips
+                    if (mapLoader.item && mapLoader.item.setSelectedDrone) {
+                        mapLoader.item.setSelectedDrone(did)
+                    }
                 })
             }
         }

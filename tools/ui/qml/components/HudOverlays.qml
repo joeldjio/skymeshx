@@ -31,9 +31,9 @@ Item {
         }
     }
 
-    // Bottom-center: selected drone
+    // Top-center: selected drone (moved from bottom to avoid overlap with waypoint buttons)
     Rectangle {
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 8 }
+        anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 10 }
         height: 24; width: selDroneTxt.implicitWidth + 20; radius: 4
         property string _selType: {
             if (!hud.selectedDroneId || typeof swarm === "undefined" || !swarm) return "generic"

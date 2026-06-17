@@ -1,13 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtWebEngine
+import "components" as Cmp
 
 // Full-screen OSM map + HUD instruments + 3D drone overlay
 Item {
     id: root
 
     // ── live telemetry helpers (first drone or selected) ──────────────────
-    property string selectedDroneId: ""
+    // Use global selectedDroneId from AppState (set by Header dropdown)
+    property string selectedDroneId: Cmp.AppState.selectedDroneId
 
     function snap(key, def) {
         if (telemetryModel.count === 0) return def
@@ -324,7 +326,9 @@ Item {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   html,body,#map { margin:0;padding:0;width:100%;height:100%;background:#0f1117; }
-  .drone-label { background:transparent;border:none;color:#e2e8f0;font-size:11px;font-weight:700;font-family:Consolas,monospace;white-space:nowrap; }
+  /* Hide ALL Leaflet tooltips - drone names shown in QML overlay */
+  .leaflet-tooltip { display:none !important; visibility:hidden !important; }
+  .drone-label { display:none !important; visibility:hidden !important; }
 </style>
 </head>
 <body>
@@ -336,6 +340,15 @@ var map = L.map("map", {
   zoomControl: true,
   attributionControl: false
 });
+
+// Remove all drone tooltips on map load (name shown in QML overlay instead)
+function removeAllDroneTooltips() {
+  Object.keys(droneMarkers).forEach(function(id) {
+    if (droneMarkers[id] && droneMarkers[id].getTooltip()) {
+      droneMarkers[id].unbindTooltip();
+    }
+  });
+}
 
 var mapLayers = {
   dark: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.85}),
@@ -391,9 +404,14 @@ function droneColor(id) {
 
 function setSelectedDrone(did) {
   selectedDroneId = did;
+  // Remove all tooltips first
+  removeAllDroneTooltips();
+  // Update icons
   Object.keys(droneMarkers).forEach(function(id) {
     var m = droneMarkers[id];
-    if (m && m._lastData) m.setIcon(makeDroneIcon(id, m._lastData, id === did));
+    if (m && m._lastData) {
+      m.setIcon(makeDroneIcon(id, m._lastData, id === did));
+    }
   });
 }
 
@@ -449,21 +467,19 @@ function updateDrones(data) {
     var sel = (id === selectedDroneId);
     var icon = makeDroneIcon(id, d, sel);
     if (!droneMarkers[id]) {
+      // Create marker WITHOUT tooltip (name shown in QML overlay instead)
       droneMarkers[id] = L.marker([d.lat,d.lon],{icon:icon,zIndexOffset: sel?1000:0}).addTo(map);
-      // Tooltip: show type icon + id (centered above drone to avoid overlap with waypoint buttons)
-      var typeIcon = droneTypes[id] === "observation" ? "[OBS] " : "";
-      droneMarkers[id].bindTooltip(typeIcon + id,{permanent:true,className:"drone-label",direction:"top",offset:[0,-30]});
       droneTracks[id] = L.polyline([[d.lat,d.lon]],{color:col,weight:2,opacity:0.55}).addTo(map);
     } else {
       droneMarkers[id].setLatLng([d.lat,d.lon]).setIcon(icon);
-      // Update tooltip position if needed (for existing drones)
-      var typeIcon = droneTypes[id] === "observation" ? "[OBS] " : "";
-      droneMarkers[id].unbindTooltip();
-      droneMarkers[id].bindTooltip(typeIcon + id,{permanent:true,className:"drone-label",direction:"top",offset:[0,-30]});
       // Update track color if type changed
       if (prevType !== droneTypes[id] && droneTracks[id]) {
         droneTracks[id].setStyle({color: col});
       }
+    }
+    // ALWAYS remove tooltip after marker update
+    if (droneMarkers[id] && droneMarkers[id].getTooltip()) {
+      droneMarkers[id].unbindTooltip();
     }
     droneMarkers[id]._lastData = d;
     droneTracks[id].addLatLng([d.lat,d.lon]);
