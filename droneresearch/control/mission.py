@@ -30,6 +30,14 @@ class Waypoint:
     hold: float = 0.0  # seconds to loiter
     cmd: int = 16  # MAV_CMD_NAV_WAYPOINT
     radius: float = 2.0  # acceptance radius m
+    # MAVLink command parameters (for special commands like gimbal, camera)
+    param1: float = 0.0
+    param2: float = 0.0
+    param3: float = 0.0
+    param4: float = 0.0
+    param5: float = 0.0
+    param6: float = 0.0
+    param7: float = 0.0
 
 
 class MissionEngine:
