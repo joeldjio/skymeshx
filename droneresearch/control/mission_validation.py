@@ -17,20 +17,28 @@ def validate_waypoints(waypoints: List[Dict]) -> Tuple[bool, List[str]]:
     - Minimum waypoint count (at least 1)
     - Valid coordinates (lat: -90 to 90, lon: -180 to 180)
     - Reasonable altitudes (0 to 500m)
-    - Waypoint spacing (warn if < 1m apart)
+    - Waypoint spacing (warn if < 1m apart for NAV commands only)
     
     Args:
-        waypoints: List of waypoint dicts with keys: lat, lon, alt
+        waypoints: List of waypoint dicts with keys: lat, lon, alt, cmd (optional)
     
     Returns:
         (is_valid, list_of_errors)
     """
     errors = []
     
+    # MAVLink command types that require navigation (should check spacing)
+    NAV_COMMANDS = {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 31, 32, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 95}
+    # DO commands (183=DO_SET_SERVO, 93=NAV_DELAY) don't navigate, so skip spacing check
+    
     # Check waypoint count
     if len(waypoints) == 0:
         errors.append("Mission has no waypoints")
         return False, errors
+    
+    # Track last NAV waypoint for spacing checks
+    last_nav_wp = None
+    last_nav_idx = -1
     
     # Validate each waypoint
     for i, wp in enumerate(waypoints):
@@ -42,6 +50,7 @@ def validate_waypoints(waypoints: List[Dict]) -> Tuple[bool, List[str]]:
         lat = wp["lat"]
         lon = wp["lon"]
         alt = wp.get("alt", 0)
+        cmd = wp.get("cmd", 16)  # Default to MAV_CMD_NAV_WAYPOINT
         
         # Latitude range
         if not (-90 <= lat <= 90):
@@ -57,13 +66,16 @@ def validate_waypoints(waypoints: List[Dict]) -> Tuple[bool, List[str]]:
         elif alt > 500:
             errors.append(f"WP{i}: Altitude {alt}m exceeds 500m limit")
         
-        # Check spacing to previous waypoint
-        if i > 0:
-            prev = waypoints[i - 1]
-            if "lat" in prev and "lon" in prev:
-                dist = calculate_distance(prev["lat"], prev["lon"], lat, lon)
+        # Check spacing ONLY for NAV commands (skip DO commands like servo/delay)
+        if cmd in NAV_COMMANDS:
+            if last_nav_wp is not None:
+                dist = calculate_distance(last_nav_wp["lat"], last_nav_wp["lon"], lat, lon)
                 if dist < 1.0:
-                    errors.append(f"WP{i}: Too close to WP{i-1} ({dist:.2f}m < 1m)")
+                    errors.append(f"WP{i}: Too close to WP{last_nav_idx} ({dist:.2f}m < 1m)")
+            
+            # Update last NAV waypoint
+            last_nav_wp = wp
+            last_nav_idx = i
     
     is_valid = len(errors) == 0
     return is_valid, errors

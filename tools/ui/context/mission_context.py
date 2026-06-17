@@ -1030,19 +1030,21 @@ class MissionContext(QObject):
     
     @pyqtSlot(result="QVariantList")
     def getSeedingWaypoints(self):
-        """Return seeding waypoints for QML/JavaScript."""
+        """Return seeding waypoints for QML/JavaScript map display.
+        
+        Only returns NAV waypoints (cmd=16) for visualization, skipping servo/delay commands.
+        """
         try:
             with self._lock:
+                # Filter to only NAV_WAYPOINT commands for map display
                 return [
                     {
                         "lat": float(wp.lat),
                         "lon": float(wp.lon),
-                        "alt": float(wp.alt),
-                        "cmd": int(wp.cmd),
-                        "hold": float(wp.hold),
-                        "radius": float(wp.radius)
+                        "alt": float(wp.alt)
                     }
                     for wp in self._seeding_waypoints
+                    if wp.cmd == 16  # MAV_CMD_NAV_WAYPOINT only
                 ]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[SEEDING] getSeedingWaypoints failed: {e}")

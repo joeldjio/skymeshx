@@ -215,7 +215,12 @@ Window {
     function syncCoverageWaypointsToMap() {
         try {
             if (!mapLoader.item || typeof mission === "undefined" || !mission) return
-            var waypoints = mission.getCoverageWaypoints()
+            
+            // Get waypoints based on current mission mode
+            var waypoints = mission.seedingModeEnabled
+                ? mission.getSeedingWaypoints()
+                : mission.getCoverageWaypoints()
+            
             if (waypoints && mapLoader.item.updateCoverageWaypoints) {
                 mapLoader.item.updateCoverageWaypoints(waypoints)
             }
