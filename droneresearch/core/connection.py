@@ -451,11 +451,13 @@ class MAVLinkConnection:
             return False
         with self._cmd_lock:
             self._pending_cmds[int(cmd)] = time.time()
-            # Keep the dict bounded: drop entries older than 10 s.
-            cutoff = time.time() - 10.0
-            stale = [k for k, t in self._pending_cmds.items() if t < cutoff]
-            for k in stale:
-                self._pending_cmds.pop(k, None)
+            # TS-04 FIX: Efficient cleanup - only when dict grows large
+            # Avoids O(n) iteration on every command and prevents dict modification during iteration
+            if len(self._pending_cmds) > 100:
+                cutoff = time.time() - 10.0
+                self._pending_cmds = {
+                    k: t for k, t in self._pending_cmds.items() if t >= cutoff
+                }
         return True
 
     def _detect_autopilot(self, heartbeat):
