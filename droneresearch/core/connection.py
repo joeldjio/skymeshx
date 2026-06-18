@@ -418,7 +418,12 @@ class MAVLinkConnection:
     # ── Internal ─────────────────────────────────────────────────────────────
 
     def _emit(self, event: str, *args):
-        for cb in self._listeners.get(event, []):
+        # TS-01 FIX: Create snapshot of callbacks under lock to prevent
+        # iterator invalidation if on()/off() is called during iteration
+        with self._lock:
+            callbacks = list(self._listeners.get(event, []))
+        # Call callbacks outside lock to avoid deadlock if callback calls back into connection
+        for cb in callbacks:
             try:
                 cb(*args)
             except Exception as e:
