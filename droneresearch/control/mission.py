@@ -52,7 +52,7 @@ class MissionEngine:
     
     Thread Safety
     -------------
-    Mission building (add/clear) is NOT thread-safe - build from one thread only.
+    Mission building (add/clear) is thread-safe with lock protection.
     upload() spawns a background thread and is safe to call from any thread.
     Progress/completion callbacks are invoked from the upload thread.
     """
@@ -85,6 +85,8 @@ class MissionEngine:
         self._handshake_timeout = handshake_timeout
         self._item_timeout = item_timeout
         self._ack_timeout = ack_timeout
+        # TS-03 FIX: Lock to protect mission building operations
+        self._build_lock = threading.Lock()
 
         if connection:
             connection.on("message", self._on_message)
@@ -92,21 +94,27 @@ class MissionEngine:
     # ── Build mission ─────────────────────────────────────────────────────
 
     def clear(self):
-        self._waypoints.clear()
+        """Clear all waypoints. Thread-safe."""
+        with self._build_lock:
+            self._waypoints.clear()
 
     def add(self, wp: Waypoint):
-        self._waypoints.append(wp)
+        """Add a waypoint to the mission. Thread-safe."""
+        with self._build_lock:
+            self._waypoints.append(wp)
 
     def from_list(self, points: List[dict]):
-        self._waypoints = [
-            Waypoint(lat=p["lat"], lon=p["lon"], alt=p.get("alt", 10.0)) for p in points
-        ]
+        """Load waypoints from list. Thread-safe."""
+        with self._build_lock:
+            self._waypoints = [
+                Waypoint(lat=p["lat"], lon=p["lon"], alt=p.get("alt", 10.0)) for p in points
+            ]
 
     # ── Pre-flight validation ─────────────────────────────────────────────
     
     def validate(self) -> Tuple[bool, List[str]]:
         """
-        Validate mission before upload.
+        Validate mission before upload. Thread-safe.
         
         Checks:
         - Minimum waypoint count (at least 1)
@@ -125,13 +133,14 @@ class MissionEngine:
             errors.append("No MAVLink connection")
             return False, errors
         
-        # Convert Waypoint objects to dicts for validation
-        waypoints_dict = [
-            {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt, "cmd": wp.cmd}
-            for wp in self._waypoints
-        ]
+        # Create snapshot of waypoints under lock
+        with self._build_lock:
+            waypoints_dict = [
+                {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt, "cmd": wp.cmd}
+                for wp in self._waypoints
+            ]
         
-        # Use shared validation logic
+        # Use shared validation logic (outside lock)
         is_valid, validation_errors = validate_waypoints(waypoints_dict)
         errors.extend(validation_errors)
         
@@ -176,19 +185,24 @@ class MissionEngine:
                 return False
         
         mav = self._conn._mav
-        if not mav or not self._waypoints:
-            return False
+        
+        # Create snapshot of waypoints under lock for upload
+        with self._build_lock:
+            if not mav or not self._waypoints:
+                return False
+            waypoints_snapshot = list(self._waypoints)
+        
         # Allow upload() to be called again after a previous abort().
         self._abort_event.clear()
 
-        n = len(self._waypoints) + 1  # +1 for home
+        n = len(waypoints_snapshot) + 1  # +1 for home
         self._req_events = {i: threading.Event() for i in range(n)}
         self._ack_event = threading.Event()
         self._ack_result = -1
         self._conn.on("message", self._on_upload_msg)
 
         try:
-            return self._do_upload(mav, n)
+            return self._do_upload(mav, n, waypoints_snapshot)
         finally:
             try:
                 self._conn.off("message", self._on_upload_msg)
@@ -267,8 +281,11 @@ class MissionEngine:
         """Check if an async upload is in progress."""
         return self._upload_thread is not None and self._upload_thread.is_alive()
 
-    def _do_upload(self, mav, n: int) -> bool:
+    def _do_upload(self, mav, n: int, waypoints_snapshot: List[Waypoint]) -> bool:
         """Send MISSION_COUNT and choose handshake vs. push-all path."""
+        # Store snapshot for use in _send_item
+        self._upload_waypoints = waypoints_snapshot
+        
         try:
             mav.mav.mission_count_send(mav.target_system, mav.target_component, n, 0)
         except Exception as e:
@@ -341,7 +358,7 @@ class MissionEngine:
         return True
 
     def _send_item(self, mav, seq: int) -> bool:
-        """Send a single MISSION_ITEM_INT for *seq*."""
+        """Send a single MISSION_ITEM_INT for *seq*. Uses snapshot from upload."""
         t = self._conn.telemetry
         try:
             if seq == 0:  # home
@@ -363,7 +380,8 @@ class MissionEngine:
                     0,
                 )
             else:
-                wp = self._waypoints[seq - 1]
+                # Use snapshot instead of self._waypoints
+                wp = self._upload_waypoints[seq - 1]
                 mav.mav.mission_item_int_send(
                     mav.target_system,
                     mav.target_component,
