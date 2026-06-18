@@ -2,7 +2,7 @@
 """
 PyInstaller spec — uavresearch gcs (UAVResearch ground control station).
 
-Full graphical build: PyQt6 + QtQuick + QtWebEngine + pyqtgraph +
+Full graphical build: PySide6 + QtQuick + QtWebEngine +
 the entire QML tree under tools/ui/qml/ (including 3D mesh assets).
 
 Build with:
@@ -67,13 +67,17 @@ hidden = (
     + [
         "serial",
         "serial.tools.list_ports",
-        "pyqtgraph",
-        # WebEngine bits PyInstaller occasionally misses
-        "PyQt6.QtWebEngineCore",
-        "PyQt6.QtWebEngineQuick",
-        "PyQt6.QtWebEngineWidgets",
-        "PyQt6.QtQuick3D",
-        "PyQt6.QtPositioning",
+        # PySide6 modules - WebEngine bits PyInstaller occasionally misses
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineQuick",
+        "PySide6.QtWebEngineWidgets",
+        "PySide6.QtQuick3D",
+        "PySide6.QtPositioning",
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtWidgets",
+        "PySide6.QtQml",
+        "PySide6.QtQuick",
     ]
 )
 
@@ -89,7 +93,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         "PyQt5",
-        "PySide6",
+        "PyQt6",
         "PySide2",
         "tkinter",
         "matplotlib",
