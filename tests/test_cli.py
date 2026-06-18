@@ -156,4 +156,4 @@ def test_launch_ui_reports_helpful_error_when_pyqt_missing(monkeypatch, capsys):
     assert exc_info.value.code == 1
     err = capsys.readouterr().err
     assert "PySide6" in err
-    assert "PySide6" not in err
+    assert "requirements.txt" in err
