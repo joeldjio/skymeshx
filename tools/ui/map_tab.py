@@ -316,15 +316,41 @@ class MapTab(QWidget):
     # ── Slots ─────────────────────────────────────────────────────────────
 
     def _on_telemetry(self, all_snaps: dict):
+        """
+        Update drone positions on map with sanitized telemetry data.
+        UI-02 FIX: Validate types and sanitize strings to prevent JSON injection.
+        """
+        def sanitize_string(s) -> str:
+            """Sanitize string for JSON/HTML display to prevent XSS"""
+            if not isinstance(s, str):
+                s = str(s)
+            # Remove control characters, keep only printable + whitespace
+            s = ''.join(c for c in s if c.isprintable() or c in '\n\r\t')
+            # Escape HTML entities
+            return escape(s)
+        
+        def safe_float(val, default=0.0) -> float:
+            """Safely convert to float with fallback"""
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_bool(val, default=False) -> bool:
+            """Safely convert to bool"""
+            if isinstance(val, bool):
+                return val
+            return bool(val) if val else default
+        
         payload = {
             did: {
-                "lat":         snap.get("lat", 0),
-                "lon":         snap.get("lon", 0),
-                "alt_rel":     snap.get("alt_rel", 0),
-                "groundspeed": snap.get("groundspeed", 0),
-                "flight_mode": snap.get("flight_mode", "UNKNOWN"),
-                "armed":       snap.get("armed", False),
-                "heading":     snap.get("yaw", 0),
+                "lat":         safe_float(snap.get("lat", 0)),
+                "lon":         safe_float(snap.get("lon", 0)),
+                "alt_rel":     safe_float(snap.get("alt_rel", 0)),
+                "groundspeed": safe_float(snap.get("groundspeed", 0)),
+                "flight_mode": sanitize_string(snap.get("flight_mode", "UNKNOWN")),
+                "armed":       safe_bool(snap.get("armed", False)),
+                "heading":     safe_float(snap.get("yaw", 0)),
             }
             for did, snap in all_snaps.items()
         }
