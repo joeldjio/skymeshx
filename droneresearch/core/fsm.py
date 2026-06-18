@@ -132,33 +132,45 @@ class StateMachine:
         callbacks registered via :meth:`on_rejection` so the UI can show
         a warning without polling.
         """
+        # TS-05 FIX: Create snapshots under lock to prevent iterator invalidation
+        # Initialize all variables before lock to satisfy type checker
+        rejected_from: DroneState | None = None
+        old: DroneState | None = None
+        reject_callbacks: list = []
+        transition_callbacks: list = []
+        
         with self._lock:
             allowed = _TRANSITIONS.get(self._state, set())
             current = self._state
             if not force and new_state not in allowed:
                 self._rejected += 1
                 rejected_from = current
+                reject_callbacks = list(self._reject_callbacks)
             else:
-                rejected_from = None
                 old = self._state
                 self._prev  = old
                 self._state = new_state
                 self._history.append((time.time(), old, new_state))
                 if len(self._history) > 500:
                     self._history = self._history[-500:]
-        # Outside lock
+                transition_callbacks = list(self._callbacks)
+        
+        # Outside lock - use snapshots to prevent iterator invalidation
         if rejected_from is not None:
             print(
                 f"[fsm:{self.drone_id}] REJECTED {rejected_from.name} \u2192 {new_state.name} "
                 f"(allowed: {sorted(s.name for s in _TRANSITIONS.get(rejected_from, set()))})"
             )
-            for cb in self._reject_callbacks:
+            for cb in reject_callbacks:
                 try:
                     cb(rejected_from, new_state)
                 except Exception as e:
                     print(f"[fsm:{self.drone_id}] reject-callback error: {e}")
             return False
-        for cb in self._callbacks:
+        
+        # Success path - old is guaranteed to be set here
+        assert old is not None, "old state must be set in success path"
+        for cb in transition_callbacks:
             try:
                 cb(old, new_state)
             except Exception as e:
