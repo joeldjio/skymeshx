@@ -22,6 +22,12 @@ Note: z is inverted from standard NED (which uses Down positive).
 This matches intuitive "altitude" semantics. The filter handles
 internal NED calculations with proper z-axis inversion.
 
+Thread Safety
+-------------
+The filter() method is thread-safe and can be called concurrently from
+multiple threads. Internal state (_prev_positions, _prev_velocities,
+_obstacles) is protected by a lock.
+
 Usage:
     from droneresearch.safety.apf import APFSafetyFilter, Pose3D
 
@@ -179,13 +185,17 @@ class APFSafetyFilter:
         self._obstacles: List[Pose3D] = []   # static obstacles
         self._prev_positions: Dict[str, Pose3D] = {}  # for velocity calculation
         self._prev_velocities: Dict[str, Pose3D] = {}  # for acceleration limiting
+        # TS-02 FIX: Lock to protect shared mutable state
+        self._state_lock = threading.Lock()
 
     def add_obstacle(self, x: float, y: float, z: float = 0.0):
         """Add a static obstacle (e.g. building, tree)."""
-        self._obstacles.append(Pose3D(x, y, z))
+        with self._state_lock:
+            self._obstacles.append(Pose3D(x, y, z))
 
     def clear_obstacles(self):
-        self._obstacles.clear()
+        with self._state_lock:
+            self._obstacles.clear()
 
     def filter(
         self,
@@ -199,9 +209,22 @@ class APFSafetyFilter:
         Includes velocity damping to prevent oscillations.
 
         Returns safe waypoints for each drone.
+        
+        Thread-safe: Can be called concurrently from multiple threads.
         """
+        # TS-02 FIX: Protect shared state access with lock
+        with self._state_lock:
+            # Create snapshots of mutable state
+            obstacles = list(self._obstacles)
+            prev_positions = dict(self._prev_positions)
+            prev_velocities = dict(self._prev_velocities)
+        
         safe: Dict[str, Pose3D] = {}
         ids   = list(positions.keys())
+        
+        # Store updates to apply after processing
+        new_prev_positions: Dict[str, Pose3D] = {}
+        new_prev_velocities: Dict[str, Pose3D] = {}
 
         for drone_id in ids:
             pos = positions.get(drone_id)
@@ -211,12 +234,12 @@ class APFSafetyFilter:
 
             # Calculate current velocity (if we have previous position)
             velocity = Pose3D(0, 0, 0)
-            if drone_id in self._prev_positions:
-                prev = self._prev_positions[drone_id]
+            if drone_id in prev_positions:
+                prev = prev_positions[drone_id]
                 velocity = (pos - prev) * (1.0 / self.dt)  # velocity = delta_pos / dt
             
             # Store previous velocity for acceleration limiting
-            prev_velocity = self._prev_velocities.get(drone_id, Pose3D(0, 0, 0))
+            prev_velocity = prev_velocities.get(drone_id, Pose3D(0, 0, 0))
 
             # Attractive force: toward desired position
             diff_x = des.x - pos.x
@@ -243,7 +266,7 @@ class APFSafetyFilter:
                     rep = rep + direction * (mag * self.dt)
 
             # Repulsion from static obstacles
-            for obs in self._obstacles:
+            for obs in obstacles:
                 d = pos.dist(obs)
                 if d < self.obstacle_radius and d > 1e-6:
                     mag = self.repulsion_gain * (1.0 / d - 1.0 / self.obstacle_radius) / (d ** 2)
@@ -314,8 +337,13 @@ class APFSafetyFilter:
             safe[drone_id] = self.geofence.clip(candidate)
             
             # Store current position and velocity for next iteration
-            self._prev_positions[drone_id] = pos
-            self._prev_velocities[drone_id] = new_velocity
+            new_prev_positions[drone_id] = pos
+            new_prev_velocities[drone_id] = new_velocity
+        
+        # TS-02 FIX: Update shared state under lock
+        with self._state_lock:
+            self._prev_positions.update(new_prev_positions)
+            self._prev_velocities.update(new_prev_velocities)
 
         return safe
 
