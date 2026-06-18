@@ -1,85 +1,204 @@
-# UAVResearch Ground Control Station
+# UAVResearch - Advanced Drone Research Platform
 
-**Professional Drone Control Software with Modern UI**
+**Open-Source Ground Control Station with Modern Architecture**
 
 [![Tests](https://github.com/joeldjio/uavresearchproject/workflows/Tests/badge.svg)](https://github.com/joeldjio/uavresearchproject/actions)
 [![Coverage](https://codecov.io/gh/joeldjio/uavresearchproject/branch/main/graph/badge.svg)](https://codecov.io/gh/joeldjio/uavresearchproject)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PySide6](https://img.shields.io/badge/UI-PySide6%20%2F%20QML-green.svg)](https://doc.qt.io/qtforpython/)
 
-> Modern ground control station for drone research with intuitive UI, real-time 3D visualization, and advanced swarm coordination.
+> Professional drone control platform with declarative QML UI, real-time telemetry, swarm coordination, and advanced safety systems.
 
 **Author:** Joel Djio  
-**License:** MIT  
+**License:** MIT (Core) + LGPL v3 (UI)  
 **Repository:** https://github.com/joeldjio/uavresearchproject
 
 ---
 
-## 🎯 What is UAVResearch GCS?
+## 🚀 Technology Stack
 
-**UAVResearch GCS** is a professional ground control station designed for researchers, developers, and drone enthusiasts who need:
+### Core Platform
+- **Python 3.10+** - Modern async/await, type hints, dataclasses
+- **MAVLink Protocol** - Industry-standard drone communication
+- **pymavlink** - MAVLink Python bindings (LGPL v3)
+- **pyserial** - Serial/USB communication (BSD-3)
 
-- 🖥️ **Modern Desktop UI** - PySide6/QML interface with dark theme and 3D visualization
-- 🗺️ **Interactive Map** - Real-time drone tracking on OpenStreetMap with Leaflet.js
-- 🤖 **Swarm Control** - Manage multiple drones with formation flying and coordination
-- 📊 **Live Telemetry** - Real-time monitoring of position, battery, GPS, and flight mode
-- 🔒 **Safety Systems** - Built-in collision avoidance and geofencing
-- 🧪 **Experiment Framework** - Run reproducible research scenarios with metrics
-- 🌐 **Multi-Platform** - Works with ArduPilot, PX4, and supports ROS2 integration
+### User Interface
+- **PySide6 (Qt for Python)** - Professional UI framework (LGPL v3)
+- **QML** - Declarative UI language with hardware acceleration
+- **Qt Quick** - Fluid animations and responsive layouts
+- **Leaflet.js** - Interactive mapping with OpenStreetMap
+- **Qt WebEngine** - Embedded web content
+
+### Robotics Integration
+- **ROS2 (Humble/Iron)** - Robot Operating System 2 (Apache 2.0)
+- **rclpy** - ROS2 Python client library
+- **px4_msgs** - PX4 message definitions (BSD-3)
+- **uXRCE-DDS** - PX4 ROS2 bridge protocol
+
+### Safety & Control
+- **APF (Artificial Potential Field)** - Collision avoidance at 20Hz
+- **Collision Predictor** - Time-to-collision estimation
+- **Battery Monitor** - Real-time power management
+- **Geofencing** - Polygon-based boundary enforcement
+
+### Research Tools
+- **Experiment Framework** - Reproducible scenario execution
+- **Field Coverage Planner** - Multi-drone area coverage
+- **Solar Inspection** - Automated panel inspection
+- **Mission Engine** - Waypoint mission management
 
 ---
 
-## 🖼️ User Interface
+## ✨ Key Capabilities
 
-### Main Dashboard
+### 🎯 Multi-Drone Swarm Control
+- **Formation Flying** - 6 pre-defined formations (Line, V, Circle, Grid, Wedge, Custom)
+- **Leader-Follower** - Coordinator-based swarm control
+- **Distributed Allocation** - Auction-based task assignment
+- **Collision Avoidance** - APF filter with configurable forces
+- **Real-time Coordination** - 10Hz telemetry updates
 
-The GCS features a modern, dark-themed interface with multiple panels:
+### 🗺️ Advanced Mapping
+- **Interactive Map** - OpenStreetMap with Leaflet.js
+- **Real-time Tracking** - Multi-drone position visualization
+- **Click-to-Goto** - Waypoint planning with map clicks
+- **Flight Path History** - Trajectory visualization
+- **Geofence Editor** - Polygon drawing and editing
+- **Multi-layer Support** - Satellite, terrain, street views
 
-**Dashboard Panel** - Live telemetry and drone status
-- Real-time position (GPS coordinates, altitude)
-- Battery level and voltage monitoring
-- Flight mode and armed status
-- GPS fix quality and satellite count
-- Connection status indicator
+### 📊 Telemetry & Monitoring
+- **Position** - GPS coordinates, altitude (MSL & relative)
+- **Velocity** - Groundspeed, climb rate, 3D velocity vector
+- **Attitude** - Roll, pitch, yaw (Euler angles)
+- **Battery** - Voltage, current, percentage, time remaining
+- **GPS** - Fix type, satellite count, HDOP, VDOP
+- **Flight Mode** - GUIDED, AUTO, LOITER, RTL, LAND
+- **System Health** - Sensor status, calibration, errors
 
-**Map Panel** - Interactive drone tracking
-- OpenStreetMap integration with Leaflet.js
-- Real-time drone position markers
-- Flight path visualization
-- Waypoint planning and editing
-- Geofence visualization
-- Multi-drone tracking
+### 🔒 Safety Systems
+- **APF Filter** ([`apf.py`](droneresearch/safety/apf.py))
+  - Artificial Potential Field collision avoidance
+  - 20Hz update rate
+  - Configurable repulsion/attraction forces
+  - Adaptive safety margins based on velocity
+  
+- **Collision Predictor** ([`collision_predictor.py`](droneresearch/safety/collision_predictor.py))
+  - Predictive collision detection
+  - Time-to-collision (TTC) estimation
+  - Velocity-based risk assessment
+  - Multi-drone conflict resolution
 
-**Swarm Panel** - Multi-drone coordination
-- Formation selection (Line, V, Circle, Grid, Wedge, Custom)
-- Formation preview with 2D visualization
-- Individual drone control
-- Swarm-wide commands (arm, takeoff, land, RTL)
-- Leader-follower coordination
+- **Battery Monitor** ([`battery_monitor.py`](droneresearch/safety/battery_monitor.py))
+  - Real-time battery tracking
+  - Low battery alerts (configurable thresholds)
+  - Automatic RTL on critical level
+  - Battery persistence across sessions
 
-**Experiment Panel** - Research workflow
-- Scenario definition and execution
-- Real-time metrics collection
-- Data export (CSV, JSON)
-- Experiment replay
+- **Geofencing**
+  - Polygon-based boundaries
+  - Altitude limits (min/max)
+  - Automatic RTL on breach
+  - Visual feedback in UI
 
-**Safety Panel** - Collision avoidance
-- APF (Artificial Potential Field) filter
-- Geofence monitoring
-- Obstacle detection
-- Safety parameter configuration
+### 🧪 Research Framework
+- **Experiment Manager** ([`experiment/manager.py`](droneresearch/experiment/manager.py))
+  - YAML-based scenario definition
+  - Automated execution
+  - Real-time metrics collection
+  - Data export (CSV, JSON, ROS2 bags)
 
-**ROS2 Panel** - ROS2 integration
-- Bag recording controls
-- Topic monitoring
-- PX4 uXRCE-DDS bridge status
-- Frame conversion (NED ↔ ENU)
+- **Field Coverage Planner** ([`field_coverage.py`](droneresearch/control/field_coverage.py))
+  - Multi-drone area coverage
+  - Boustrophedon pattern generation
+  - Optimized waypoint allocation
+  - Overlap configuration
 
-**Log Panel** - System monitoring
-- Real-time log viewer
-- Log level filtering
-- Telemetry export
-- Session recording
+- **Solar Inspection** ([`solar_inspection.py`](droneresearch/control/solar_inspection.py))
+  - Automated solar panel inspection
+  - Thermal camera integration
+  - Defect detection
+  - Grid-based flight patterns
+
+- **Mission Engine** ([`mission.py`](droneresearch/control/mission.py))
+  - Waypoint mission management
+  - Async mission upload (non-blocking UI)
+  - Mission validation
+  - Progress monitoring
+
+---
+
+## 🏗️ Architecture
+
+### Layered Design
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   QML UI Layer (Declarative)                │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │Dashboard │  │   Map    │  │  Swarm   │  │Experiment│   │
+│  │  Panel   │  │  Panel   │  │  Panel   │  │  Panel   │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  Safety  │  │  Gimbal  │  │FlightLog │  │   Help   │   │
+│  │  Panel   │  │  Panel   │  │  Panel   │  │  Panel   │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                             ↕ Qt Signals/Properties
+┌─────────────────────────────────────────────────────────────┐
+│              Context Layer (Qt QObject Bridge)              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │Telemetry │  │  Swarm   │  │Experiment│  │  Safety  │   │
+│  │ Context  │  │ Context  │  │ Context  │  │ Context  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                             ↕ Python API
+┌─────────────────────────────────────────────────────────────┐
+│                   Backend Layer (Python)                    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  Drone   │  │  Swarm   │  │  Safety  │  │ Mission  │   │
+│  │   SDK    │  │   API    │  │   APF    │  │  Engine  │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
+│  │   FSM    │  │Connection│  │Telemetry │                 │
+│  │  Engine  │  │ Manager  │  │  Store   │                 │
+│  └──────────┘  └──────────┘  └──────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+                             ↕ MAVLink/ROS2
+┌─────────────────────────────────────────────────────────────┐
+│                 Communication Layer                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
+│  │ MAVLink  │  │  ROS2    │  │  Serial  │                 │
+│  │(pymavlink│  │ (rclpy)  │  │(pyserial)│                 │
+│  └──────────┘  └──────────┘  └──────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+                             ↕ TCP/UDP/Serial
+┌─────────────────────────────────────────────────────────────┐
+│                      Drone Hardware                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
+│  │ArduPilot │  │   PX4    │  │  Custom  │                 │
+│  │  SITL    │  │  SITL    │  │Autopilot │                 │
+│  └──────────┘  └──────────┘  └──────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+```
+User Input (QML) → Qt Signal → Context → Backend → MAVLink → Drone
+                                            ↓
+Drone → MAVLink → Backend → Qt Signal → Context → QML Property Update
+```
+
+### Thread Safety
+
+- **UI Thread** - QML rendering, user input
+- **Worker Threads** - Mission upload, file I/O, network requests
+- **Telemetry Thread** - MAVLink message processing (10Hz)
+- **Safety Thread** - APF filter, collision detection (20Hz)
+
+All cross-thread communication uses Qt signals/slots for thread safety.
 
 ---
 
@@ -92,139 +211,46 @@ The GCS features a modern, dark-themed interface with multiple panels:
 git clone https://github.com/joeldjio/uavresearchproject.git
 cd uavresearchproject
 
-# Install with UI dependencies
+# Install core package
 pip install -e .
+
+# Install UI dependencies (PySide6 + QML)
 pip install -r requirements.txt
 
-# With ROS2 support (optional)
+# Optional: ROS2 support
 pip install -e ".[ros]"
 ```
 
-### Launch Ground Control Station
+### Launch UI
 
 ```bash
-# Start the UI
+# Start QML UI
 python -m tools.ui
 
-# Or use the launcher script
-python tools/ui/app.py
+# With debug logging
+python -m tools.ui --debug
+
+# Profile startup performance
+python tools/ui/startup_profiler.py
 ```
 
 ### Connect to Drone
 
-1. **Start SITL** (for simulation):
-   ```bash
-   # ArduPilot SITL
-   sim_vehicle.py -v ArduCopter
-   
-   # PX4 SITL with Gazebo
-   make px4_sitl gazebo
-   ```
+```bash
+# ArduPilot SITL (default port 5762)
+sim_vehicle.py -v ArduCopter
 
-2. **Connect in UI**:
-   - Open Dashboard panel
-   - Click "Connect" button
-   - Default: `tcp:127.0.0.1:5762` (ArduPilot SITL)
-   - For PX4: `udp:127.0.0.1:14540`
+# PX4 SITL with Gazebo (port 14540)
+make px4_sitl gazebo
 
-3. **Fly**:
-   - Arm drone
-   - Takeoff to desired altitude
-   - Monitor telemetry in real-time
-   - View position on map
-   - Land when finished
+# Connect in UI: tcp:127.0.0.1:5762 (ArduPilot) or udp:127.0.0.1:14540 (PX4)
+```
 
 ---
 
-## ✨ Key Features
+## 💻 Code Examples
 
-### 🎨 Modern UI/UX
-
-- **Dark Theme** - Professional, eye-friendly interface
-- **Responsive Layout** - Adapts to different screen sizes
-- **Real-time Updates** - 10Hz telemetry refresh rate
-- **Smooth Animations** - Fluid transitions and interactions
-- **Keyboard Shortcuts** - Efficient workflow
-- **Status Indicators** - Clear visual feedback
-
-### 🗺️ Interactive Mapping
-
-- **OpenStreetMap** - High-quality base maps
-- **Leaflet.js Integration** - Smooth pan and zoom
-- **Drone Markers** - Color-coded by ID
-- **Flight Trails** - Historical path visualization
-- **Waypoint Editor** - Click to add/edit waypoints
-- **Geofence Drawing** - Define safe zones
-- **Multi-layer Support** - Satellite, terrain, street views
-
-### 🤖 Swarm Coordination
-
-- **6 Formation Types**:
-  - **Line** - Drones in a straight line
-  - **V-Formation** - Classic V-shape
-  - **Circle** - Circular pattern
-  - **Grid** - Rectangular grid
-  - **Wedge** - Tactical wedge formation
-  - **Custom** - User-defined positions
-
-- **Formation Preview** - 2D visualization before execution
-- **Dynamic Scaling** - Adjust spacing and size
-- **Leader-Follower** - Coordinator-based control
-- **Collision Avoidance** - APF filter integration
-
-### 📊 Telemetry Monitoring
-
-Real-time display of:
-- **Position**: Latitude, Longitude, Altitude (MSL & Relative)
-- **Velocity**: Groundspeed, Climb rate
-- **Attitude**: Roll, Pitch, Yaw
-- **Battery**: Voltage, Current, Percentage
-- **GPS**: Fix type, Satellite count, HDOP
-- **Flight Mode**: GUIDED, AUTO, LOITER, RTL, etc.
-- **System**: Armed status, Connection quality
-
-### 🔒 Safety Systems
-
-- **APF Filter** - Artificial Potential Field collision avoidance
-  - Runs at 20Hz
-  - Configurable repulsion/attraction forces
-  - Real-time obstacle detection
-  
-- **Geofencing** - Define safe operating zones
-  - Polygon-based boundaries
-  - Altitude limits
-  - Automatic RTL on breach
-
-- **Pre-flight Checks** - Automated safety verification
-  - GPS fix quality
-  - Battery level
-  - Sensor health
-  - Calibration status
-
-### 🧪 Research Tools
-
-- **Experiment Framework**:
-  - Define scenarios with YAML
-  - Automated execution
-  - Metrics collection (position error, timing, battery)
-  - Data export (CSV, JSON, ROS2 bags)
-  
-- **Replay System**:
-  - Playback recorded flights
-  - Variable speed control
-  - Frame-by-frame analysis
-  
-- **LLM Integration**:
-  - Natural language commands
-  - "Form a circle with 5 meter radius"
-  - "Move north 10 meters"
-  - Supports Gemini, OpenAI, Ollama
-
----
-
-## 🎮 Usage Examples
-
-### Basic Flight
+### Basic Flight Control
 
 ```python
 from droneresearch.sdk import Drone
@@ -237,9 +263,8 @@ drone.connect()
 drone.arm()
 drone.takeoff(altitude=10)
 
-# Hover for 10 seconds
-import time
-time.sleep(10)
+# Goto waypoint
+drone.goto(lat=47.397742, lon=8.545594, alt=15)
 
 # Land
 drone.land()
@@ -250,120 +275,84 @@ drone.land()
 ```python
 from droneresearch.sdk import Swarm
 
-# Create swarm with 3 drones
+# Create swarm
 swarm = Swarm([
     "tcp:127.0.0.1:5762",
     "tcp:127.0.0.1:5772",
     "tcp:127.0.0.1:5782"
 ])
 
-# Connect all
+# Connect and arm all
 swarm.connect_all()
-
-# Arm and takeoff
 swarm.arm_all()
 swarm.takeoff_all(altitude=10)
 
-# Form V-formation
+# Form V-formation with 5m spacing
 swarm.set_formation("v", spacing=5.0)
 
-# Move formation north
+# Move formation north 20m
 swarm.move_formation(north=20)
 
 # Land all
 swarm.land_all()
 ```
 
-### Natural Language Control
+### Field Coverage Planning
 
 ```python
-from droneresearch.llm import SwarmCommander
+from droneresearch.control import FieldCoveragePlanner
 
-# Initialize with Gemini API
-commander = SwarmCommander(
-    api_key="your-api-key",
-    provider="gemini"
+# Define field boundary (lat/lon polygon)
+boundary = [
+    (47.397742, 8.545594),
+    (47.397742, 8.546594),
+    (47.398742, 8.546594),
+    (47.398742, 8.545594)
+]
+
+# Create planner
+planner = FieldCoveragePlanner(
+    boundary=boundary,
+    altitude=15,
+    overlap=0.2,  # 20% overlap
+    num_drones=3
 )
 
-# Execute natural language commands
-commander.execute("Form a circle with 5 meter radius")
-commander.execute("Move the formation north 10 meters")
-commander.execute("Land all drones safely")
+# Generate waypoints
+missions = planner.plan()
+
+# Upload to drones
+for drone_id, mission in missions.items():
+    drone = swarm.get_drone(drone_id)
+    drone.upload_mission(mission)
+    drone.start_mission()
 ```
 
----
+### Safety Systems
 
-## 📚 Documentation
+```python
+from droneresearch.safety import APFFilter, BatteryMonitor
 
-### User Guides
+# Configure APF filter
+apf = APFFilter(
+    repulsion_gain=2.0,
+    attraction_gain=1.0,
+    safety_radius=5.0,
+    update_rate=20  # Hz
+)
 
-| Guide | Description |
-|-------|-------------|
-| [**UI Documentation**](docs/ui/ui-documentation.md) | Complete UI reference |
-| [Installation Guide](docs/setup/installation.md) | Setup instructions |
-| [PX4 Setup](docs/setup/px4-sitl.md) | PX4 SITL configuration |
-| [Raspberry Pi](docs/setup/raspberry-pi.md) | Pi deployment |
+# Start APF filter
+apf.start()
 
-### Feature Documentation
+# Configure battery monitor
+battery = BatteryMonitor(
+    low_threshold=30.0,  # 30%
+    critical_threshold=15.0,  # 15%
+    rtl_on_critical=True
+)
 
-| Document | Description |
-|----------|-------------|
-| [Formation Preview](docs/ui/formation-preview.md) | 2D formation visualization |
-| [Bag Playback](docs/ui/bag-playback-controls.md) | ROS2 bag replay |
-| [Async Mission Upload](docs/features/async-mission-upload.md) | Non-blocking UI |
-| [Memory Profiling](docs/development/memory-profiling.md) | Qt memory optimization |
-
-### Developer Documentation
-
-| Document | Description |
-|----------|-------------|
-| [**Software Documentation**](docs/SOFTWARE_DOCUMENTATION.md) | Technical reference |
-| [Contributing Guide](CONTRIBUTING.md) | Development workflow |
-| [Test Strategy](docs/testing/test-strategy.md) | Testing best practices |
-| [CI/CD Guide](docs/testing/ci-cd-guide.md) | GitHub Actions |
-
----
-
-## 🏗️ Architecture
-
-### UI Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      PyQt6/QML UI Layer                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │Dashboard │  │   Map    │  │  Swarm   │  │Experiment│   │
-│  │  Panel   │  │  Panel   │  │  Panel   │  │  Panel   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
-│  │  Safety  │  │  ROS2    │  │   Log    │                 │
-│  │  Panel   │  │  Panel   │  │  Panel   │                 │
-│  └──────────┘  └──────────┘  └──────────┘                 │
-└─────────────────────────────────────────────────────────────┘
-                             │
-┌─────────────────────────────────────────────────────────────┐
-│                    Context Layer (Qt)                       │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │Telemetry │  │  Swarm   │  │Experiment│  │  Safety  │   │
-│  │ Context  │  │ Context  │  │ Context  │  │ Context  │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                             │
-┌─────────────────────────────────────────────────────────────┐
-│                   Backend Layer (Python)                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Drone   │  │  Swarm   │  │  Safety  │  │   LLM    │   │
-│  │   SDK    │  │   API    │  │   APF    │  │Commander │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow
-
-```
-User Input → Qt Signal → Context → Backend → MAVLink → Drone
-                                      ↓
-Drone → MAVLink → Backend → Qt Signal → Context → UI Update
+# Start monitoring
+battery.start()
 ```
 
 ---
@@ -372,153 +361,177 @@ Drone → MAVLink → Backend → Qt Signal → Context → UI Update
 
 ### Test Coverage
 
-| Component | Coverage | Tests |
-|-----------|----------|-------|
-| **UI Contexts** | **100%** | **71** |
-| Core (FSM, Connection) | 85% | 25 |
-| Control (Mission) | 80% | 18 |
-| Safety (APF) | 90% | 15 |
-| SDK (Drone, Swarm) | 75% | 22 |
-| ROS2 (Bridge, Bag) | 70% | 12 |
+| Component | Coverage | Tests | Description |
+|-----------|----------|-------|-------------|
+| **UI Contexts** | **100%** | **71** | QML-Python bridge |
+| Core (FSM, Connection) | 85% | 25 | State machine, MAVLink |
+| Control (Mission, Coverage) | 80% | 18 | Mission planning |
+| Safety (APF, Collision) | 90% | 15 | Safety systems |
+| SDK (Drone, Swarm) | 75% | 22 | High-level API |
+| ROS2 (Bridge, Bag) | 70% | 12 | ROS2 integration |
 
 ### Run Tests
 
 ```bash
-# All tests
+# All tests (~1 second, hardware-free)
 pytest tests/
 
-# UI tests only
-pytest tests/ -m ui
+# UI context tests
+pytest tests/ -k "context"
 
-# E2E tests (requires display)
+# Safety system tests
+pytest tests/ -k "apf or collision or battery"
+
+# E2E UI tests (requires display)
 pytest tests/e2e/ -m e2e
 
-# With coverage
-pytest tests/ --cov=droneresearch --cov=tools.ui
+# With coverage report
+pytest tests/ --cov=droneresearch --cov=tools.ui --cov-report=html
+
+# Fast tests only (skip slow markers)
+pytest tests/ -m "not slow"
 ```
 
 ---
 
-## 🎨 UI Customization
+## 📚 Documentation
 
-### Theme Configuration
+### Technical Documentation
 
-The UI uses a dark theme by default. Customize in `tools/ui/style.py`:
+| Document | Description |
+|----------|-------------|
+| [**Software Documentation**](docs/SOFTWARE_DOCUMENTATION.md) | Complete technical reference |
+| [API Reference](docs/api/reference.md) | Full API documentation |
+| [Core API](docs/api/core.md) | FSM, Connection, Telemetry |
+| [Control API](docs/api/control.md) | Mission, Coverage, Solar |
+| [Safety API](docs/api/safety.md) | APF, Collision, Battery |
 
-```python
-# Colors
-BACKGROUND = "#1e1e1e"
-FOREGROUND = "#ffffff"
-ACCENT = "#0078d4"
-SUCCESS = "#4caf50"
-WARNING = "#ff9800"
-ERROR = "#f44336"
+### Feature Documentation
 
-# Fonts
-FONT_FAMILY = "Segoe UI"
-FONT_SIZE = 10
-```
+| Document | Description |
+|----------|-------------|
+| [Field Coverage Planning](docs/features/field-coverage-planning.md) | Multi-drone area coverage |
+| [Swarm Coordination](docs/features/swarm-coordination.md) | Formation flying |
+| [Solar Inspection](docs/features/solar-inspection.md) | Automated panel inspection |
+| [Battery Monitoring](docs/features/battery-monitoring.md) | Power management |
+| [Collision Prediction](docs/features/collision-prediction.md) | Safety systems |
+| [Async Mission Upload](docs/features/async-mission-upload.md) | Non-blocking UI |
 
-### Layout Configuration
+### Setup Guides
 
-Adjust panel sizes and positions in `tools/ui/main_window.py`:
+| Document | Description |
+|----------|-------------|
+| [Installation Guide](docs/setup/installation.md) | Setup instructions |
+| [PX4 Hardware Setup](docs/setup/px4-hardware-setup.md) | PX4 configuration |
+| [Frame Conventions](docs/setup/frame-conventions.md) | NED/ENU coordinates |
+| [PX4 Mission Upload](docs/setup/px4-mission-upload.md) | Mission protocol |
 
-```python
-# Panel sizes
-DASHBOARD_WIDTH = 400
-MAP_HEIGHT = 600
+### UI Documentation
 
-# Update rates
-TELEMETRY_RATE = 10  # Hz
-MAP_UPDATE_RATE = 5  # Hz
-```
+| Document | Description |
+|----------|-------------|
+| [UI Documentation](docs/ui/ui-documentation.md) | Complete UI reference |
+| [Formation Preview](docs/ui/formation-preview.md) | 2D Canvas visualization |
+| [Escape UI Integration](docs/ui/escape-ui-integration-guide.md) | ESCAPE framework |
 
 ---
 
-## 🐳 Docker Deployment
+## 📄 License & Commercial Use
 
-Run the GCS in a container:
+### Project License
 
-```bash
-# Build image
-docker build -f docker/Dockerfile.x86 -t uavresearch-gcs .
+**UAVResearch** is licensed under the **MIT License**, allowing:
+- ✅ Commercial use
+- ✅ Modification
+- ✅ Distribution
+- ✅ Private use
+- ✅ Sublicensing
 
-# Run with X11 forwarding (Linux)
-docker run -it --rm \
-  -e DISPLAY=$DISPLAY \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  uavresearch-gcs
+See [`LICENSE`](LICENSE) for full terms.
 
-# Run with VNC (headless)
-docker run -it --rm \
-  -p 5900:5900 \
-  uavresearch-gcs
-```
+### Third-Party Components
+
+| Component | License | Commercial Use | Notes |
+|-----------|---------|----------------|-------|
+| **PySide6** | LGPL v3 | ✅ Yes | Qt for Python (dynamically linked) |
+| **pymavlink** | LGPL v3+ | ✅ Yes | MAVLink protocol library |
+| **pyserial** | BSD-3-Clause | ✅ Yes | Serial communication |
+| **psutil** | BSD-3-Clause | ✅ Yes | System monitoring |
+| **ROS2** | Apache 2.0 | ✅ Yes | Optional dependency |
+| **pytest** | MIT | ✅ Yes | Development only |
+
+**Full license texts:** [`THIRD_PARTY_LICENSES.txt`](THIRD_PARTY_LICENSES.txt)  
+**Copyright notices:** [`NOTICE.txt`](NOTICE.txt)
+
+### PySide6 Migration (2026-06)
+
+Migrated from PyQt6 (GPL v3) to PySide6 (LGPL v3) for commercial compatibility.
+
+**Benefits:**
+- ✅ Commercial closed-source distribution allowed
+- ✅ No license fees
+- ✅ No source code disclosure required
+- ✅ LGPL compliance via dynamic linking
+
+**Details:** [`docs/security/LICENSE_AUDIT_2026-06.md`](docs/security/LICENSE_AUDIT_2026-06.md)
+
+### Research Paper Citations
+
+Algorithms implemented from:
+- **APF Safety Filter:** Shibu et al., "SkySim" (arXiv:2602.01226, 2025)
+- **Vision-based Flocking:** Schilling et al., IEEE RA-L 2021
+- **Frontier Exploration:** Batinovic et al., IEEE RA-L 2021
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### UI Development
+### Development Setup
 
-1. **Setup**:
-   ```bash
-   pip install -e .
-   pip install -r requirements.txt
-   ```
+```bash
+# Clone and install
+git clone https://github.com/joeldjio/uavresearchproject.git
+cd uavresearchproject
+pip install -r requirements.txt
+pip install -e ".[dev]"
 
-2. **Run in development mode**:
-   ```bash
-   python -m tools.ui --debug
-   ```
+# Run tests
+pytest tests/
 
-3. **Make changes** to QML files in `tools/ui/qml/`
+# Run UI
+python -m tools.ui --debug
+```
 
-4. **Test**:
-   ```bash
-   pytest tests/e2e/ -m ui
-   ```
+### QML Development
 
-5. **Submit PR** with screenshots/GIFs
+```bash
+# Edit QML files in tools/ui/qml/
+# Changes are hot-reloaded (no restart needed)
 
----
+# Test UI workflows
+pytest tests/e2e/test_ui_workflows.py -v
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **Qt Framework** - Cross-platform UI framework
-- **Leaflet.js** - Interactive mapping library
-- **PyQt6** - Python bindings for Qt
-- **MAVLink** - Micro Air Vehicle communication protocol
-- **PX4** - Open-source flight control software
-- **ArduPilot** - Versatile autopilot software
-
----
-
-## 📞 Support
-
-- **Documentation:** [docs/](docs/)
-- **Issues:** [GitHub Issues](https://github.com/joeldjio/uavresearchproject/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/joeldjio/uavresearchproject/discussions)
+# Profile UI performance
+python tools/ui/startup_profiler.py
+```
 
 ---
 
 ## 🗺️ Roadmap
 
 ### Current (v0.3.x)
-- ✅ Modern PyQt6/QML UI
+- ✅ PySide6/QML UI with declarative design
 - ✅ Interactive map with Leaflet.js
-- ✅ Swarm coordination with formations
-- ✅ Real-time telemetry monitoring
-- ✅ Safety systems (APF, geofencing)
+- ✅ Swarm coordination with 6 formations
+- ✅ Real-time telemetry (10Hz)
+- ✅ Safety systems (APF 20Hz, collision prediction, battery monitor)
 - ✅ 100% UI test coverage
+- ✅ Commercial-friendly licensing (MIT + LGPL v3)
+- ✅ Field coverage planning
+- ✅ Solar inspection
+- ✅ ROS2 integration
 
 ### Next (v0.4.x)
 - ⏳ 3D visualization with Qt3D
@@ -535,117 +548,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for the drone research community**
-
-**⭐ Star us on GitHub if you find this project useful!**
-
-
----
-
-## 📄 License & Commercial Use
-
-### Project License
-
-**UAVResearch GCS** is licensed under the **MIT License**, allowing:
-- ✅ Commercial use
-- ✅ Modification
-- ✅ Distribution
-- ✅ Private use
-- ✅ Sublicensing
-
-See [`LICENSE`](LICENSE) for full terms.
-
-### Third-Party Components
-
-This project uses the following open-source components:
-
-| Component | License | Commercial Use | Notes |
-|-----------|---------|----------------|-------|
-| **PySide6** | LGPL v3 | ✅ Yes | Qt for Python (dynamically linked) |
-| **pymavlink** | LGPL v3+ | ✅ Yes | MAVLink protocol library |
-| **pyserial** | BSD-3-Clause | ✅ Yes | Serial communication |
-| **psutil** | BSD-3-Clause | ✅ Yes | System monitoring |
-| **ROS2** | Apache 2.0 | ✅ Yes | Optional dependency |
-| **pytest** | MIT | ✅ Yes | Development only |
-
-**Full license texts:** See [`THIRD_PARTY_LICENSES.txt`](THIRD_PARTY_LICENSES.txt)  
-**Copyright notices:** See [`NOTICE.txt`](NOTICE.txt)
-
-### PySide6 Migration (2026-06)
-
-The project migrated from PyQt6 (GPL v3) to PySide6 (LGPL v3) to enable commercial use without GPL restrictions.
-
-**Key Benefits:**
-- ✅ Commercial closed-source distribution allowed
-- ✅ No license fees (LGPL v3 is free)
-- ✅ No source code disclosure required
-- ✅ LGPL compliance via dynamic linking (standard in Python)
-
-**Migration Details:** See [`docs/security/PYSIDE6_MIGRATION_GUIDE.md`](docs/security/PYSIDE6_MIGRATION_GUIDE.md)  
-**License Audit:** See [`docs/security/LICENSE_AUDIT_2026-06.md`](docs/security/LICENSE_AUDIT_2026-06.md)
-
-### LGPL Compliance
-
-PySide6 and pymavlink are used under LGPL v3, which requires:
-
-1. **Dynamic Linking** ✅ - Python naturally uses dynamic linking
-2. **User Replacement** ✅ - Users can replace via `pip install PySide6`
-3. **License Notice** ✅ - Included in `THIRD_PARTY_LICENSES.txt`
-4. **No Modifications** ✅ - No changes made to LGPL libraries
-
-### Research Paper Citations
-
-This project implements algorithms from:
-
-- **APF Safety Filter:** Shibu et al., "SkySim" (arXiv:2602.01226, 2025)
-- **Vision-based Flocking:** Schilling et al., IEEE RA-L 2021
-- **Frontier Exploration:** Batinovic et al., IEEE RA-L 2021
-
-### Commercial Distribution Checklist
-
-When distributing UAVResearch GCS commercially:
-
-- [x] Include `LICENSE` (MIT)
-- [x] Include `THIRD_PARTY_LICENSES.txt`
-- [x] Include `NOTICE.txt`
-- [x] Document PySide6 dynamic linking
-- [x] Provide instructions for replacing PySide6/pymavlink
-- [x] No modifications to LGPL libraries
-
-**Legal Disclaimer:** This is not legal advice. Consult a lawyer for commercial distribution.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/joeldjio/uavresearchproject.git
-cd uavresearchproject
-
-# Install dependencies
-pip install -r requirements.txt
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/
-
-# Run UI
-python -m tools.ui
-```
-
----
-
 ## 📞 Support
 
 - **Documentation:** [`docs/`](docs/)
@@ -659,8 +561,10 @@ python -m tools.ui
 - **ArduPilot Team** - MAVLink protocol and pymavlink library
 - **Qt Company** - PySide6 (Qt for Python)
 - **Open Source Robotics Foundation** - ROS2 framework
-- **Research Community** - Papers and algorithms implemented
+- **Research Community** - Papers and algorithms
 
 ---
 
 **Made with ❤️ for drone research**
+
+**⭐ Star us on GitHub if you find this project useful!**

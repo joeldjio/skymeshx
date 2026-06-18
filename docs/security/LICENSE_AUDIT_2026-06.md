@@ -9,13 +9,13 @@
 
 ## Executive Summary
 
-Das UAVResearch-Projekt verwendet **MIT License** für eigenen Code, hat aber **kritische GPL-Abhängigkeiten** die kommerzielle Nutzung **einschränken**. 
+Das UAVResearch-Projekt verwendet **MIT License** für eigenen Code und **PySide6 (LGPL v3)** für die UI, was kommerzielle Nutzung **ermöglicht**.
 
-### 🔴 CRITICAL: Kommerzielle Nutzung NICHT möglich ohne Änderungen
+### ✅ RESOLVED: Kommerzielle Nutzung ist möglich
 
-**Hauptproblem:** PyQt6 ist **GPL v3** → Zwingt gesamte Anwendung unter GPL v3
+**Status:** Migration von PyQt6 (GPL v3) zu PySide6 (LGPL v3) **abgeschlossen**
 
-**Lösung:** Kommerzielle PyQt6-Lizenz kaufen ODER UI-Framework wechseln
+**Ergebnis:** Alle Abhängigkeiten sind kommerziell nutzbar (MIT, BSD, Apache 2.0, LGPL v3)
 
 ---
 
@@ -26,8 +26,8 @@ Das UAVResearch-Projekt verwendet **MIT License** für eigenen Code, hat aber **
 | **Core Package** | MIT | ✅ Ja | 🟢 OK | Keine |
 | **pymavlink** | LGPL v3+ | ✅ Ja | 🟢 OK | Attribution |
 | **pyserial** | BSD-3-Clause | ✅ Ja | 🟢 OK | Attribution |
-| **PyQt6** | GPL v3 | ❌ Nein | 🔴 BLOCKER | Lizenz kaufen |
-| **PyQt6-WebEngine** | GPL v3 | ❌ Nein | 🔴 BLOCKER | Lizenz kaufen |
+| **PySide6** | LGPL v3 | ✅ Ja | 🟢 OK | Attribution |
+| **PySide6-Addons** | LGPL v3 | ✅ Ja | 🟢 OK | Attribution |
 | **pytest** | MIT | ✅ Ja | 🟢 OK | Nur Dev |
 | **psutil** | BSD-3-Clause | ✅ Ja | 🟢 OK | Attribution |
 | **ROS2 (rclpy)** | Apache 2.0 | ✅ Ja | 🟢 OK | Attribution |
@@ -35,58 +35,27 @@ Das UAVResearch-Projekt verwendet **MIT License** für eigenen Code, hat aber **
 
 ---
 
-## 🔴 CRITICAL: PyQt6 GPL v3 Problem
+## ✅ RESOLVED: PySide6 Migration Abgeschlossen
 
-### Problem
+### Migration Status
 
-**PyQt6 ist GPL v3-only:**
-- GPL v3 ist "viral" → Zwingt gesamte Anwendung unter GPL v3
-- Kommerzielle Closed-Source-Software ist **NICHT erlaubt**
-- Verkauf von Binaries ohne Source Code ist **NICHT erlaubt**
+**Datum:** 2026-06-17
+**Status:** ✅ **ABGESCHLOSSEN**
 
-### Betroffene Module
+Die Migration von PyQt6 (GPL v3) zu PySide6 (LGPL v3) wurde erfolgreich durchgeführt.
 
-```
-tools/ui/
-├── main_window.py          # PyQt6.QtWidgets
-├── dashboard_tab.py        # PyQt6.QtWidgets
-├── map_tab.py              # PyQt6.QtWebEngineWidgets ← GPL!
-├── swarm_tab.py            # PyQt6.QtWidgets
-├── experiment_tab.py       # PyQt6.QtWidgets
-├── safety_tab.py           # PyQt6.QtWidgets
-├── log_tab.py              # PyQt6.QtWidgets
-├── backend.py              # PyQt6.QtCore (Signals)
-├── service_locator.py      # Indirekt betroffen
-└── qml/                    # PyQt6.QtQml
-    └── **/*.qml            # QML UI (GPL-kontaminiert)
-```
+### Was wurde geändert
 
-**Impact:** Gesamte UI ist GPL v3 → Gesamte Anwendung muss GPL v3 sein
+**Dependencies aktualisiert:**
+- ❌ `PyQt6>=6.6` → ✅ `PySide6>=6.6`
+- ❌ `PyQt6-WebEngine` → ✅ `PySide6-Addons>=6.6`
 
-### Lösungen
+**Dateien:**
+- [`pyproject.toml`](../../pyproject.toml) - Kommentare hinzugefügt (Zeile 30-33)
+- [`requirements.txt`](../../requirements.txt) - PySide6 Dependencies (Zeile 5-9)
+- Alle UI-Module verwenden PySide6 (keine PyQt6-Imports gefunden)
 
-#### Option 1: Kommerzielle PyQt6-Lizenz kaufen (€€€)
-
-**Kosten:** ~€500-5000 pro Entwickler/Jahr (abhängig von Unternehmensgröße)
-
-**Vorteile:**
-- ✅ Keine Code-Änderungen nötig
-- ✅ Professioneller Support
-- ✅ Closed-Source erlaubt
-
-**Nachteile:**
-- ❌ Hohe Kosten
-- ❌ Jährliche Verlängerung
-- ❌ Pro-Developer-Lizenz
-
-**Kontakt:** Riverbank Computing Limited  
-**Website:** https://www.riverbankcomputing.com/commercial/buy
-
----
-
-#### Option 2: UI-Framework wechseln (Empfohlen für Kommerzialisierung)
-
-##### 2a) PySide6 (Qt for Python) - LGPL/Commercial
+### PySide6 (Qt for Python) - LGPL v3
 
 **Lizenz:** LGPL v3 / Commercial  
 **Kosten:** Kostenlos (LGPL) oder Commercial License
@@ -176,20 +145,18 @@ from PySide6.QtCore import Signal as pyqtSignal
 
 ---
 
-#### Option 3: Dual-Licensing (Open Source + Commercial)
+### Kommerzielle Nutzung mit PySide6
 
-**Strategie:**
-1. Open-Source Version mit PyQt6 (GPL v3) → Kostenlos
-2. Commercial Version mit PySide6/Electron → Verkauf
+**LGPL v3 erlaubt kommerzielle Closed-Source-Software:**
+- ✅ Dynamic Linking (Standard bei Python pip install)
+- ✅ Keine Lizenzkosten
+- ✅ Keine jährlichen Gebühren
+- ✅ Closed-Source Distribution erlaubt
 
-**Vorteile:**
-- ✅ Community kann Open-Source nutzen
-- ✅ Kommerzielle Kunden zahlen für Closed-Source
-- ✅ Beide Versionen pflegen
-
-**Nachteile:**
-- ❌ Doppelter Maintenance-Aufwand
-- ❌ Komplexe Lizenz-Verwaltung
+**Bedingungen:**
+- ⚠️ LGPL License Text beibehalten (siehe [`THIRD_PARTY_LICENSES.txt`](../../THIRD_PARTY_LICENSES.txt))
+- ⚠️ User muss PySide6 ersetzen können (pip install - automatisch erfüllt)
+- ⚠️ Änderungen an PySide6 selbst müssen veröffentlicht werden (nicht relevant, da keine Modifikationen)
 
 ---
 
@@ -380,55 +347,58 @@ Based on: SkySim (Shibu et al., 2025)
 
 ## 📋 Compliance-Checkliste für kommerzielle Distribution
 
-### Sofort (vor Verkauf)
+### ✅ Abgeschlossen
 
-- [ ] **PyQt6-Problem lösen:**
-  - [ ] Option A: Kommerzielle PyQt6-Lizenz kaufen
-  - [ ] Option B: Zu PySide6 migrieren (Empfohlen)
-  - [ ] Option C: Zu Electron/Tauri migrieren
-  - [ ] Option D: Dual-Licensing (Open Source + Commercial)
+- [x] **PySide6-Migration:**
+  - [x] PyQt6 zu PySide6 migriert
+  - [x] Dependencies aktualisiert (pyproject.toml, requirements.txt)
+  - [x] Keine PyQt6-Imports mehr im Code
 
-### License Files
+### ✅ License Files
 
-- [ ] **Eigene MIT License** beibehalten in Distribution
-- [ ] **THIRD_PARTY_LICENSES.txt** erstellen mit:
-  - [ ] pymavlink LGPL v3 License Text
-  - [ ] pyserial BSD-3-Clause License Text
-  - [ ] psutil BSD-3-Clause License Text
-  - [ ] ROS2 Apache 2.0 License Text (falls gebundled)
-  - [ ] vswarm BSD-3-Clause License Text (falls gebundled)
-  - [ ] frontier_exploration BSD-3-Clause License Text (falls gebundled)
+- [x] **Eigene MIT License** vorhanden in [`LICENSE`](../../LICENSE)
+- [x] **THIRD_PARTY_LICENSES.txt** erstellt mit:
+  - [x] pymavlink LGPL v3 License Text
+  - [x] pyserial BSD-3-Clause License Text
+  - [x] psutil BSD-3-Clause License Text
+  - [x] PySide6 LGPL v3 License Text
+  - [x] ROS2 Apache 2.0 License Text
+  - [x] px4_msgs BSD-3-Clause License Text
+  - [x] vswarm BSD-3-Clause (Referenced)
+  - [x] frontier_exploration BSD-3-Clause (Referenced)
 
-### Copyright Notices
+### ✅ Copyright Notices
 
-- [ ] **NOTICE.txt** erstellen mit:
-  - [ ] Copyright für pymavlink
-  - [ ] Copyright für pyserial
-  - [ ] Copyright für psutil
-  - [ ] Copyright für ROS2 (falls gebundled)
-  - [ ] Citations für Papers (SkySim, vswarm, frontier)
+- [x] **NOTICE.txt** erstellt mit:
+  - [x] Copyright für pymavlink
+  - [x] Copyright für pyserial
+  - [x] Copyright für psutil
+  - [x] Copyright für PySide6
+  - [x] Copyright für ROS2
+  - [x] Copyright für px4_msgs
+  - [x] Citations für Papers (SkySim, vswarm, frontier)
 
-### Dokumentation
+### 🔄 Noch zu erledigen
 
 - [ ] **README.md** aktualisieren:
-  - [ ] Lizenz-Informationen
-  - [ ] Third-Party-Lizenzen
-  - [ ] Citations für Papers
+  - [ ] Lizenz-Informationen hinzufügen
+  - [ ] Link zu THIRD_PARTY_LICENSES.txt
+  - [ ] Link zu NOTICE.txt
 
-- [ ] **User Manual** erstellen:
+- [ ] **User Manual** erstellen (optional):
   - [ ] Lizenz-Hinweise
   - [ ] Open-Source-Komponenten
 
-### Code
+### ✅ Code Compliance
 
-- [ ] **Keine GPL-Kontamination:**
-  - [ ] PyQt6 entfernen ODER Lizenz kaufen
-  - [ ] Alle GPL-Dependencies prüfen
+- [x] **Keine GPL-Kontamination:**
+  - [x] PyQt6 vollständig entfernt
+  - [x] Alle Dependencies geprüft (keine GPL)
 
-- [ ] **LGPL-Compliance (pymavlink):**
-  - [ ] Dynamic Linking sicherstellen (Standard bei Python)
-  - [ ] User kann pymavlink ersetzen (pip install)
-  - [ ] Keine Modifikationen an pymavlink
+- [x] **LGPL-Compliance (pymavlink, PySide6):**
+  - [x] Dynamic Linking (Standard bei Python pip)
+  - [x] User kann Libraries ersetzen (pip install)
+  - [x] Keine Modifikationen an Libraries
 
 ---
 
@@ -641,20 +611,19 @@ For full license information, see THIRD_PARTY_LICENSES.txt
 
 ### Kann ich mit diesem Projekt Geld verdienen?
 
-**Aktuell:** ❌ **NEIN** (wegen PyQt6 GPL v3)
+**Status:** ✅ **JA** - Kommerzielle Nutzung ist möglich!
 
-**Nach PySide6-Migration:** ✅ **JA** (alle Lizenzen kompatibel)
+**Grund:** PySide6-Migration abgeschlossen, alle Lizenzen kompatibel
 
-**Nach PyQt6-Lizenz-Kauf:** ✅ **JA** (aber teuer)
+### Abgeschlossene Schritte
 
-### Schnellste Lösung für Kommerzialisierung
+1. ✅ **PySide6 Migration** (Abgeschlossen)
+2. ✅ **THIRD_PARTY_LICENSES.txt** erstellt
+3. ✅ **NOTICE.txt** erstellt
+4. 🔄 **Dokumentation aktualisieren** (README.md noch ausstehend)
 
-1. **PySide6 Migration** (2-3 Tage, €0)
-2. **THIRD_PARTY_LICENSES.txt** erstellen (1 Tag)
-3. **NOTICE.txt** erstellen (1 Tag)
-4. **Dokumentation aktualisieren** (1 Tag)
-
-**Total:** ~1 Woche, €0 Kosten
+**Aufwand:** ~1 Woche
+**Kosten:** €0
 
 ### Papers & Algorithmen
 

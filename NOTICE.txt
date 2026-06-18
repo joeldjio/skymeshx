@@ -6,8 +6,8 @@ This product includes software developed by:
 - Chris Liechti (pyserial)
 - Giampaolo Rodola (psutil)
 - The Qt Company Ltd. (PySide6)
-- Open Source Robotics Foundation (ROS2 - optional)
-- PX4 Development Team (px4_msgs - optional)
+- Open Source Robotics Foundation (ROS2)
+- PX4 Development Team (px4_msgs)
 
 This product implements algorithms described in:
 - Shibu et al., "SkySim: A ROS2-based Simulation Environment for Natural
@@ -16,18 +16,60 @@ This product implements algorithms described in:
 
 - Schilling et al., "Vision-based Drone Flocking in Outdoor Environments"
   IEEE Robotics and Automation Letters (RA-L), 2021
+  Repository: https://github.com/lis-epfl/vswarm
 
-- Batinovic et al., "A Multi-resolution Frontier-Based Planner for
+- Batinovic et al., "A Multi-resolution Frontier-based Planner for
   Autonomous 3D Exploration"
   IEEE Robotics and Automation Letters (RA-L), 2021
+  Repository: https://github.com/larics/uav_frontier_exploration_3d
 
-For full license information, see:
-- LICENSE (MIT License for UAVResearch code)
-- THIRD_PARTY_LICENSES.txt (Third-party component licenses)
+For full license information, see THIRD_PARTY_LICENSES.txt
 
-LGPL Compliance Notice:
-This software uses pymavlink and PySide6 under the GNU Lesser General Public
-License v3 (LGPL v3). These libraries are dynamically linked and can be
-replaced independently by users via pip install. No modifications have been
-made to these libraries. Source code for these libraries is available at
-their respective repositories listed in THIRD_PARTY_LICENSES.txt.
+================================================================================
+License Compliance Notes
+================================================================================
+
+This software is licensed under the MIT License for the core platform code.
+
+Third-party dependencies are used under their respective licenses:
+- pymavlink: LGPL v3+ (dynamically linked)
+- pyserial: BSD-3-Clause
+- psutil: BSD-3-Clause
+- PySide6: LGPL v3 (dynamically linked) / Commercial
+- ROS2 (rclpy): Apache 2.0
+- px4_msgs: BSD-3-Clause
+- pytest: MIT (development only)
+
+LGPL Compliance:
+This software uses pymavlink and PySide6 under the LGPL v3 license. These
+libraries are dynamically linked (standard Python package installation via pip),
+which permits commercial closed-source distribution. Users can independently
+replace these libraries without recompiling the application.
+
+Commercial Use:
+This software uses PySide6 (LGPL v3) instead of PyQt6 (GPL v3) to enable
+commercial closed-source distribution. All other dependencies use permissive
+licenses (MIT, BSD-3-Clause, Apache 2.0) that allow commercial use.
+
+For commercial static linking of Qt components, a commercial Qt license from
+The Qt Company is required. Contact: https://www.qt.io/licensing/
+
+Research Paper Citations:
+The algorithms implemented in this software are based on published research
+papers. While the implementations are original, proper academic citation is
+required when using this software in research publications.
+
+================================================================================
+Disclaimer
+================================================================================
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and noninfringement. In no event shall the
+authors or copyright holders be liable for any claim, damages or other
+liability, whether in an action of contract, tort or otherwise, arising from,
+out of or in connection with the software or the use or other dealings in the
+software.
+
+For legal advice regarding license compliance, please consult a qualified
+attorney specializing in open-source software licensing.
