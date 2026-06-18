@@ -4,6 +4,7 @@ Uses PyQtWebEngine to embed a Leaflet.js map (no Qt Location needed).
 """
 import json
 import math
+from html import escape
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QPushButton, QLabel, QGroupBox, QCheckBox,
@@ -330,10 +331,34 @@ class MapTab(QWidget):
         self._bridge.updateDrones.emit(json.dumps(payload))
 
     def _on_map_clicked(self, lat: float, lon: float):
-        self._click_info.setText(f"Lat: {lat:.6f}\nLon: {lon:.6f}")
+        """
+        Handle map click events with input validation.
+        UI-01 FIX: Validate coordinate ranges and sanitize display.
+        """
+        # Validate coordinate ranges
+        try:
+            lat_float = float(lat)
+            lon_float = float(lon)
+        except (ValueError, TypeError):
+            print(f"[map] Invalid coordinate types: lat={type(lat)}, lon={type(lon)}")
+            return
+        
+        if not (-90 <= lat_float <= 90):
+            print(f"[map] Invalid latitude: {lat_float} (must be -90 to 90)")
+            return
+        
+        if not (-180 <= lon_float <= 180):
+            print(f"[map] Invalid longitude: {lon_float} (must be -180 to 180)")
+            return
+        
+        # Sanitize for display (escape HTML to prevent XSS)
+        safe_lat = escape(f"{lat_float:.6f}")
+        safe_lon = escape(f"{lon_float:.6f}")
+        self._click_info.setText(f"Lat: {safe_lat}\nLon: {safe_lon}")
+        
         if self._add_wp_mode:
-            self._waypoints.append({"lat": lat, "lon": lon, "alt": 10.0})
-            self._wp_list.addItem(f"WP{len(self._waypoints)-1}: {lat:.5f},{lon:.5f}")
+            self._waypoints.append({"lat": lat_float, "lon": lon_float, "alt": 10.0})
+            self._wp_list.addItem(f"WP{len(self._waypoints)-1}: {lat_float:.5f},{lon_float:.5f}")
             self._bridge.updateWaypoints.emit(json.dumps(self._waypoints))
 
     def _toggle_wp_mode(self, checked: bool):
