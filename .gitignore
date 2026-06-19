@@ -43,7 +43,7 @@ tools/installer/out/
 *.spec.bak
 
 # Local documentation and agent rules (keep local only)
-.bob/rules-*/AGENTS.md
+.bob/
 AGENTS.md
 docs/ANWENDUNGSBESCHREIBUNG.md
 
