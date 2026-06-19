@@ -125,7 +125,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="skymeshx gcs",
+    name="skymeshx",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

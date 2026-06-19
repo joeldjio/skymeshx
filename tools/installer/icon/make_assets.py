@@ -181,7 +181,7 @@ def build_wizard_large(out_path: Path) -> None:
     title_font = _font(17)
     subtitle_font = _font(11)
 
-    title = "skymeshx gcs"
+    title = "SkyMeshX"
     bb = title_font.getbbox(title)
     draw.text(((w - (bb[2] - bb[0])) // 2, 162), title, font=title_font, fill=WHITE)
 
