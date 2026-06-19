@@ -1,19 +1,19 @@
 #requires -version 5.1
 <#
 .SYNOPSIS
-    Build the DroneResearch Windows installers (CLI + GCS).
+    Build the SkyMeshX Windows installers (CLI + GCS).
 
 .DESCRIPTION
     End-to-end build pipeline:
 
-      1. Generate the UAVResearch branding assets (icon + Inno wizard images).
-      2. Run PyInstaller for the CLI bundle  → dist\DroneResearchCLI\
-      3. Run PyInstaller for the GCS bundle  → dist\UAVResearchGCS\
+      1. Generate the SkyMeshX branding assets (icon + Inno wizard images).
+      2. Run PyInstaller for the CLI bundle  → dist\SkyMeshXCLI\
+      3. Run PyInstaller for the GCS bundle  → dist\SkyMeshXGCS\
       4. Compile both Inno Setup scripts     → tools\installer\out\
 
     Output:
-      tools\installer\out\DroneResearch-CLI-Setup-X.Y.Z.exe
-      tools\installer\out\uavresearch-gcs-setup-X.Y.Z.exe
+      tools\installer\out\skymeshx-cli-setup-X.Y.Z.exe
+      tools\installer\out\skymeshx-gcs-setup-X.Y.Z.exe
 
 .PARAMETER Target
     Which installer(s) to build: 'cli', 'gcs', or 'all' (default).
@@ -50,7 +50,7 @@ $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 
 Set-Location $ProjectRoot
 Write-Host "──────────────────────────────────────────────────" -ForegroundColor Cyan
-Write-Host " UAVResearch / DroneResearch Installer Builder" -ForegroundColor Cyan
+Write-Host " SkyMeshX Installer Builder" -ForegroundColor Cyan
 Write-Host " Project root: $ProjectRoot" -ForegroundColor Cyan
 Write-Host " Target:       $Target" -ForegroundColor Cyan
 Write-Host " Skip bundle:  $SkipBundle" -ForegroundColor Cyan
@@ -84,7 +84,7 @@ if (-not (Test-Path $InnoCompiler)) {
 }
 
 # ── Step 1: Branding assets ──────────────────────────────────────────
-Write-Host "[1/4] Generating UAVResearch branding assets..." -ForegroundColor Yellow
+Write-Host "[1/4] Generating SkyMeshX branding assets..." -ForegroundColor Yellow
 python tools\installer\icon\make_assets.py
 if ($LASTEXITCODE -ne 0) { throw "Asset generation failed." }
 Write-Host ""
@@ -100,10 +100,10 @@ function Invoke-PyInstaller($spec, $label) {
 
 if (-not $SkipBundle) {
     if ($Target -in @('cli', 'all')) {
-        Invoke-PyInstaller 'tools\installer\specs\droneresearch_cli.spec' 'CLI bundle'
+        Invoke-PyInstaller 'tools\installer\specs\skymeshx_cli.spec' 'CLI bundle'
     }
     if ($Target -in @('gcs', 'all')) {
-        Invoke-PyInstaller 'tools\installer\specs\uavresearch_gcs.spec' 'uavresearch gcs bundle'
+        Invoke-PyInstaller 'tools\installer\specs\skymeshx_gcs.spec' 'SkyMeshX GCS bundle'
     }
 } else {
     Write-Host "[2/4] Skipping PyInstaller (-SkipBundle)" -ForegroundColor DarkGray
@@ -121,10 +121,10 @@ function Invoke-Inno($iss, $label) {
 New-Item -ItemType Directory -Force -Path 'tools\installer\out' | Out-Null
 
 if ($Target -in @('cli', 'all')) {
-    Invoke-Inno 'tools\installer\inno\droneresearch_cli.iss' 'CLI installer'
+    Invoke-Inno 'tools\installer\inno\skymeshx_cli.iss' 'CLI installer'
 }
 if ($Target -in @('gcs', 'all')) {
-    Invoke-Inno 'tools\installer\inno\uavresearch_gcs.iss' 'uavresearch gcs installer'
+    Invoke-Inno 'tools\installer\inno\skymeshx_gcs.iss' 'SkyMeshX GCS installer'
 }
 
 # Summary
