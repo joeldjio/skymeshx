@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+p#!/usr/bin/env python3
 """Batch rebrand all files from droneresearch to skymeshx."""
 import os
 import re

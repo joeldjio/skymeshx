@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish a release to joeldjio/rz-gcs-releases?"
+        description: "Publish a release to joeldjio/skymeshx-releases?"
         type: boolean
         default: false
 
@@ -171,7 +171,7 @@ jobs:
   #                          the "public_repo" scope, owned by joeldjio.
   # ─────────────────────────────────────────────────────────────────────────
   publish:
-    name: Publish release → joeldjio/rz-gcs-releases
+    name: Publish release → joeldjio/skymeshx-releases
     needs: build
     runs-on: ubuntu-latest
     if: |
@@ -205,10 +205,10 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Release tag: ${TAG}"
 
-      - name: Create / update release in rz-gcs-releases
+      - name: Create / update release in skymeshx-releases
         uses: softprops/action-gh-release@v2
         with:
-          repository: joeldjio/rz-gcs-releases
+          repository: joeldjio/skymeshx-releases
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           tag_name: ${{ steps.version.outputs.tag }}
           name: "SkyMeshX GCS ${{ steps.version.outputs.tag }}"
