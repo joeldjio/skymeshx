@@ -1,6 +1,6 @@
-# uavresearch gcs 0.3.1
+# skymeshx gcs 0.3.1
 
-uavresearch gcs 0.3.1 release.
+skymeshx gcs 0.3.1 release.
 
 ## Highlights
 
@@ -15,8 +15,8 @@ uavresearch gcs 0.3.1 release.
 Upload these files as release assets:
 
 ```text
-uavresearch-gcs-setup-0.3.1.exe
-uavresearch-gcs_0.3.1_amd64_jammy.deb
+skymeshx-gcs-setup-0.3.1.exe
+skymeshx-gcs_0.3.1_amd64_jammy.deb
 ```
 
 ## Notes

@@ -1,13 +1,13 @@
 ; ════════════════════════════════════════════════════════════════════════
-;  uavresearch gcs — Windows Installer (Inno Setup 6+)
+;  skymeshx gcs — Windows Installer (Inno Setup 6+)
 ; ════════════════════════════════════════════════════════════════════════
 ;
 ;  Build:
-;     iscc tools\installer\inno\uavresearch_gcs.iss
+;     iscc tools\installer\inno\skymeshx_gcs.iss
 ;  Output:
-;     tools\installer\out\uavresearch-gcs-setup-x.x.x.exe
+;     tools\installer\out\skymeshx-gcs-setup-x.x.x.exe
 ;
-;  Prerequisite: PyInstaller has produced dist\UAVResearchGCS\.
+;  Prerequisite: PyInstaller has produced dist\SkyMeshXGCS\.
 ;
 ;  Upgrade semantics
 ;  -----------------
@@ -19,17 +19,17 @@
 ;    seamless one-click upgrade flow.
 ; ════════════════════════════════════════════════════════════════════════
 
-#define AppName        "uavresearch gcs"
-#define AppPublisher   "UAVResearch"
+#define AppName        "skymeshx gcs"
+#define AppPublisher   "SkyMeshX"
 #define AppVersion     "0.3.6.1"
-#define AppURL         "https://github.com/joeldjio/uavresearch-gcs-releases"
-#define AppExeName     "uavresearch gcs.exe"
+#define AppURL         "https://github.com/joeldjio/skymeshx-gcs-releases"
+#define AppExeName     "skymeshx gcs.exe"
 ; Stable, randomly-generated GUID. DO NOT change this once published
 ; — it would break upgrade detection on existing installs.
 #define AppId          "{{8F7E2D14-3A6B-4F2C-9B4E-3A2C0B1D0001}"
 
 #define ProjectRoot    "..\..\.."
-#define DistRoot       ProjectRoot + "\dist\UAVResearchGCS"
+#define DistRoot       ProjectRoot + "\dist\SkyMeshXGCS"
 #define AssetsDir      "..\assets"
 
 [Setup]
@@ -41,18 +41,18 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\UAVResearch\uavresearch gcs
-DefaultGroupName=UAVResearch
+DefaultDirName={autopf}\SkyMeshX\skymeshx gcs
+DefaultGroupName=SkyMeshX
 DisableProgramGroupPage=no
 LicenseFile={#ProjectRoot}\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\out
-OutputBaseFilename=uavresearch-gcs-setup-{#AppVersion}
-SetupIconFile={#AssetsDir}\uavresearch_icon.ico
+OutputBaseFilename=skymeshx-gcs-setup-{#AppVersion}
+SetupIconFile={#AssetsDir}\skymeshx_icon.ico
 ; ── Silent / in-place upgrade support (used by the in-app updater) ──
 ; CloseApplications=force lets us replace _internal/ even while the
-; previous uavresearch gcs.exe was running, and RestartApplications=yes brings
+; previous skymeshx gcs.exe was running, and RestartApplications=yes brings
 ; it back up after the upgrade finishes.
 CloseApplications=force
 CloseApplicationsFilter=*.exe,*.dll,*.pyd
@@ -83,7 +83,7 @@ Name: "quicklaunchicon"; Description: "Create a &Quick Launch shortcut"; \
     GroupDescription: "Shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "{#DistRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#DistRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "{#ProjectRoot}\LICENSE";   DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -112,7 +112,7 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major < 10) then
   begin
-    MsgBox('uavresearch gcs requires Windows 10 or later (uses Qt 6 / WebEngine).',
+    MsgBox('skymeshx gcs requires Windows 10 or later (uses Qt 6 / WebEngine).',
            mbCriticalError, MB_OK);
     Result := False;
   end

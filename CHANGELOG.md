@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the DroneResearch Platform will be documented in this file.
+All notable changes to the SkyMeshX Platform will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -173,11 +173,11 @@ No breaking changes. New features:
 **Migration:**
 ```python
 # Old (0.2.0)
-from droneresearch.ros import MAVLinkROS2Bridge
+from skymeshx.ros import MAVLinkROS2Bridge
 bridge = MAVLinkROS2Bridge()
 
 # New (0.3.0)
-from droneresearch.ros import PX4ROS2Bridge
+from skymeshx.ros import PX4ROS2Bridge
 bridge = PX4ROS2Bridge(namespace="uav_1")
 ```
 
@@ -190,11 +190,11 @@ bridge = PX4ROS2Bridge(namespace="uav_1")
 **Migration:**
 ```python
 # Old (0.1.0)
-from droneresearch import Drone
+from skymeshx import Drone
 drone = Drone("tcp:127.0.0.1:5760")
 
 # New (0.2.0) - Still works, but models recommended
-from droneresearch.models import GenericUAVModel
+from skymeshx.models import GenericUAVModel
 uav = GenericUAVModel("UAV_1", "tcp:127.0.0.1:5760")
 ```
 

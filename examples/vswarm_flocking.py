@@ -27,8 +27,8 @@ Run (per drone):
 """
 import argparse
 import time
-from droneresearch import Drone
-from droneresearch.exploration import VSwarmBridge
+from skymeshx import Drone
+from skymeshx.exploration import VSwarmBridge
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port",     default="tcp:127.0.0.1:5760")

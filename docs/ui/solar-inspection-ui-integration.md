@@ -1,6 +1,6 @@
 # Solar Inspection UI Integration Guide
 
-This document describes how to integrate the Solar Park Inspection feature into the UAV Research GCS user interface.
+This document describes how to integrate the Solar Park Inspection feature into the SkyMeshX GCS user interface.
 
 ## Overview
 
@@ -769,7 +769,7 @@ class MissionBackend(QObject):
     @Slot()
     def generateSolarInspection(self):
         """Generate solar inspection mission waypoints."""
-        from droneresearch.control.solar_inspection import (
+        from skymeshx.control.solar_inspection import (
             SolarParkInspectionPlanner,
             PanelRow,
             InspectionConfig

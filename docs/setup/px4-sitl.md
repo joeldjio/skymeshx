@@ -1,6 +1,6 @@
 # PX4 SITL Startup Guide
 
-This guide shows how to start PX4 SITL with Ignition/Gazebo and connect it to the DroneResearch ROS2 bridge.
+This guide shows how to start PX4 SITL with Ignition/Gazebo and connect it to the SkyMeshX ROS2 bridge.
 
 ## Preconditions
 
@@ -50,14 +50,14 @@ This starts PX4 SITL using the `gz_x500` model and sets the PX4 XRCE namespace.
 
 > If you want a single-vehicle default namespace, use `PX4_UXRCE_DDS_NS=` (empty) or omit the variable.
 
-## 4. Start the DroneResearch PX4 ROS2 example
+## 4. Start the SkyMeshX PX4 ROS2 example
 
 Open a third terminal and source ROS2 again:
 
 ```bash
 cd ~/ros2_ws
 source install/setup.bash
-cd ~/path/to/uavresearchproject
+cd ~/path/to/skymeshxproject
 python3 examples/px4_ros2_offboard.py
 ```
 
@@ -69,19 +69,19 @@ The example will:
 - fly a simple trajectory
 - land
 
-## 5. Optional: use the DroneResearch UI
+## 5. Optional: use the SkyMeshX UI
 
 If you want the QML UI instead of the example script:
 
 ```bash
-cd ~/path/to/uavresearchproject
+cd ~/path/to/skymeshxproject
 python3 -m tools.ui.app
 ```
 oder
 '''
 source /opt/ros/humble/setup.bash
 source /home/iruz/ws_sensor_combined/install/setup.bash
-cd /home/iruz/dorneresearch/uavresearchproject
+cd /home/iruz/dorneresearch/skymeshxproject
 python3 -m tools.ui.app
 '''
 

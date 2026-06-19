@@ -1,11 +1,11 @@
-"""Tests for :mod:`droneresearch.sdk.formations` and its consumers."""
+"""Tests for :mod:`skymeshx.sdk.formations` and its consumers."""
 from __future__ import annotations
 
 import math
 
 import pytest
 
-from droneresearch.sdk.formations import SHAPES, formation_offsets
+from skymeshx.sdk.formations import SHAPES, formation_offsets
 
 
 class TestEdgeCases:
@@ -108,7 +108,7 @@ class TestConsumersDelegate:
     function rather than re-implement geometry."""
 
     def test_swarm_api_uses_canonical(self):
-        from droneresearch.sdk.swarm_api import Swarm
+        from skymeshx.sdk.swarm_api import Swarm
         # Swarm._calc_offsets(count_incl_leader=4, ...) ==
         # canonical formation_offsets("v", 3, ...).
         api_result = Swarm._calc_offsets("v", 4, 5.0)
@@ -116,5 +116,5 @@ class TestConsumersDelegate:
         assert api_result == canonical
 
     def test_coordinator_uav_uses_canonical(self):
-        from droneresearch.models.coordinator_uav import _calc_offsets
+        from skymeshx.models.coordinator_uav import _calc_offsets
         assert _calc_offsets("line", 3, 5.0) == formation_offsets("line", 3, 5.0)

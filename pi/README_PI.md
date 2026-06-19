@@ -1,7 +1,7 @@
-# DroneResearch — Raspberry Pi Deployment
+# SkyMeshX — Raspberry Pi Deployment
 
 **Author:** Joel Djio  
-**Repository:** https://github.com/joeldjio/uavresearchproject  
+**Repository:** https://github.com/joeldjio/skymeshxproject  
 **Version:** 0.2.0
 
 Optimized for: **Raspberry Pi 1 Model B/B+**  
@@ -39,8 +39,8 @@ Compared to PySide6 UI: ~180 MB RAM, unusable on Pi 1.
 
 ```bash
 # On the Pi (Raspberry Pi OS Lite recommended)
-git clone https://github.com/joeldjio/uavresearchproject ~/uavresearchproject
-cd ~/uavresearchproject
+git clone https://github.com/joeldjio/skymeshxproject ~/skymeshxproject
+cd ~/skymeshxproject
 bash pi/install.sh
 ```
 
@@ -104,9 +104,9 @@ Available commands:
 ## Autostart with systemd
 
 ```bash
-sudo systemctl start droneresearch
-sudo systemctl status droneresearch
-sudo journalctl -u droneresearch -f    # live logs
+sudo systemctl start skymeshx
+sudo systemctl status skymeshx
+sudo journalctl -u skymeshx -f    # live logs
 ```
 
 ## MAVLink stream rates (Pi 1 optimized)

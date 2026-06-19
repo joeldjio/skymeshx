@@ -1,24 +1,24 @@
 ; ═══════════════════════════════════════════════════════════════════════
-;  DroneResearch CLI — Windows Installer (Inno Setup 6+)
+;  SkyMeshX CLI — Windows Installer (Inno Setup 6+)
 ; ═══════════════════════════════════════════════════════════════════════
 ;
 ;  Build:
-;     iscc tools\installer\inno\droneresearch_cli.iss
+;     iscc tools\installer\inno\skymeshx_cli.iss
 ;  Output:
-;     tools\installer\out\DroneResearch-CLI-Setup-0.2.0.exe
+;     tools\installer\out\SkyMeshX-CLI-Setup-0.2.0.exe
 ;
-;  Prerequisite: PyInstaller has produced dist\DroneResearchCLI\.
+;  Prerequisite: PyInstaller has produced dist\SkyMeshXCLI\.
 ; ═══════════════════════════════════════════════════════════════════════
 
-#define AppName        "DroneResearch CLI"
-#define AppPublisher   "UAVResearch Aerospace Research"
+#define AppName        "SkyMeshX CLI"
+#define AppPublisher   "SkyMeshX Aerospace Research"
 #define AppVersion     "0.2.0"
-#define AppURL         "https://github.com/joeldjio/uavresearchproject"
-#define AppExeName     "droneresearch.exe"
-#define AppId          "{{B5A1F4F2-9E1E-4A2C-9D6B-DRONERESEARCH-CLI}"
+#define AppURL         "https://github.com/joeldjio/skymeshxproject"
+#define AppExeName     "skymeshx.exe"
+#define AppId          "{{B5A1F4F2-9E1E-4A2C-9D6B-SKYMESHX-CLI}"
 
 #define ProjectRoot    "..\..\.."
-#define DistRoot       ProjectRoot + "\dist\DroneResearchCLI"
+#define DistRoot       ProjectRoot + "\dist\SkyMeshXCLI"
 #define AssetsDir      "..\assets"
 
 [Setup]
@@ -30,15 +30,15 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\DroneResearch CLI
-DefaultGroupName=DroneResearch
+DefaultDirName={autopf}\SkyMeshX CLI
+DefaultGroupName=SkyMeshX
 DisableProgramGroupPage=yes
 LicenseFile={#ProjectRoot}\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\out
-OutputBaseFilename=DroneResearch-CLI-Setup-{#AppVersion}
-SetupIconFile={#AssetsDir}\uavresearch_icon.ico
+OutputBaseFilename=SkyMeshX-CLI-Setup-{#AppVersion}
+SetupIconFile={#AssetsDir}\skymeshx_icon.ico
 WizardImageFile={#AssetsDir}\wizard_large.bmp
 WizardSmallImageFile={#AssetsDir}\wizard_small.bmp
 WizardStyle=modern
@@ -57,7 +57,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german";  MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
-Name: "addtopath";    Description: "Add &droneresearch.exe to the system PATH"; \
+Name: "addtopath";    Description: "Add &skymeshx.exe to the system PATH"; \
     GroupDescription: "Integration:"; Flags: checkedonce
 Name: "desktopicon";  Description: "Create a &desktop shortcut"; \
     GroupDescription: "Shortcuts:"; Flags: unchecked

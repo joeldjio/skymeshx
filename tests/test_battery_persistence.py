@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from droneresearch.safety.battery_monitor import BatteryMonitor, PowerSample
+from skymeshx.safety.battery_monitor import BatteryMonitor, PowerSample
 
 
 def test_save_load_empty_history():

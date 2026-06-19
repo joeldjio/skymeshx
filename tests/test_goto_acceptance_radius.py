@@ -1,7 +1,7 @@
 """Test goto() with configurable acceptance radius and velocity check."""
 
 import pytest
-from droneresearch.sdk.drone import Drone
+from skymeshx.sdk.drone import Drone
 
 
 def test_goto_default_acceptance_radius(fake_conn, snap_factory):

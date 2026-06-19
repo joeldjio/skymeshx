@@ -1,5 +1,5 @@
 """
-uavresearch gcs — In-app update checker.
+skymeshx gcs — In-app update checker.
 
 What this gives the user
 ------------------------
@@ -8,7 +8,7 @@ What this gives the user
 * If a newer release exists on GitHub, a non-blocking banner appears
   with the new version + release notes excerpt + "Download & Install"
   action.
-* "Download & Install" fetches the matching ``uavresearch-gcs-setup-x.y.z.exe``
+* "Download & Install" fetches the matching ``skymeshx-gcs-setup-x.y.z.exe``
   asset to ``%TEMP%`` and launches it with Inno-Setup's silent-upgrade
   flags. The current process exits cleanly so the installer can replace
   ``_internal/`` files.
@@ -86,7 +86,7 @@ class _CheckWorker(QObject):
             req = urllib.request.Request(
                 RELEASES_API_URL,
                 headers={
-                    "User-Agent": f"uavresearch-gcs-Updater/{VERSION}",
+                    "User-Agent": f"skymeshx-gcs-Updater/{VERSION}",
                     "Accept": "application/vnd.github+json",
                 },
             )
@@ -160,7 +160,7 @@ class _DownloadWorker(QObject):
             target = Path(tempfile.gettempdir()) / Path(self._url).name
             req = urllib.request.Request(
                 self._url,
-                headers={"User-Agent": f"uavresearch-gcs-Updater/{VERSION}"},
+                headers={"User-Agent": f"skymeshx-gcs-Updater/{VERSION}"},
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 total = int(resp.headers.get("Content-Length") or 0)
@@ -185,7 +185,7 @@ class _DownloadWorker(QObject):
                 try:
                     sha_req = urllib.request.Request(
                         self._sha256_url,
-                        headers={"User-Agent": f"uavresearch-gcs-Updater/{VERSION}"},
+                        headers={"User-Agent": f"skymeshx-gcs-Updater/{VERSION}"},
                     )
                     with urllib.request.urlopen(sha_req, timeout=10) as sha_resp:
                         expected = sha_resp.read().decode("utf-8")

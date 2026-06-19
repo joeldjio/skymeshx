@@ -1,4 +1,4 @@
-# DroneResearch Platform — Verbesserungs-Dokumentation
+# SkyMeshX Platform — Verbesserungs-Dokumentation
 
 **Branch:** `fix/bugfixes-analysis`  
 **Basis:** `ui-dashboard` (Commit `d59d681`)  
@@ -31,17 +31,17 @@ Lesen aller Verzeichnisse, `README.md`, `PROJECT_OVERVIEW.md`, `pyproject.toml` 
 
 **Phase 2 — Tiefenanalyse:**  
 Lesen jeder einzelnen Python-Quelldatei, inklusive:
-- `droneresearch/core/connection.py` — MAVLink-Parsing und Command-Handling
-- `droneresearch/core/fsm.py` — Finite State Machine
-- `droneresearch/sdk/drone.py` + `swarm_api.py` + `formations.py`
-- `droneresearch/safety/apf.py` — APF-Filter-Logik
-- `droneresearch/llm/swarm_commander.py` — LLM-Integration
-- `droneresearch/models/generic_uav.py` + `coordinator_uav.py`
-- `droneresearch/control/mission.py` + `script_runner.py`
-- `droneresearch/exploration/frontier_bridge.py`
-- `droneresearch/simulation/sitl.py`
-- `droneresearch/experiment/metrics.py` + `manager.py`
-- `droneresearch/data/logger.py` + `store.py`
+- `skymeshx/core/connection.py` — MAVLink-Parsing und Command-Handling
+- `skymeshx/core/fsm.py` — Finite State Machine
+- `skymeshx/sdk/drone.py` + `swarm_api.py` + `formations.py`
+- `skymeshx/safety/apf.py` — APF-Filter-Logik
+- `skymeshx/llm/swarm_commander.py` — LLM-Integration
+- `skymeshx/models/generic_uav.py` + `coordinator_uav.py`
+- `skymeshx/control/mission.py` + `script_runner.py`
+- `skymeshx/exploration/frontier_bridge.py`
+- `skymeshx/simulation/sitl.py`
+- `skymeshx/experiment/metrics.py` + `manager.py`
+- `skymeshx/data/logger.py` + `store.py`
 - `tools/ui/app.py`, `backend.py`, `service_locator.py`, `license.py`, `updater.py`
 - `tools/ui/context/swarm_context.py`, `safety_context.py`, `telemetry_context.py`
 
@@ -55,7 +55,7 @@ Das Projekt besteht aus zwei klar getrennten Schichten:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  uavresearch gcs  (tools/ui/)          PyQt6 + QML                   │
+│  skymeshx gcs  (tools/ui/)          PyQt6 + QML                   │
 │  ┌─────────────┐  ┌──────────┐  ┌────────┐  ┌───────────┐  │
 │  │SwarmContext  │  │Safety    │  │Updater │  │License    │  │
 │  │(Boids/LF/   │  │Context   │  │Context │  │Manager    │  │
@@ -67,7 +67,7 @@ Das Projekt besteht aus zwei klar getrennten Schichten:
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
-│  droneresearch SDK       Python 3.10+                       │
+│  skymeshx SDK       Python 3.10+                       │
 │  ┌──────┐ ┌───────┐ ┌──────────┐ ┌────────┐ ┌──────────┐  │
 │  │Drone │ │Swarm  │ │Experiment│ │Safety  │ │LLM       │  │
 │  │SDK   │ │API    │ │/Metrics  │ │APF     │ │Commander │  │
@@ -96,7 +96,7 @@ Das Projekt besteht aus zwei klar getrennten Schichten:
 
 ### Bug 1 — `MAVLinkConnection.goto()`: Veraltetes MAVLink-Kommando
 
-**Datei:** `droneresearch/core/connection.py`
+**Datei:** `skymeshx/core/connection.py`
 
 **Problem:**  
 `goto()` nutzte `mission_item_send` — ein veraltetes MAVLink-Kommando das:
@@ -141,7 +141,7 @@ self._mav.mav.set_position_target_global_int_send(
 
 ### Bug 2 — `Swarm.formation()`: Off-by-One bei Follower-Offset-Zuweisung
 
-**Datei:** `droneresearch/sdk/swarm_api.py`
+**Datei:** `skymeshx/sdk/swarm_api.py`
 
 **Problem:**  
 Die Schleife nutzte den Drohnenlisten-Index `i` um in das Offset-Array zu indexieren. Da `_calc_offsets()` aber nur `count-1` Offsets zurückgibt (kein Leader-Slot), bekam der letzte Follower immer `(0, 0)` wenn der Leader nicht am Ende der Liste stand.
@@ -181,7 +181,7 @@ for drone in drones:
 
 ### Bug 3 — `FrontierExplorationBridge`: GPS-Koordinaten als NED-Meter
 
-**Datei:** `droneresearch/exploration/frontier_bridge.py`
+**Datei:** `skymeshx/exploration/frontier_bridge.py`
 
 **Problem:**  
 `_FrontierNode._publish_telemetry()` veröffentlichte rohe GPS-Koordinaten (Breitengrad in Dezimalgrad) als lokale NED-Meter-Position an den ROS2 Frontier-Explorer:
@@ -224,7 +224,7 @@ def _publish_telemetry(self):
 
 ### Bug 4 — `GenericUAVModel`: FSM bleibt bei Reconnect auf IDLE
 
-**Datei:** `droneresearch/models/generic_uav.py`
+**Datei:** `skymeshx/models/generic_uav.py`
 
 **Problem:**  
 `_sync_armed()` und `_sync_mode()` behandelten nur normale Arm/Disarm-Sequenzen. Nach einem Verbindungsabbruch und Wiederverbindung zu einer bereits fliegenden Drohne blieb das FSM dauerhaft auf `IDLE` stehen — `can_mission()`, `is_airborne()` etc. lieferten falsche Werte.
@@ -278,7 +278,7 @@ def _sync_mode(self, mode: str):
 
 ### V1 — MAVLink Reconnect mit Exponentialem Backoff
 
-**Datei:** `droneresearch/core/connection.py`  
+**Datei:** `skymeshx/core/connection.py`  
 **Commit:** `1beaa52`
 
 **Problem:** Der `_loop()`-Thread terminierte bei jeder Exception still. Danach war das `Drone`-Objekt permanent tot — keine automatische Wiederverbindung.
@@ -301,7 +301,7 @@ Neuer Konstruktor-Parameter: `auto_reconnect: bool = True` (kann deaktiviert wer
 
 ### V2 — Input-Validierung für Connection-Strings
 
-**Datei:** `droneresearch/core/connection.py`  
+**Datei:** `skymeshx/core/connection.py`  
 **Commit:** `1beaa52`
 
 Neue statische Methode `validate_connection_string(s: str) -> str`:
@@ -321,7 +321,7 @@ Wird am Anfang von `connect()` aufgerufen. Fehlerhafte Strings emittieren einen 
 
 ### V3 — MAVLink Mission Upload: Hybrid-Handshake-Protokoll
 
-**Datei:** `droneresearch/control/mission.py`  
+**Datei:** `skymeshx/control/mission.py`  
 **Commit:** `1beaa52`
 
 **Problem:** Die Upload-Implementierung schickte alle Waypoints blind mit 50ms-Pacing, ohne auf `MISSION_REQUEST`-Nachrichten des Autopiloten zu warten. Das korrekte MAVLink-Protokoll ist ein Request/Response-Handshake.
@@ -346,7 +346,7 @@ Der Handshake-Pfad ist korrekt nach MAVLink-Standard. Der Push-All-Pfad ist der 
 
 ### V4 — PX4-kompatibler Takeoff/Goto-Modus
 
-**Datei:** `droneresearch/sdk/drone.py`  
+**Datei:** `skymeshx/sdk/drone.py`  
 **Commit:** `5df0c56`
 
 **Problem:** `takeoff()` und `goto()` setzten immer `GUIDED`-Modus. PX4 benötigt für Positionsbefehle `OFFBOARD`-Modus.
@@ -367,7 +367,7 @@ Gilt für `takeoff()` und `goto()`.
 
 ### V5 — Kontinuierlicher Formation-Follow-Loop
 
-**Datei:** `droneresearch/sdk/swarm_api.py`  
+**Datei:** `skymeshx/sdk/swarm_api.py`  
 **Commit:** `5df0c56`
 
 **Problem:** `Swarm.formation()` setzte Positionen nur einmalig. Bei einem sich bewegenden Leader liefen Follower sofort auseinander.
@@ -386,7 +386,7 @@ swarm.stop_follow()
 
 ### V6 — `position_error`-Metrik (RMS-Pfadabweichung)
 
-**Datei:** `droneresearch/experiment/metrics.py`  
+**Datei:** `skymeshx/experiment/metrics.py`  
 **Commit:** `5df0c56`
 
 **Problem:** `position_error` war im Docstring dokumentiert, aber nie implementiert.
@@ -413,7 +413,7 @@ Berechnung: Minimale Haversine-Distanz (in Metern) zum nächsten Pfad-Waypoint. 
 
 ### V7 — TelemetryLogger: Periodischer CSV-Flush
 
-**Datei:** `droneresearch/data/logger.py`  
+**Datei:** `skymeshx/data/logger.py`  
 **Commit:** `5df0c56`
 
 **Problem:** Die CSV-Datei wurde nie explizit geflusht. Bei einem Absturz gingen die letzten Datenpunkte aus dem I/O-Buffer verloren.
@@ -434,7 +434,7 @@ if rows_since_flush >= 50 or (now - last_flush) >= 1.0:
 
 ### V8 — TelemetryLogger: JSONL-Events (Crash-Safe)
 
-**Datei:** `droneresearch/data/logger.py`  
+**Datei:** `skymeshx/data/logger.py`  
 **Commit:** `5df0c56`
 
 **Problem:** Events wurden im Speicher gesammelt und erst beim `stop()` als vollständiges JSON-Array geschrieben. Bei einem Absturz gingen alle Events verloren.
@@ -453,7 +453,7 @@ Die `_events.json`-Datei bleibt rückwärtskompatibel erhalten.
 
 ### V9 — TelemetryStore: SQLite-Persistenz
 
-**Datei:** `droneresearch/data/store.py`  
+**Datei:** `skymeshx/data/store.py`  
 **Commit:** `43dadb7`
 
 **Problem:** Der In-Memory-Ringpuffer verliert alle Daten bei App-Neustart.
@@ -485,7 +485,7 @@ Thread-safe: `sqlite3.connect(check_same_thread=False)` mit Lock vom übergeordn
 
 ### V10 — SITL-Cluster: Paralleler Start
 
-**Datei:** `droneresearch/simulation/sitl.py`  
+**Datei:** `skymeshx/simulation/sitl.py`  
 **Commit:** `1beaa52`
 
 **Problem:** `SITLCluster.start()` startete Instanzen sequentiell mit 2s Pause zwischen jeder → N×2s Wartezeit.
@@ -501,7 +501,7 @@ Thread-safe: `sqlite3.connect(check_same_thread=False)` mit Lock vom übergeordn
 
 ### V11 — ScriptRunner: Subprocess-Sandbox Option
 
-**Datei:** `droneresearch/control/script_runner.py`  
+**Datei:** `skymeshx/control/script_runner.py`  
 **Commit:** `43dadb7`
 
 **Problem:** Scripts liefen in-process. Ein Fehler (z.B. Endlosschleife, Speicherleck, Segfault durch C-Extension) konnte den gesamten GCS-Prozess zum Absturz bringen.
@@ -584,7 +584,7 @@ Für jede Drohne pro Tick:
 **Problem:** Der heruntergeladene Installer wurde ohne Integritätsprüfung direkt ausgeführt.
 
 **Implementierung:**
-- `_CheckWorker` sucht nach einem `.sha256`-Asset im GitHub Release (z.B. `uavresearch-gcs-setup-1.2.3.sha256`)
+- `_CheckWorker` sucht nach einem `.sha256`-Asset im GitHub Release (z.B. `skymeshx-gcs-setup-1.2.3.sha256`)
 - Falls vorhanden: SHA256-URL wird zusammen mit der Installer-URL weitergegeben
 - `_DownloadWorker` lädt zuerst den Installer, dann die `.sha256`-Datei
 - Verifikation via `hashlib.sha256()` mit 64KB-Chunks
@@ -717,17 +717,17 @@ Prüft Verbesserung V8 (JSONL-Events):
 
 | Datei | Art | Änderungen |
 |-------|-----|-----------|
-| `droneresearch/core/connection.py` | Bug-Fix + Feature | goto()-Kommando, Reconnect-Loop, Input-Validierung |
-| `droneresearch/control/mission.py` | Feature | Hybrid Mission-Upload-Handshake |
-| `droneresearch/control/script_runner.py` | Feature | Subprocess-Sandbox-Option |
-| `droneresearch/data/logger.py` | Feature | Periodischer CSV-Flush, JSONL-Events |
-| `droneresearch/data/store.py` | Feature | SQLite-Persistenz-Option |
-| `droneresearch/experiment/metrics.py` | Feature | `position_error` RMS/Max-Metrik |
-| `droneresearch/exploration/frontier_bridge.py` | Bug-Fix | GPS→NED-Koordinatenkonvertierung |
-| `droneresearch/models/generic_uav.py` | Bug-Fix | FSM-Sync nach Reconnect |
-| `droneresearch/sdk/drone.py` | Feature | PX4-kompatibler Takeoff/Goto-Modus |
-| `droneresearch/sdk/swarm_api.py` | Bug-Fix + Feature | Formation Off-by-One, Follow-Loop |
-| `droneresearch/simulation/sitl.py` | Feature | Paralleler Cluster-Start |
+| `skymeshx/core/connection.py` | Bug-Fix + Feature | goto()-Kommando, Reconnect-Loop, Input-Validierung |
+| `skymeshx/control/mission.py` | Feature | Hybrid Mission-Upload-Handshake |
+| `skymeshx/control/script_runner.py` | Feature | Subprocess-Sandbox-Option |
+| `skymeshx/data/logger.py` | Feature | Periodischer CSV-Flush, JSONL-Events |
+| `skymeshx/data/store.py` | Feature | SQLite-Persistenz-Option |
+| `skymeshx/experiment/metrics.py` | Feature | `position_error` RMS/Max-Metrik |
+| `skymeshx/exploration/frontier_bridge.py` | Bug-Fix | GPS→NED-Koordinatenkonvertierung |
+| `skymeshx/models/generic_uav.py` | Bug-Fix | FSM-Sync nach Reconnect |
+| `skymeshx/sdk/drone.py` | Feature | PX4-kompatibler Takeoff/Goto-Modus |
+| `skymeshx/sdk/swarm_api.py` | Bug-Fix + Feature | Formation Off-by-One, Follow-Loop |
+| `skymeshx/simulation/sitl.py` | Feature | Paralleler Cluster-Start |
 | `docker/docker-compose.yml` | Feature | Health Checks für alle 3 Services |
 | `tools/ui/backend.py` | Feature | Differenz-basierte Telemetrie-Emission |
 | `tools/ui/context/swarm_context.py` | Feature | Echte Reynolds-Boids in NED-Metern |

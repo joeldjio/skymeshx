@@ -1,14 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec — uavresearch gcs (UAVResearch ground control station).
+PyInstaller spec — skymeshx gcs (SkyMeshX ground control station).
 
 Full graphical build: PySide6 + QtQuick + QtWebEngine +
 the entire QML tree under tools/ui/qml/ (including 3D mesh assets).
 
 Build with:
-    pyinstaller tools/installer/specs/uavresearch_gcs.spec --noconfirm
+    pyinstaller tools/installer/specs/skymeshx_gcs.spec --noconfirm
 Output:
-    dist/UAVResearchGCS/uavresearch gcs.exe   (+ _internal/ folder)
+    dist/SkyMeshXGCS/skymeshx gcs.exe   (+ _internal/ folder)
 
 Notes
 -----
@@ -61,7 +61,7 @@ print(f"[gcs.spec] bundling {len(qml_datas)} QML / asset files")
 
 # ── Hidden imports ───────────────────────────────────────────────────
 hidden = (
-    collect_submodules("droneresearch")
+    collect_submodules("skymeshx")
     + collect_submodules("tools.ui")
     + collect_submodules("pymavlink")
     + [
@@ -102,7 +102,7 @@ a = Analysis(
         "IPython",
         "test",
         "unittest",
-        # See droneresearch_cli.spec for the rationale.
+        # See skymeshx_cli.spec for the rationale.
         "lxml",
         "cv2",
         "google",
@@ -125,7 +125,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="uavresearch gcs",
+    name="skymeshx gcs",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -136,7 +136,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ASSETS_DIR / "uavresearch_icon.ico"),
+    icon=str(ASSETS_DIR / "skymeshx_icon.ico"),
     version=None,
 )
 
@@ -148,5 +148,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="UAVResearchGCS",
+    name="SkyMeshXGCS",
 )

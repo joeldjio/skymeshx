@@ -13,8 +13,8 @@ Run:
 import math
 import threading
 import time
-from droneresearch import Swarm
-from droneresearch.safety import APFSafetyFilter, APFFilterLoop, Pose3D
+from skymeshx import Swarm
+from skymeshx.safety import APFSafetyFilter, APFFilterLoop, Pose3D
 
 # ── Ports (Mission Planner 10-UAV SITL, SERIAL1) ─────────────────────────────
 PORTS = {

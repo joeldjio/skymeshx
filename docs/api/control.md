@@ -17,8 +17,8 @@ MissionEngine(connection: MAVLinkConnection)
 
 **Example:**
 ```python
-from droneresearch.core.connection import MAVLinkConnection
-from droneresearch.control.mission import MissionEngine
+from skymeshx.core.connection import MAVLinkConnection
+from skymeshx.control.mission import MissionEngine
 
 conn = MAVLinkConnection("tcp:127.0.0.1:5762")
 conn.connect()
@@ -47,7 +47,7 @@ class Waypoint:
 
 **Example:**
 ```python
-from droneresearch.control.mission import Waypoint
+from skymeshx.control.mission import Waypoint
 
 # Simple waypoint
 wp1 = Waypoint(lat=48.137, lon=11.575, alt=20)
@@ -311,8 +311,8 @@ mission.on_mission_done(on_done)
 ## Complete Mission Example
 
 ```python
-from droneresearch.core.connection import MAVLinkConnection
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.core.connection import MAVLinkConnection
+from skymeshx.control.mission import MissionEngine, Waypoint
 import threading
 
 # Connect
@@ -557,7 +557,7 @@ if not mission.wait_done(timeout=300):
 The `Drone` class provides a simplified mission interface:
 
 ```python
-from droneresearch import Drone
+from skymeshx import Drone
 
 drone = Drone("tcp:127.0.0.1:5762")
 drone.connect()
@@ -597,7 +597,7 @@ FieldCoveragePlanner()
 
 **Example:**
 ```python
-from droneresearch.control.field_coverage import FieldCoveragePlanner
+from skymeshx.control.field_coverage import FieldCoveragePlanner
 
 planner = FieldCoveragePlanner()
 planner.set_home_position(47.3977, 8.5456)
@@ -647,7 +647,7 @@ generate_coverage_waypoints(
 
 **Example:**
 ```python
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     FieldBoundary,
     CoverageConfig,
     CoveragePattern
@@ -716,7 +716,7 @@ class FieldBoundary:
 
 **Example:**
 ```python
-from droneresearch.control.field_coverage import FieldBoundary
+from skymeshx.control.field_coverage import FieldBoundary
 
 # Rectangular field
 boundary = FieldBoundary(corners=[
@@ -756,7 +756,7 @@ class CoverageConfig:
 
 **Example:**
 ```python
-from droneresearch.control.field_coverage import CoverageConfig, CoveragePattern
+from skymeshx.control.field_coverage import CoverageConfig, CoveragePattern
 
 config = CoverageConfig(
     pattern=CoveragePattern.PARALLEL_LINES,
@@ -784,7 +784,7 @@ class CoveragePattern(Enum):
 
 **Example:**
 ```python
-from droneresearch.control.field_coverage import CoveragePattern
+from skymeshx.control.field_coverage import CoveragePattern
 
 # Use in configuration
 config = CoverageConfig(pattern=CoveragePattern.SPIRAL)

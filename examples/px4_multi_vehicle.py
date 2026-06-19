@@ -16,7 +16,7 @@ Run:
 """
 import time
 import math
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 VEHICLE_COUNT = 3
 FORMATION_RADIUS = 5.0    # meters

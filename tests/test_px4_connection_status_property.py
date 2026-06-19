@@ -1,7 +1,7 @@
 """Test PX4 connection status property."""
 
 import pytest
-from droneresearch.ros.px4_bridge import ConnectionStatus
+from skymeshx.ros.px4_bridge import ConnectionStatus
 
 # Skip if ROS2 not available
 pytest.importorskip("rclpy")
@@ -10,7 +10,7 @@ pytest.importorskip("px4_msgs")
 
 def test_connection_status_property():
     """Test that connection_status property returns current status."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -21,7 +21,7 @@ def test_connection_status_property():
 
 def test_connection_status_property_vs_method():
     """Test that property and method return same value."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -40,7 +40,7 @@ def test_connection_status_enum_values():
 
 def test_is_connected_uses_status():
     """Test that is_connected() checks connection_status."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     

@@ -3,14 +3,14 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "droneresearch"
-version = "0.2.0"
-description = "Open, scriptable research platform for drone experiments"
+name = "skymeshx"
+version = "0.3.7"
+description = "Advanced drone swarm coordination and mesh network platform"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Joel Djio" }]
-keywords = ["drone", "mavlink", "ros2", "research", "uav", "swarm"]
+keywords = ["drone", "mavlink", "ros2", "research", "uav", "swarm", "mesh", "skymeshx"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -43,7 +43,7 @@ markers = [
 ]
 
 [project.scripts]
-droneresearch = "droneresearch.cli.main:main"
+skymeshx = "skymeshx.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

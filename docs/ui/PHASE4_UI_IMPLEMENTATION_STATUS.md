@@ -3,19 +3,19 @@
 ## ✅ Completed Backend Implementation
 
 ### Core Modules
-1. **Solar Inspection Planner** (`droneresearch/control/solar_inspection.py`)
+1. **Solar Inspection Planner** (`skymeshx/control/solar_inspection.py`)
    - Automated waypoint generation for solar panel inspection
    - Camera trigger and gimbal control (MAVLink commands 203, 205)
    - Coverage area and mission time calculations
    - 22 passing tests
 
-2. **Thermal Camera Integration** (`droneresearch/sensors/thermal_camera.py`)
+2. **Thermal Camera Integration** (`skymeshx/sensors/thermal_camera.py`)
    - ROS2 thermal image subscriber
    - Temperature calibration (raw → Celsius)
    - Hotspot detection with configurable thresholds
    - 17 passing tests
 
-3. **Waypoint Extensions** (`droneresearch/control/mission.py`)
+3. **Waypoint Extensions** (`skymeshx/control/mission.py`)
    - Added param1-param7 fields for MAVLink commands
    - Full support for gimbal and camera control
 
@@ -103,7 +103,7 @@ def removeSolarRow(self, index): ...
 
 @Slot()
 def generateSolarInspection(self):
-    from droneresearch.control.solar_inspection import (
+    from skymeshx.control.solar_inspection import (
         SolarParkInspectionPlanner,
         PanelRow,
         InspectionConfig
@@ -194,7 +194,7 @@ def generateSolarInspection(self):
 ### Code Examples
 ```python
 # Backend usage
-from droneresearch.control.solar_inspection import (
+from skymeshx.control.solar_inspection import (
     SolarParkInspectionPlanner,
     PanelRow,
     InspectionConfig

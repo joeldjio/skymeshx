@@ -14,7 +14,7 @@ The `PX4MissionUploader` class provides mission management functionality:
 
 ```
 ┌─────────────────────┐
-│  DroneResearch App  │
+│  SkyMeshX App  │
 │  (Python)           │
 └──────────┬──────────┘
            │
@@ -53,7 +53,7 @@ The `PX4MissionUploader` class provides mission management functionality:
 ### 1. Basic Mission Upload
 
 ```python
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 # Create bridge
 bridge = PX4ROS2Bridge(namespace="", publish_hz=10.0)

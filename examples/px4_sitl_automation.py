@@ -11,8 +11,8 @@ Usage:
 
 import time
 import logging
-from droneresearch.simulation import PX4GazeboCluster
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.simulation import PX4GazeboCluster
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

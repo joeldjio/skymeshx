@@ -1,6 +1,6 @@
-# Frame Conventions in DroneResearch
+# Frame Conventions in SkyMeshX
 
-This document describes the coordinate frame conventions used throughout the DroneResearch platform and how to convert between them.
+This document describes the coordinate frame conventions used throughout the SkyMeshX platform and how to convert between them.
 
 ## Overview
 
@@ -45,7 +45,7 @@ The platform uses multiple coordinate frames depending on the context:
 
 #### NED → ENU
 ```python
-from droneresearch.ros.px4_bridge import ned_to_enu
+from skymeshx.ros.px4_bridge import ned_to_enu
 
 # Convert NED coordinates to ENU
 north, east, down = 10.0, 20.0, 30.0  # 10m North, 20m East, 30m Down
@@ -57,7 +57,7 @@ enu_east, enu_north, enu_up = ned_to_enu(north, east, down)
 
 #### ENU → NED
 ```python
-from droneresearch.ros.px4_bridge import enu_to_ned
+from skymeshx.ros.px4_bridge import enu_to_ned
 
 # Convert ENU coordinates to NED
 east, north, up = 20.0, 10.0, -30.0  # 20m East, 10m North, 30m Up
@@ -71,7 +71,7 @@ ned_north, ned_east, ned_down = enu_to_ned(east, north, up)
 
 #### FRD → FLU
 ```python
-from droneresearch.ros.px4_bridge import frd_to_flu
+from skymeshx.ros.px4_bridge import frd_to_flu
 
 # Convert FRD body frame to FLU
 forward, right, down = 1.0, 2.0, 3.0  # 1m Forward, 2m Right, 3m Down
@@ -85,24 +85,24 @@ This is a π (180°) rotation around the X-axis (forward axis).
 
 ## Module-Specific Conventions
 
-### Safety Module (`droneresearch/safety/`)
+### Safety Module (`skymeshx/safety/`)
 - **APF (Artificial Potential Field)**: Uses NED with **positive z_up** (altitude above ground)
   - Input: `Pose3D(x=North, y=East, z=altitude_above_ground)`
   - Filter inverts z internally for NED calculations
 - **CollisionPredictor**: Uses NED with standard convention
   - `DroneState(x=North, y=East, z=Down)`
 
-### Field Coverage (`droneresearch/control/field_coverage.py`)
+### Field Coverage (`skymeshx/control/field_coverage.py`)
 - Uses **local NED** coordinates relative to home position
 - GPS coordinates converted to NED for planning
 - Waypoints generated in NED, then converted back to GPS
 
-### ROS2 Bridges (`droneresearch/ros/`)
+### ROS2 Bridges (`skymeshx/ros/`)
 - **PX4Bridge**: Automatically converts between PX4 (NED/FRD) and ROS2 (ENU/FLU)
 - **PX4FormationController**: Uses NED with positive altitude for formation offsets
 - All conversions handled transparently
 
-### Exploration (`droneresearch/exploration/`)
+### Exploration (`skymeshx/exploration/`)
 - **FrontierBridge**: Uses local NED for odometry and carrot poses
 - **VSwarmBridge**: Converts body-frame velocities to NED for navigation
 

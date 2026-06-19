@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Das UAVResearch GCS UI zeigt **moderate Sicherheitslücken** mit **8 kritischen Schwachstellen** in Web-Integration, Input-Validation und Command-Injection. Die Hauptrisiken liegen in der **ungeschützten JavaScript-Python Bridge** und **fehlender Input-Sanitization**.
+Das SkyMeshX GCS UI zeigt **moderate Sicherheitslücken** mit **8 kritischen Schwachstellen** in Web-Integration, Input-Validation und Command-Injection. Die Hauptrisiken liegen in der **ungeschützten JavaScript-Python Bridge** und **fehlender Input-Sanitization**.
 
 ### Kritische Findings
 
@@ -319,7 +319,7 @@ def _on_avoidance(drone_id: str, lat: float, lon: float, alt: float) -> None:
         
         # Check geofence before goto
         if hasattr(safety, "geofence") and safety.geofence:
-            from droneresearch.safety.apf import Pose3D
+            from skymeshx.safety.apf import Pose3D
             pos = Pose3D(lat, lon, alt)  # Convert to local NED first!
             if not safety.geofence.contains(pos):
                 swarm.logMessage.emit(

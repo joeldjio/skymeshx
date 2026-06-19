@@ -11,8 +11,8 @@ from unittest.mock import Mock
 @pytest.mark.slow
 def test_single_drone_mission_workflow(fake_conn, snap_factory):
     """System test: Complete mission workflow for single drone"""
-    from droneresearch.sdk.drone import Drone
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.sdk.drone import Drone
+    from skymeshx.control.mission import Waypoint
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -60,7 +60,7 @@ def test_single_drone_mission_workflow(fake_conn, snap_factory):
 @pytest.mark.slow
 def test_multi_drone_formation_workflow(fake_conn):
     """System test: Multi-drone formation flight"""
-    from droneresearch.sdk.swarm import Swarm
+    from skymeshx.sdk.swarm import Swarm
     
     # ARRANGE
     swarm = Swarm()
@@ -109,9 +109,9 @@ def test_multi_drone_formation_workflow(fake_conn):
 @pytest.mark.slow
 def test_mission_with_apf_safety(fake_conn):
     """System test: Mission with APF safety filter active"""
-    from droneresearch.sdk.drone import Drone
-    from droneresearch.safety.apf import APFFilter
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.sdk.drone import Drone
+    from skymeshx.safety.apf import APFFilter
+    from skymeshx.control.mission import Waypoint
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -143,7 +143,7 @@ def test_mission_with_apf_safety(fake_conn):
     
     # Simulate APF filtering (would normally run in background)
     # For this test, we just verify APF can process positions
-    from droneresearch.safety.apf import Pose3D
+    from skymeshx.safety.apf import Pose3D
     pos = Pose3D(x=0, y=0, z=10)
     target = Pose3D(x=10, y=0, z=10)
     
@@ -161,7 +161,7 @@ def test_mission_with_apf_safety(fake_conn):
 @pytest.mark.slow
 def test_reconnect_after_connection_loss(fake_conn):
     """System test: Reconnect after connection loss"""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -195,8 +195,8 @@ def test_reconnect_after_connection_loss(fake_conn):
 @pytest.mark.slow
 def test_mission_abort_and_rtl(fake_conn):
     """System test: Abort mission and RTL"""
-    from droneresearch.sdk.drone import Drone
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.sdk.drone import Drone
+    from skymeshx.control.mission import Waypoint
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -236,8 +236,8 @@ def test_mission_abort_and_rtl(fake_conn):
 @pytest.mark.slow
 def test_swarm_mission_multi_target(fake_conn):
     """System test: Mission upload to multiple drones"""
-    from droneresearch.sdk.swarm import Swarm
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.sdk.swarm import Swarm
+    from skymeshx.control.mission import Waypoint
     
     # ARRANGE
     swarm = Swarm()
@@ -287,7 +287,7 @@ def test_swarm_mission_multi_target(fake_conn):
 @pytest.mark.slow
 def test_goto_command_workflow(fake_conn):
     """System test: GOTO command workflow"""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -320,7 +320,7 @@ def test_goto_command_workflow(fake_conn):
 @pytest.mark.slow
 def test_mode_switching_workflow(fake_conn):
     """System test: Flight mode switching"""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -344,8 +344,8 @@ def test_mode_switching_workflow(fake_conn):
 @pytest.mark.slow
 def test_telemetry_logging_workflow(fake_conn, tmp_path):
     """System test: Telemetry logging during flight"""
-    from droneresearch.sdk.drone import Drone
-    from droneresearch.data.logger import DataLogger
+    from skymeshx.sdk.drone import Drone
+    from skymeshx.data.logger import DataLogger
     
     # ARRANGE
     drone = Drone("UAV_1", fake_conn)
@@ -392,7 +392,7 @@ def test_telemetry_logging_workflow(fake_conn, tmp_path):
 @pytest.mark.slow
 def test_experiment_script_execution():
     """System test: Execute experiment script"""
-    from droneresearch.experiment.manager import ExperimentManager
+    from skymeshx.experiment.manager import ExperimentManager
     
     # ARRANGE
     script = """

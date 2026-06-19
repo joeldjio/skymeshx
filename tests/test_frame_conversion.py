@@ -10,7 +10,7 @@ import math
 
 def test_ned_to_enu_px4_bridge():
     """Test NED→ENU conversion in px4_bridge."""
-    from droneresearch.ros.px4_bridge import ned_to_enu
+    from skymeshx.ros.px4_bridge import ned_to_enu
     
     # Test case: North=1, East=2, Down=3
     result = ned_to_enu(1.0, 2.0, 3.0)
@@ -21,7 +21,7 @@ def test_ned_to_enu_px4_bridge():
 
 def test_enu_to_ned_px4_bridge():
     """Test ENU→NED conversion in px4_bridge."""
-    from droneresearch.ros.px4_bridge import enu_to_ned
+    from skymeshx.ros.px4_bridge import enu_to_ned
     
     # Test case: East=2, North=1, Up=-3
     result = enu_to_ned(2.0, 1.0, -3.0)
@@ -32,7 +32,7 @@ def test_enu_to_ned_px4_bridge():
 
 def test_ned_to_enu_px4_formation():
     """Test NED→ENU conversion in px4_formation."""
-    from droneresearch.ros.px4_formation import ned_to_enu
+    from skymeshx.ros.px4_formation import ned_to_enu
     
     # Test case: North=1, East=2, Down=3
     result = ned_to_enu(1.0, 2.0, 3.0)
@@ -43,7 +43,7 @@ def test_ned_to_enu_px4_formation():
 
 def test_enu_to_ned_px4_formation():
     """Test ENU→NED conversion in px4_formation."""
-    from droneresearch.ros.px4_formation import enu_to_ned
+    from skymeshx.ros.px4_formation import enu_to_ned
     
     # Test case: East=2, North=1, Up=-3
     result = enu_to_ned(2.0, 1.0, -3.0)
@@ -54,7 +54,7 @@ def test_enu_to_ned_px4_formation():
 
 def test_ned_enu_roundtrip_px4_bridge():
     """Test NED→ENU→NED roundtrip in px4_bridge."""
-    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
+    from skymeshx.ros.px4_bridge import ned_to_enu, enu_to_ned
     
     # Original NED coordinates
     n, e, d = 10.0, 20.0, 30.0
@@ -69,7 +69,7 @@ def test_ned_enu_roundtrip_px4_bridge():
 
 def test_ned_enu_roundtrip_px4_formation():
     """Test NED→ENU→NED roundtrip in px4_formation."""
-    from droneresearch.ros.px4_formation import ned_to_enu, enu_to_ned
+    from skymeshx.ros.px4_formation import ned_to_enu, enu_to_ned
     
     # Original NED coordinates
     n, e, d = 10.0, 20.0, 30.0
@@ -84,7 +84,7 @@ def test_ned_enu_roundtrip_px4_formation():
 
 def test_frd_to_flu():
     """Test FRD→FLU body frame conversion."""
-    from droneresearch.ros.px4_bridge import frd_to_flu
+    from skymeshx.ros.px4_bridge import frd_to_flu
     
     # Test case: Forward=1, Right=2, Down=3
     result = frd_to_flu(1.0, 2.0, 3.0)
@@ -95,10 +95,10 @@ def test_frd_to_flu():
 
 def test_consistency_between_modules():
     """Test that both modules produce identical results."""
-    from droneresearch.ros.px4_bridge import ned_to_enu as ned_to_enu_bridge
-    from droneresearch.ros.px4_bridge import enu_to_ned as enu_to_ned_bridge
-    from droneresearch.ros.px4_formation import ned_to_enu as ned_to_enu_formation
-    from droneresearch.ros.px4_formation import enu_to_ned as enu_to_ned_formation
+    from skymeshx.ros.px4_bridge import ned_to_enu as ned_to_enu_bridge
+    from skymeshx.ros.px4_bridge import enu_to_ned as enu_to_ned_bridge
+    from skymeshx.ros.px4_formation import ned_to_enu as ned_to_enu_formation
+    from skymeshx.ros.px4_formation import enu_to_ned as enu_to_ned_formation
     
     # Test multiple coordinate sets
     test_cases = [
@@ -124,7 +124,7 @@ def test_consistency_between_modules():
 
 def test_zero_coordinates():
     """Test conversion of zero coordinates."""
-    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
+    from skymeshx.ros.px4_bridge import ned_to_enu, enu_to_ned
     
     # Zero should remain zero
     assert ned_to_enu(0.0, 0.0, 0.0) == (0.0, 0.0, 0.0)
@@ -133,7 +133,7 @@ def test_zero_coordinates():
 
 def test_altitude_sign_convention():
     """Test that altitude (z-axis) sign is correctly inverted."""
-    from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned
+    from skymeshx.ros.px4_bridge import ned_to_enu, enu_to_ned
     
     # Positive altitude in NED (down) should be negative in ENU (up)
     n, e, d = 0.0, 0.0, 10.0  # 10m down in NED
@@ -148,7 +148,7 @@ def test_altitude_sign_convention():
 
 def test_north_east_swap():
     """Test that North and East are correctly swapped."""
-    from droneresearch.ros.px4_bridge import ned_to_enu
+    from skymeshx.ros.px4_bridge import ned_to_enu
     
     # Pure North in NED should be pure North in ENU (second component)
     enu_e, enu_n, enu_u = ned_to_enu(10.0, 0.0, 0.0)

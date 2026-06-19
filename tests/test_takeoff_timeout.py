@@ -10,7 +10,7 @@ from tests.conftest import FakeConnection, FakeTelemetry
 
 def test_takeoff_timeout_when_altitude_not_reached(fake_conn):
     """Takeoff times out if altitude is never reached."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # Setup: already armed and in mode, but altitude never reached
     fake_conn.telemetry.alt_rel = 0.0
@@ -33,7 +33,7 @@ def test_takeoff_timeout_when_altitude_not_reached(fake_conn):
 
 def test_takeoff_succeeds_when_altitude_reached(fake_conn):
     """Takeoff succeeds when altitude is reached within timeout."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # Setup: telemetry reaches target altitude
     fake_conn.telemetry.alt_rel = 0.0
@@ -64,7 +64,7 @@ def test_takeoff_succeeds_when_altitude_reached(fake_conn):
 
 def test_takeoff_default_timeout():
     """Takeoff has reasonable default timeout (30s)."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     import inspect
     
     # Check default parameter
@@ -75,7 +75,7 @@ def test_takeoff_default_timeout():
 
 def test_land_has_timeout(fake_conn):
     """Land operation also has timeout."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     # IMPORTANT: Start with armed=True so land() doesn't return immediately
     fake_conn.telemetry.armed = True
@@ -95,7 +95,7 @@ def test_land_has_timeout(fake_conn):
 
 def test_goto_has_timeout(fake_conn):
     """Goto operation also has timeout."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     fake_conn.telemetry.lat = 0.0
     fake_conn.telemetry.lon = 0.0
@@ -115,7 +115,7 @@ def test_goto_has_timeout(fake_conn):
 
 def test_wait_for_helper_respects_timeout(fake_conn):
     """_wait_for helper correctly implements timeout."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     drone = Drone(fake_conn)
     
@@ -130,7 +130,7 @@ def test_wait_for_helper_respects_timeout(fake_conn):
 
 def test_wait_for_returns_immediately_when_condition_met(fake_conn):
     """_wait_for returns immediately when condition is met."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     drone = Drone(fake_conn)
     
@@ -145,7 +145,7 @@ def test_wait_for_returns_immediately_when_condition_met(fake_conn):
 
 def test_takeoff_with_very_long_timeout(fake_conn):
     """Takeoff can have very long timeout for slow operations."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     import inspect
     
     # Verify timeout parameter accepts large values
@@ -158,7 +158,7 @@ def test_takeoff_with_very_long_timeout(fake_conn):
 
 def test_multiple_takeoff_attempts_dont_accumulate(fake_conn):
     """Multiple failed takeoff attempts don't accumulate delays."""
-    from droneresearch.sdk.drone import Drone
+    from skymeshx.sdk.drone import Drone
     
     fake_conn.telemetry.alt_rel = 0.0
     fake_conn.telemetry.armed = True

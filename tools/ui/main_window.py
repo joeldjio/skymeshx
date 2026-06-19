@@ -1,5 +1,5 @@
 """
-uavresearch gcs — Main Window.
+skymeshx gcs — Main Window.
 
 Tabs:
   1. Dashboard  — Live telemetry for active drone
@@ -35,7 +35,7 @@ from tools.ui.safety_tab import SafetyTab
 from tools.ui.style import DARK_THEME, STATUSBAR_STYLESHEET, TAB_STYLESHEET, Colors
 from tools.ui.swarm_tab import SwarmTab
 
-_APP_TITLE = "uavresearch gcs"
+_APP_TITLE = "skymeshx gcs"
 _APP_VERSION = f"v{VERSION}"
 
 

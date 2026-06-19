@@ -22,7 +22,7 @@ def mock_ros2_imports():
         'px4_msgs.msg': MagicMock(),
     }):
         # Patch the _ROS2_OK and _PX4_MSGS_OK flags
-        import droneresearch.ros.px4_bridge as bridge_module
+        import skymeshx.ros.px4_bridge as bridge_module
         bridge_module._ROS2_OK = True
         bridge_module._PX4_MSGS_OK = True
         yield
@@ -30,7 +30,7 @@ def mock_ros2_imports():
 
 def test_connection_status_enum():
     """Test ConnectionStatus enum values."""
-    from droneresearch.ros.px4_bridge import ConnectionStatus
+    from skymeshx.ros.px4_bridge import ConnectionStatus
     
     assert ConnectionStatus.DISCONNECTED.value == "disconnected"
     assert ConnectionStatus.CONNECTING.value == "connecting"
@@ -41,7 +41,7 @@ def test_connection_status_enum():
 
 def test_initial_status():
     """Test bridge starts in DISCONNECTED status."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     assert bridge.get_connection_status() == ConnectionStatus.DISCONNECTED
@@ -50,7 +50,7 @@ def test_initial_status():
 
 def test_reconnect_info_initial():
     """Test initial reconnect info."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     info = bridge.get_reconnect_info()
@@ -63,7 +63,7 @@ def test_reconnect_info_initial():
 
 def test_auto_reconnect_disabled():
     """Test bridge with auto_reconnect=False."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test", auto_reconnect=False)
     assert bridge._auto_reconnect is False
@@ -71,7 +71,7 @@ def test_auto_reconnect_disabled():
 
 def test_custom_reconnect_delay():
     """Test custom max_reconnect_delay."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test", max_reconnect_delay=60.0)
     assert bridge._max_reconnect_delay == 60.0
@@ -79,7 +79,7 @@ def test_custom_reconnect_delay():
 
 def test_exponential_backoff_calculation():
     """Test exponential backoff delay calculation."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test", max_reconnect_delay=30.0)
     
@@ -108,7 +108,7 @@ def test_exponential_backoff_calculation():
 
 def test_connection_status_callback():
     """Test connection status change callbacks."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -134,7 +134,7 @@ def test_connection_status_callback():
 
 def test_connection_status_no_duplicate_callbacks():
     """Test status callbacks only fire on actual changes."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -156,7 +156,7 @@ def test_connection_status_no_duplicate_callbacks():
 
 def test_telemetry_updates_message_time():
     """Test telemetry updates track last message time."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -173,7 +173,7 @@ def test_telemetry_updates_message_time():
 
 def test_reconnect_info_after_message():
     """Test reconnect info shows message age correctly."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -188,7 +188,7 @@ def test_reconnect_info_after_message():
 
 def test_connection_timeout_detection():
     """Test connection timeout is detected correctly."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     bridge._connection_timeout = 0.2  # 200ms timeout for testing
@@ -202,7 +202,7 @@ def test_connection_timeout_detection():
 
 def test_multiple_status_callbacks():
     """Test multiple callbacks can be registered."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -222,7 +222,7 @@ def test_multiple_status_callbacks():
 
 def test_callback_exception_handling():
     """Test callbacks that raise exceptions don't crash bridge."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -244,12 +244,12 @@ def test_callback_exception_handling():
 
 def test_start_sets_initial_status():
     """Test start() initializes reconnect state."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
     # Mock acquire_ros to return False (simulating ROS2 not available)
-    with patch('droneresearch.ros.px4_bridge.acquire_ros', return_value=False):
+    with patch('skymeshx.ros.px4_bridge.acquire_ros', return_value=False):
         bridge.start()
         
         # Should fail to start and set FAILED status
@@ -259,13 +259,13 @@ def test_start_sets_initial_status():
 
 def test_stop_sets_disconnected_status():
     """Test stop() sets DISCONNECTED status."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     bridge._running = True
     bridge._set_status(ConnectionStatus.CONNECTED)
     
-    with patch('droneresearch.ros.px4_bridge.release_ros'):
+    with patch('skymeshx.ros.px4_bridge.release_ros'):
         bridge.stop()
     
     assert bridge.get_connection_status() == ConnectionStatus.DISCONNECTED
@@ -273,7 +273,7 @@ def test_stop_sets_disconnected_status():
 
 def test_is_connected_only_true_when_connected():
     """Test is_connected() returns True only for CONNECTED status."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ConnectionStatus
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -295,7 +295,7 @@ def test_is_connected_only_true_when_connected():
 
 def test_reconnect_attempts_increment():
     """Test reconnect attempts counter increments."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     
@@ -310,7 +310,7 @@ def test_reconnect_attempts_increment():
 
 def test_reconnect_attempts_reset_on_success():
     """Test reconnect attempts reset to 0 on successful connection."""
-    from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+    from skymeshx.ros.px4_bridge import PX4ROS2Bridge
     
     bridge = PX4ROS2Bridge(namespace="test")
     bridge._reconnect_attempts = 5

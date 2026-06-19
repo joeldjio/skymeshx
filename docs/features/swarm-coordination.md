@@ -4,7 +4,7 @@ Multi-drone coordination with formation flying, parallel operations, and synchro
 
 ## Overview
 
-The UAV Research Platform provides comprehensive swarm coordination capabilities:
+The SkyMeshX Platform provides comprehensive swarm coordination capabilities:
 
 - **Multi-drone management** - Add, remove, and control multiple drones
 - **Parallel operations** - Execute commands on all drones simultaneously
@@ -16,7 +16,7 @@ The UAV Research Platform provides comprehensive swarm coordination capabilities
 ## Quick Start
 
 ```python
-from droneresearch import Swarm
+from skymeshx import Swarm
 
 # Create swarm
 swarm = Swarm()
@@ -187,7 +187,7 @@ swarm.stop_follow()
 
 ### 4. Formation Geometry Details
 
-All formations use canonical geometry from `droneresearch.sdk.formations`:
+All formations use canonical geometry from `skymeshx.sdk.formations`:
 
 #### Line Formation
 
@@ -315,7 +315,7 @@ for drone in swarm.drones:
 ### 1. Custom Formation Patterns
 
 ```python
-from droneresearch.sdk.formations import formation_offsets
+from skymeshx.sdk.formations import formation_offsets
 
 # Get offsets for custom processing
 offsets = formation_offsets("v", count=5, spacing=10.0)
@@ -355,7 +355,7 @@ swarm.formation("line", spacing=10.0)  # Larger spacing for fixed-wing
 ### 3. Swarm with Safety Filter
 
 ```python
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 swarm = Swarm()
 # ... add drones ...
@@ -434,7 +434,7 @@ for drone in swarm.drones:
 ### 5. Swarm State Monitoring
 
 ```python
-from droneresearch.core.fsm import DroneState
+from skymeshx.core.fsm import DroneState
 
 # Check if all drones are ready
 def all_ready():

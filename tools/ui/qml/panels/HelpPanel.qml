@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "../components" as Cmp
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HelpPanel — Complete Feature Reference for UAVResearch GCS
+// HelpPanel — Complete Feature Reference for SkyMeshX GCS
 //
 // Modernized with new theme integration and improved accessibility
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ Item {
                     spacing: Cmp.Theme.spacing(0.5)
                     
                     Text {
-                        text: qsTr("UAVResearch Ground Control Station")
+                        text: qsTr("SkyMeshX Ground Control Station")
                         color: Cmp.Theme.warning
                         font.pixelSize: Cmp.Theme.fontXl
                         font.weight: Font.Bold

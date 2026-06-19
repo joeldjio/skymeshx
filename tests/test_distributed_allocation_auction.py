@@ -12,8 +12,8 @@ import time
 
 import pytest
 
-from droneresearch.exploration.distributed_allocation import DistributedTaskAllocator
-from droneresearch.safety.apf import Pose3D
+from skymeshx.exploration.distributed_allocation import DistributedTaskAllocator
+from skymeshx.safety.apf import Pose3D
 
 
 def test_allocator_initialization():

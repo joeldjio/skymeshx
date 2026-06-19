@@ -1,5 +1,5 @@
 """
-Full Research Pipeline — demonstrating the complete DroneResearch architecture.
+Full Research Pipeline — demonstrating the complete SkyMeshX architecture.
 
 This example shows the full stack:
     1. SITL  — simulation-first, reproducible
@@ -24,7 +24,7 @@ parser.add_argument("--port",  default="tcp:127.0.0.1:5760")
 args = parser.parse_args()
 
 # ── 1. Scenario definition ────────────────────────────────────────────────────
-from droneresearch.experiment import Scenario, ScenarioRunner, MetricsCollector
+from skymeshx.experiment import Scenario, ScenarioRunner, MetricsCollector
 
 scenario = Scenario(
     name        = "swarm_circle_formation",
@@ -47,7 +47,7 @@ print(f"Param combinations: {len(scenario.param_combinations())}")
 scenario.save("results/swarm_circle_formation.json")
 
 # ── 2. Safety filter ──────────────────────────────────────────────────────────
-from droneresearch.safety import APFSafetyFilter, Pose3D
+from skymeshx.safety import APFSafetyFilter, Pose3D
 
 apf = APFSafetyFilter(
     min_separation=2.0,
@@ -57,7 +57,7 @@ apf = APFSafetyFilter(
 )
 
 # ── 3. LLM swarm commander ────────────────────────────────────────────────────
-from droneresearch.llm import SwarmCommander
+from skymeshx.llm import SwarmCommander
 
 commander = SwarmCommander(backend="mock", apf=apf)
 commander.update_state({
@@ -73,7 +73,7 @@ for cmd_text in ["Form a circle 5m", "Move north 8 meters", "V formation"]:
 
 # ── 4. SITL + Autopilot backend ───────────────────────────────────────────────
 if args.sitl:
-    from droneresearch.simulation import SITLInstance
+    from skymeshx.simulation import SITLInstance
     print("\n── Starting SITL ──")
     sitl = SITLInstance(autopilot="ardupilot", speedup=3.0)
     sitl.start()
@@ -86,8 +86,8 @@ else:
     connection = args.port
 
 # ── 5. UAV Models + Coordinator ───────────────────────────────────────────────
-from droneresearch.models import GenericUAVModel, CoordinatorUAVModel
-from droneresearch.core.fsm import DroneState
+from skymeshx.models import GenericUAVModel, CoordinatorUAVModel
+from skymeshx.core.fsm import DroneState
 
 coord = CoordinatorUAVModel.as_ground_station()
 
@@ -105,7 +105,7 @@ print("Available metrics:", scenario.metrics)
 print("Scenario saved to: results/swarm_circle_formation.json")
 
 # ── 7. Replay demo ────────────────────────────────────────────────────────────
-from droneresearch.simulation.replay import TelemetryReplay
+from skymeshx.simulation.replay import TelemetryReplay
 import os
 
 log_files = []

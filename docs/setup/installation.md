@@ -9,8 +9,8 @@
 ## Repository klonen
 
 ```bash
-git clone https://github.com/joeldjio/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/joeldjio/skymeshxproject.git
+cd skymeshxproject
 ```
 
 ## Python-Abhängigkeiten installieren
@@ -63,4 +63,4 @@ powershell -ExecutionPolicy Bypass -File tools/installer/build.ps1 -Target cli
 powershell -ExecutionPolicy Bypass -File tools/installer/build.ps1 -Target all
 ```
 
-Output: `tools/installer/out/uavresearch-gcs-setup-X.Y.Z.exe`
+Output: `tools/installer/out/skymeshx-gcs-setup-X.Y.Z.exe`

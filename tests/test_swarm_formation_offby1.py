@@ -36,7 +36,7 @@ class MockDrone:
 
 def _make_swarm_with_leader_at(leader_idx: int, n: int = 4):
     """Build a Swarm with n drones, leader at position leader_idx."""
-    from droneresearch.sdk.swarm_api import Swarm
+    from skymeshx.sdk.swarm_api import Swarm
 
     swarm = Swarm.__new__(Swarm)
     swarm._drones = {}

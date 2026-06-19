@@ -6,7 +6,7 @@ velocity between drones, providing larger separation when drones are
 moving quickly toward each other.
 """
 import pytest
-from droneresearch.safety.apf import AdaptiveAPFSafetyFilter, Pose3D
+from skymeshx.safety.apf import AdaptiveAPFSafetyFilter, Pose3D
 
 
 def test_adaptive_margin_increases_with_velocity():

@@ -5,7 +5,7 @@ Run:
     python examples/hover.py --port tcp:127.0.0.1:5760
 """
 import argparse
-from droneresearch import Drone
+from skymeshx import Drone
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", default="tcp:127.0.0.1:5760")

@@ -1,5 +1,5 @@
 """
-uavresearch gcs — QML application entry point (UAVResearch ground control station).
+skymeshx gcs — QML application entry point (SkyMeshX ground control station).
 
 Architecture
 ------------
@@ -9,7 +9,7 @@ Three-stage cold start:
   Stage 2 (sync, deferred): Context objects + signal wiring
   Stage 3 (async):          QML engine load, then close splash
 
-Heavy imports (rclpy, droneresearch SDK, QtWebEngine) are lazy:
+Heavy imports (rclpy, skymeshx SDK, QtWebEngine) are lazy:
 they are only triggered when actually needed, NOT at import-time.
 """
 
@@ -148,10 +148,10 @@ def _make_splash() -> QSplashScreen:
     painter.drawText(
         title_rect.translated(0, 2),
         int(Qt.AlignmentFlag.AlignCenter),
-        "uavresearch gcs",
+        "SkyMeshX",
     )
     painter.setPen(QColor("#f1f5f9"))
-    painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignCenter), "uavresearch gcs")
+    painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignCenter), "SkyMeshX")
 
     # ── Divider line with gradient ────────────────────────────────────
     line_grad = QLinearGradient(W * 0.25, 0, W * 0.75, 0)
@@ -214,11 +214,11 @@ def run() -> int:
     from tools.ui._version import VERSION
 
     app = QApplication(sys.argv)
-    app.setApplicationName("uavresearch gcs")
-    app.setApplicationDisplayName("uavresearch gcs")
+    app.setApplicationName("SkyMeshX")
+    app.setApplicationDisplayName("SkyMeshX")
     app.setApplicationVersion(VERSION)
-    app.setOrganizationName("UAVResearch")
-    app.setOrganizationDomain("uavresearch.local")
+    app.setOrganizationName("SkyMeshX")
+    app.setOrganizationDomain("skymeshx.local")
     profiler.mark("qapplication_ready")
 
     splash = _make_splash()

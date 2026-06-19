@@ -13,7 +13,7 @@ import threading
 
 import pytest
 
-from droneresearch.communication.swarm_protocol import SwarmCommunicationProtocol
+from skymeshx.communication.swarm_protocol import SwarmCommunicationProtocol
 
 
 def test_protocol_initialization():

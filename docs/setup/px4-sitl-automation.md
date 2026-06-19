@@ -65,7 +65,7 @@ python3 -m tools.ui.app
 ### Option 2: Python-Klasse
 
 ```python
-from droneresearch.simulation import PX4GazeboCluster
+from skymeshx.simulation import PX4GazeboCluster
 
 # Konfiguration
 cluster = PX4GazeboCluster(
@@ -280,8 +280,8 @@ logging.basicConfig(level=logging.INFO)
 ### Einfacher Takeoff
 
 ```python
-from droneresearch.simulation import PX4GazeboCluster
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.simulation import PX4GazeboCluster
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 import time
 
 with PX4GazeboCluster(num_drones=1) as cluster:

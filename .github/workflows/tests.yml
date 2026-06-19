@@ -44,7 +44,7 @@ jobs:
       run: |
         pytest tests/ \
           -m "not slow and not sitl and not e2e and not ui" \
-          --cov=droneresearch \
+          --cov=skymeshx \
           --cov-report=xml \
           --cov-report=term \
           --junitxml=junit.xml \
@@ -228,19 +228,19 @@ jobs:
         pip install ruff mypy black isort
     
     - name: Run ruff
-      run: ruff check droneresearch/ tools/ tests/
+      run: ruff check skymeshx/ tools/ tests/
       continue-on-error: true
     
     - name: Run black
-      run: black --check droneresearch/ tools/ tests/
+      run: black --check skymeshx/ tools/ tests/
       continue-on-error: true
     
     - name: Run isort
-      run: isort --check-only droneresearch/ tools/ tests/
+      run: isort --check-only skymeshx/ tools/ tests/
       continue-on-error: true
     
     - name: Run mypy
-      run: mypy droneresearch/ --ignore-missing-imports
+      run: mypy skymeshx/ --ignore-missing-imports
       continue-on-error: true
 
   # ============================================================================

@@ -1,4 +1,4 @@
-UAVResearch Ground Control Station
+SkyMeshX Ground Control Station
 Third-Party Software Licenses
 
 This software includes the following third-party components:

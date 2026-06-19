@@ -7,13 +7,13 @@ starting processes (mocked).
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from droneresearch.simulation.px4_gazebo import PX4GazeboCluster
+from skymeshx.simulation.px4_gazebo import PX4GazeboCluster
 
 
 class TestPX4GazeboCluster:
     """Test PX4GazeboCluster class."""
     
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_init_default_params(self, mock_isdir):
         """Test initialization with default parameters."""
         mock_isdir.return_value = True
@@ -25,7 +25,7 @@ class TestPX4GazeboCluster:
         assert cluster._running is False
         assert len(cluster._processes) == 0
     
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_init_custom_params(self, mock_isdir):
         """Test initialization with custom parameters."""
         mock_isdir.return_value = True
@@ -58,7 +58,7 @@ class TestPX4GazeboCluster:
         with pytest.raises(FileNotFoundError, match="PX4 directory not found"):
             PX4GazeboCluster(px4_dir="/nonexistent/path")
     
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_get_namespaces(self, mock_isdir):
         """Test namespace generation."""
         mock_isdir.return_value = True
@@ -67,7 +67,7 @@ class TestPX4GazeboCluster:
         
         assert namespaces == ["uav_1", "uav_2", "uav_3"]
     
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_get_namespaces_custom_prefix(self, mock_isdir):
         """Test namespace generation with custom prefix."""
         mock_isdir.return_value = True
@@ -76,9 +76,9 @@ class TestPX4GazeboCluster:
         
         assert namespaces == ["drone_1", "drone_2"]
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_start_success(self, mock_isdir, mock_sleep, mock_popen):
         """Test successful cluster start."""
         mock_isdir.return_value = True
@@ -94,9 +94,9 @@ class TestPX4GazeboCluster:
         assert len(cluster._processes) == 2  # Agent + 1 SITL
         assert mock_popen.call_count == 2
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_start_already_running(self, mock_isdir, mock_sleep, mock_popen):
         """Test that starting already running cluster returns False."""
         mock_isdir.return_value = True
@@ -111,9 +111,9 @@ class TestPX4GazeboCluster:
         result = cluster.start()
         assert result is False
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_start_agent_fails(self, mock_isdir, mock_sleep, mock_popen):
         """Test that agent failure is handled."""
         mock_isdir.return_value = True
@@ -127,7 +127,7 @@ class TestPX4GazeboCluster:
         assert result is False
         assert cluster._running is False
     
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_stop_empty(self, mock_isdir):
         """Test stopping when no processes are running."""
         mock_isdir.return_value = True
@@ -137,10 +137,10 @@ class TestPX4GazeboCluster:
         assert len(cluster._processes) == 0
         assert cluster._running is False
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
-    @patch('droneresearch.simulation.px4_gazebo.sys.platform', 'linux')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.sys.platform', 'linux')
     def test_stop_graceful(self, mock_isdir, mock_sleep, mock_popen):
         """Test graceful stop."""
         mock_isdir.return_value = True
@@ -158,9 +158,9 @@ class TestPX4GazeboCluster:
         # On Linux, terminate() should be called
         assert mock_proc.terminate.call_count >= 2  # Agent + SITL
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_is_running(self, mock_isdir, mock_sleep, mock_popen):
         """Test is_running status."""
         mock_isdir.return_value = True
@@ -178,9 +178,9 @@ class TestPX4GazeboCluster:
         cluster.stop()
         assert cluster.is_running() is False
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_context_manager(self, mock_isdir, mock_sleep, mock_popen):
         """Test context manager usage."""
         mock_isdir.return_value = True
@@ -194,8 +194,8 @@ class TestPX4GazeboCluster:
         # After context exit, should be stopped
         assert cluster.is_running() is False
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_context_manager_start_failure(self, mock_isdir, mock_popen):
         """Test context manager with start failure."""
         mock_isdir.return_value = True
@@ -207,9 +207,9 @@ class TestPX4GazeboCluster:
             with PX4GazeboCluster(num_drones=1):
                 pass
     
-    @patch('droneresearch.simulation.px4_gazebo.subprocess.Popen')
-    @patch('droneresearch.simulation.px4_gazebo.time.sleep')
-    @patch('droneresearch.simulation.px4_gazebo.os.path.isdir')
+    @patch('skymeshx.simulation.px4_gazebo.subprocess.Popen')
+    @patch('skymeshx.simulation.px4_gazebo.time.sleep')
+    @patch('skymeshx.simulation.px4_gazebo.os.path.isdir')
     def test_multi_drone_start(self, mock_isdir, mock_sleep, mock_popen):
         """Test starting multiple drones."""
         mock_isdir.return_value = True

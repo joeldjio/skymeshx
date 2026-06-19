@@ -2,7 +2,7 @@
 Example: Autonomous 3D Frontier Exploration
 
 Uses the larics uav_frontier_exploration_3d ROS package as planner.
-DroneResearch provides:
+SkyMeshX provides:
   - MAVLink telemetry → ROS2 Odometry
   - Point cloud forwarding (from depth cam topic)
   - Receives frontier goals → drone.goto()
@@ -23,8 +23,8 @@ Run:
 """
 import argparse
 import time
-from droneresearch import Drone
-from droneresearch.exploration import FrontierExplorationBridge
+from skymeshx import Drone
+from skymeshx.exploration import FrontierExplorationBridge
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port",    default="tcp:127.0.0.1:5760")

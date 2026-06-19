@@ -44,14 +44,14 @@ ESCAPE Framework
 - **Thread-safe** concurrent updates
 
 ### Modules
-- `droneresearch.safety.perception_avoidance`
-- `droneresearch.sensors.depth_camera`
+- `skymeshx.safety.perception_avoidance`
+- `skymeshx.sensors.depth_camera`
 
 ### Usage
 
 ```python
-from droneresearch.safety.perception_avoidance import PerceptionEnhancedAPF
-from droneresearch.safety.apf import Pose3D
+from skymeshx.safety.perception_avoidance import PerceptionEnhancedAPF
+from skymeshx.safety.apf import Pose3D
 
 # Create filter with perception
 apf = PerceptionEnhancedAPF(
@@ -118,14 +118,14 @@ class SafetyContext(QObject):
 - **Distributed consensus** without central coordinator
 
 ### Modules
-- `droneresearch.communication.swarm_protocol`
-- `droneresearch.exploration.distributed_allocation`
+- `skymeshx.communication.swarm_protocol`
+- `skymeshx.exploration.distributed_allocation`
 
 ### Usage
 
 ```python
-from droneresearch.communication import SwarmCommunicationProtocol
-from droneresearch.exploration import DistributedTaskAllocator
+from skymeshx.communication import SwarmCommunicationProtocol
+from skymeshx.exploration import DistributedTaskAllocator
 
 # Setup communication
 protocol = SwarmCommunicationProtocol(
@@ -219,12 +219,12 @@ class SwarmContext(QObject):
 - **Dynamic adjustment** via setters
 
 ### Module
-- `droneresearch.safety.apf.AdaptiveAPFSafetyFilter`
+- `skymeshx.safety.apf.AdaptiveAPFSafetyFilter`
 
 ### Usage
 
 ```python
-from droneresearch.safety import AdaptiveAPFSafetyFilter
+from skymeshx.safety import AdaptiveAPFSafetyFilter
 
 # Create adaptive filter
 apf = AdaptiveAPFSafetyFilter(
@@ -337,12 +337,12 @@ class SafetyContext(QObject):
 - **Automatic cleanup** of stale data
 
 ### Module
-- `droneresearch.mapping.distributed_map`
+- `skymeshx.mapping.distributed_map`
 
 ### Usage
 
 ```python
-from droneresearch.mapping import DistributedOccupancyMap
+from skymeshx.mapping import DistributedOccupancyMap
 
 # Create local map
 map = DistributedOccupancyMap(

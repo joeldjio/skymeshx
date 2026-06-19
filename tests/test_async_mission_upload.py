@@ -12,7 +12,7 @@ from enum import Enum
 
 def test_upload_status_enum():
     """Test UploadStatus enum exists."""
-    from droneresearch.ros.px4_mission import UploadStatus
+    from skymeshx.ros.px4_mission import UploadStatus
     
     assert UploadStatus.IDLE.value == "idle"
     assert UploadStatus.SENDING_COUNT.value == "sending_count"
@@ -36,7 +36,7 @@ def mock_uploader():
     uploader._upload_cancelled.is_set = Mock(return_value=False)
     
     # Mock the enum
-    from droneresearch.ros.px4_mission import UploadStatus
+    from skymeshx.ros.px4_mission import UploadStatus
     
     # Mock get_upload_status
     def mock_get_status():

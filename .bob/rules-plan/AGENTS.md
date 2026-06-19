@@ -10,12 +10,12 @@
 
 ### ROS2 Context Lifecycle
 - Multiple bridges (PX4, VSwarm, Frontier) share single `rclpy` context
-- Reference counting in [`droneresearch/ros/context.py`](../../droneresearch/ros/context.py) prevents conflicts
+- Reference counting in [`skymeshx/ros/context.py`](../../skymeshx/ros/context.py) prevents conflicts
 - Second `rclpy.init()` raises `RCLError` - this is why pattern exists
 - When planning ROS2 features, MUST use `acquire_ros()` / `release_ros()`
 
 ### Mission Upload Blocking Constraint
-- [`MissionEngine.upload()`](../../droneresearch/control/mission.py) is **blocking** (~50ms per waypoint)
+- [`MissionEngine.upload()`](../../skymeshx/control/mission.py) is **blocking** (~50ms per waypoint)
 - Uses hybrid protocol with 250ms timeout for handshake
 - NEVER plan to call from UI/Qt main thread - requires worker thread
 - This is protocol limitation, not implementation bug
@@ -23,20 +23,20 @@
 ### Frame Convention Complexity (PX4 ROS2)
 - PX4 native: NED (North-East-Down) + FRD (Forward-Right-Down)
 - ROS2 standard: ENU (East-North-Up) + FLU (Forward-Left-Up)
-- Conversion functions in [`droneresearch/ros/px4_bridge.py`](../../droneresearch/ros/px4_bridge.py)
+- Conversion functions in [`skymeshx/ros/px4_bridge.py`](../../skymeshx/ros/px4_bridge.py)
 - Topics: `/fmu/out/*` (PX4→ROS2), `/fmu/in/*` (ROS2→PX4)
 - Uses **uXRCE-DDS**, NOT MAVLink-over-ROS or FastRTPS
 
 ### APF Filter Coordinate System
 - Despite "NED" terminology, expects **positive z_up** for altitude input
 - Filter handles inversion internally for NED calculations
-- [`Pose3D`](../../droneresearch/safety/apf.py): `x=North, y=East, z=altitude_above_ground`
+- [`Pose3D`](../../skymeshx/safety/apf.py): `x=North, y=East, z=altitude_above_ground`
 - When planning APF integration, remember this quirk
 
 ### Optional Dependency Architecture
 - ROS2 (`rclpy`, `px4_msgs`) is optional - core works without it
 - UI (`PyQt6`) is optional - core is headless
-- Lazy imports in [`droneresearch/__init__.py`](../../droneresearch/__init__.py) prevent hard dependencies
+- Lazy imports in [`skymeshx/__init__.py`](../../skymeshx/__init__.py) prevent hard dependencies
 - When planning features, consider which dependencies are truly required
 
 ### Raspberry Pi Constraints

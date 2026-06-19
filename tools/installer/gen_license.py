@@ -1,5 +1,5 @@
 """
-uavresearch gcs — license key generator (offline, no server).
+skymeshx gcs — license key generator (offline, no server).
 
 Use this script when a customer's free trial expires and they want to
 keep using the software. The generated key is purely a function of the
@@ -89,7 +89,7 @@ def main() -> int:
     bar = "─" * 60
     print()
     print(f"┌{bar}┐")
-    print(f"│  uavresearch gcs license key{' ' * (bar.__len__() - 19)}│")
+    print(f"│  skymeshx gcs license key{' ' * (bar.__len__() - 19)}│")
     print(f"├{bar}┤")
     if args.customer:
         print(f"│  Customer : {args.customer}")
@@ -98,9 +98,9 @@ def main() -> int:
     print(f"└{bar}┘")
     print()
     print("Send the 'Key' line to the customer. They paste it into the")
-    print("uavresearch gcs activation dialog — no internet required.")
+    print("skymeshx gcs activation dialog — no internet required.")
     print()
-    if LICENSE_SECRET.startswith("uavresearch-dev-secret"):
+    if LICENSE_SECRET.startswith("skymeshx-dev-secret"):
         print(
             "⚠  The LICENSE_SECRET in tools/ui/_version.py is still the\n"
             "   development default. ROTATE it before shipping keys to\n"

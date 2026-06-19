@@ -16,7 +16,7 @@ def test_ui_startup_and_navigation(page):
     page.goto("http://localhost:8080")
     
     # Wait for UI to load
-    page.wait_for_selector("text=uavresearch gcs", timeout=5000)
+    page.wait_for_selector("text=skymeshx gcs", timeout=5000)
     
     # Verify all tabs are visible
     tabs = ["Map", "Telemetry", "Swarm", "Safety", "ROS2", "Scenario", "Log"]
@@ -42,7 +42,7 @@ def test_ui_startup_and_navigation(page):
 def test_drone_connection_workflow(page):
     """E2E: Connect drone via UI"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Dashboard
     page.click("text=Telemetry")
@@ -66,7 +66,7 @@ def test_drone_connection_workflow(page):
 def test_arm_disarm_workflow(page):
     """E2E: ARM and DISARM drone via InstrBar"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Find ARM button in InstrBar
     arm_button = page.locator("button:has-text('ARM')")
@@ -101,7 +101,7 @@ def test_arm_disarm_workflow(page):
 def test_mission_planning_workflow(page):
     """E2E: Plan mission via Map"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Map
     page.click("text=Map")
@@ -133,7 +133,7 @@ def test_mission_planning_workflow(page):
 def test_apf_toggle_workflow(page):
     """E2E: Toggle APF safety filter"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Safety panel
     page.click("text=Safety")
@@ -168,7 +168,7 @@ def test_apf_toggle_workflow(page):
 def test_formation_preview_workflow(page):
     """E2E: Preview formation in Swarm panel"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Swarm panel
     page.click("text=Swarm")
@@ -194,7 +194,7 @@ def test_formation_preview_workflow(page):
 def test_ros2_bag_recording_workflow(page):
     """E2E: Start/stop ROS2 bag recording"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to ROS2 panel
     page.click("text=ROS2")
@@ -225,7 +225,7 @@ def test_ros2_bag_recording_workflow(page):
 def test_experiment_script_execution_workflow(page):
     """E2E: Execute experiment script"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Experiment panel
     page.click("text=Scenario")
@@ -252,7 +252,7 @@ def test_experiment_script_execution_workflow(page):
 def test_log_filtering_workflow(page):
     """E2E: Filter system logs"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Log panel
     page.click("text=Log")
@@ -285,7 +285,7 @@ def test_performance_startup_time(page):
     page.goto("http://localhost:8080")
     
     # Wait for UI to be fully loaded
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     page.wait_for_load_state("networkidle")
     
     end_time = time.time()

@@ -20,7 +20,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned, frd_to_flu
+from skymeshx.ros.px4_bridge import ned_to_enu, enu_to_ned, frd_to_flu
 
 
 def print_section(title: str):

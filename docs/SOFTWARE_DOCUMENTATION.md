@@ -1,4 +1,4 @@
-# DroneResearch Platform - Complete Software Documentation
+# SkyMeshX Platform - Complete Software Documentation
 
 **Version:** 0.3.1+  
 **Last Updated:** 2026-06-09  
@@ -25,9 +25,9 @@
 
 ## 1. Introduction
 
-### 1.1 What is DroneResearch?
+### 1.1 What is SkyMeshX?
 
-DroneResearch is an **enterprise-grade UAV research middleware platform** designed for reproducible drone experiments, swarm coordination, and autonomous operations. It provides a unified API for multiple autopilot systems (ArduPilot, PX4) and integrates with ROS2 for advanced robotics applications.
+SkyMeshX is an **enterprise-grade UAV research middleware platform** designed for reproducible drone experiments, swarm coordination, and autonomous operations. It provides a unified API for multiple autopilot systems (ArduPilot, PX4) and integrates with ROS2 for advanced robotics applications.
 
 ### 1.2 Key Features
 
@@ -107,16 +107,16 @@ DroneResearch is an **enterprise-grade UAV research middleware platform** design
 
 | Module | Purpose | Key Files |
 |--------|---------|-----------|
-| `droneresearch.core` | FSM, Connection, Telemetry | `fsm.py`, `connection.py`, `telemetry.py` |
-| `droneresearch.control` | Mission, Script execution | `mission.py`, `script_runner.py` |
-| `droneresearch.safety` | APF filter, Geofencing | `apf.py` |
-| `droneresearch.sdk` | Public API | `drone.py`, `swarm_api.py`, `formations.py` |
-| `droneresearch.ros` | ROS2 integration | `px4_bridge.py`, `bag_recorder.py` |
-| `droneresearch.llm` | LLM swarm commander | `swarm_commander.py` |
-| `droneresearch.experiment` | Scenario manager | `manager.py`, `scenario.py`, `metrics.py` |
-| `droneresearch.simulation` | SITL launcher, Replay | `sitl.py`, `replay.py` |
-| `droneresearch.data` | Logger, Store | `logger.py`, `store.py` |
-| `droneresearch.cli` | Command-line interface | `main.py` |
+| `skymeshx.core` | FSM, Connection, Telemetry | `fsm.py`, `connection.py`, `telemetry.py` |
+| `skymeshx.control` | Mission, Script execution | `mission.py`, `script_runner.py` |
+| `skymeshx.safety` | APF filter, Geofencing | `apf.py` |
+| `skymeshx.sdk` | Public API | `drone.py`, `swarm_api.py`, `formations.py` |
+| `skymeshx.ros` | ROS2 integration | `px4_bridge.py`, `bag_recorder.py` |
+| `skymeshx.llm` | LLM swarm commander | `swarm_commander.py` |
+| `skymeshx.experiment` | Scenario manager | `manager.py`, `scenario.py`, `metrics.py` |
+| `skymeshx.simulation` | SITL launcher, Replay | `sitl.py`, `replay.py` |
+| `skymeshx.data` | Logger, Store | `logger.py`, `store.py` |
+| `skymeshx.cli` | Command-line interface | `main.py` |
 | `tools.ui` | Desktop UI | `main_window.py`, `qml/` |
 | `pi.server` | Raspberry Pi server | `server.py` |
 
@@ -134,4 +134,4 @@ DroneResearch is an **enterprise-grade UAV research middleware platform** design
 
 ---
 
-**This is a living document. For the latest version, see the [GitHub repository](https://github.com/joeldjio/uavresearchproject).**
+**This is a living document. For the latest version, see the [GitHub repository](https://github.com/joeldjio/skymeshxproject).**

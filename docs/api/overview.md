@@ -2,7 +2,7 @@
 
 ## Architecture
 
-The UAV Research Platform follows a layered architecture with clear separation of concerns:
+The SkyMeshX Platform follows a layered architecture with clear separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -13,25 +13,25 @@ The UAV Research Platform follows a layered architecture with clear separation o
 ┌─────────────────────────────────────────────────────────┐
 │                   High-Level SDK                         │
 │         Drone, Swarm, MissionEngine                      │
-│              (droneresearch/sdk/)                        │
+│              (skymeshx/sdk/)                        │
 └─────────────────────────────────────────────────────────┘
                            │
 ┌─────────────────────────────────────────────────────────┐
 │                  Control & Safety                        │
 │    MissionEngine, APFSafetyFilter, Formations            │
-│    (droneresearch/control/, safety/)                     │
+│    (skymeshx/control/, safety/)                     │
 └─────────────────────────────────────────────────────────┘
                            │
 ┌─────────────────────────────────────────────────────────┐
 │                    Core Layer                            │
 │   MAVLinkConnection, StateMachine, TelemetryState        │
-│              (droneresearch/core/)                       │
+│              (skymeshx/core/)                       │
 └─────────────────────────────────────────────────────────┘
                            │
 ┌─────────────────────────────────────────────────────────┐
 │                  Autopilot Backends                      │
 │         MAVLink (ArduPilot/PX4), ROS2 (PX4)              │
-│         (droneresearch/autopilot/, ros/)                 │
+│         (skymeshx/autopilot/, ros/)                 │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -86,7 +86,7 @@ drone.on("mode", lambda mode: print(f"Mode: {mode}"))
 
 ## API Layers
 
-### High-Level SDK (`droneresearch.sdk`)
+### High-Level SDK (`skymeshx.sdk`)
 
 **For researchers and application developers:**
 
@@ -96,7 +96,7 @@ drone.on("mode", lambda mode: print(f"Mode: {mode}"))
 
 **Example:**
 ```python
-from droneresearch import Drone
+from skymeshx import Drone
 
 drone = Drone("tcp:127.0.0.1:5762")
 drone.connect()
@@ -106,7 +106,7 @@ drone.goto(48.137, 11.575, 20)
 drone.land()
 ```
 
-### Control Layer (`droneresearch.control`)
+### Control Layer (`skymeshx.control`)
 
 **For mission planning and execution:**
 
@@ -115,7 +115,7 @@ drone.land()
 
 **Example:**
 ```python
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission import MissionEngine, Waypoint
 
 mission = MissionEngine(connection)
 mission.add(Waypoint(lat=48.137, lon=11.575, alt=20))
@@ -125,7 +125,7 @@ mission.start()
 mission.wait_done()
 ```
 
-### Safety Layer (`droneresearch.safety`)
+### Safety Layer (`skymeshx.safety`)
 
 **For collision avoidance and geofencing:**
 
@@ -135,7 +135,7 @@ mission.wait_done()
 
 **Example:**
 ```python
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 apf = APFSafetyFilter(
     min_separation=2.0,
@@ -149,7 +149,7 @@ desired = {"D1": Pose3D(0, 5, 10), "D2": Pose3D(5, 5, 10)}
 safe = apf.filter(positions, desired)
 ```
 
-### Core Layer (`droneresearch.core`)
+### Core Layer (`skymeshx.core`)
 
 **For low-level control and integration:**
 
@@ -159,8 +159,8 @@ safe = apf.filter(positions, desired)
 
 **Example:**
 ```python
-from droneresearch.core.connection import MAVLinkConnection
-from droneresearch.core.fsm import StateMachine, DroneState
+from skymeshx.core.connection import MAVLinkConnection
+from skymeshx.core.fsm import StateMachine, DroneState
 
 conn = MAVLinkConnection("tcp:127.0.0.1:5762")
 fsm = StateMachine(drone_id="D1")
@@ -171,7 +171,7 @@ conn.on("armed", lambda armed:
 conn.connect()
 ```
 
-### ROS2 Integration (`droneresearch.ros`)
+### ROS2 Integration (`skymeshx.ros`)
 
 **For PX4 native integration:**
 
@@ -184,8 +184,8 @@ conn.connect()
 
 **Example:**
 ```python
-from droneresearch.ros.context import acquire_ros, release_ros
-from droneresearch.ros.px4_bridge import PX4Bridge
+from skymeshx.ros.context import acquire_ros, release_ros
+from skymeshx.ros.px4_bridge import PX4Bridge
 
 acquire_ros()
 try:
@@ -202,7 +202,7 @@ finally:
 Lazy imports avoid hard dependencies:
 ```python
 def get_backend(autopilot: str = "mavlink"):
-    from droneresearch.autopilot import get_backend as _get
+    from skymeshx.autopilot import get_backend as _get
     return _get(autopilot)
 ```
 
@@ -223,7 +223,7 @@ fsm.transition(DroneState.FLYING)  # Returns False if invalid
 ### 4. Factory Pattern
 Centralized object creation:
 ```python
-from droneresearch import get_sitl, get_coordinator, get_swarm_commander
+from skymeshx import get_sitl, get_coordinator, get_swarm_commander
 ```
 
 ### 5. Thread-Safe Containers
@@ -268,7 +268,7 @@ The platform uses lazy imports to make dependencies optional:
 
 Check availability:
 ```python
-from droneresearch.ros import _ROS2_OK
+from skymeshx.ros import _ROS2_OK
 if _ROS2_OK:
     # Use ROS2 features
 ```

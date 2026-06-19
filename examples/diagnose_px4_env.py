@@ -87,7 +87,7 @@ def main():
     print("   $ python3 examples/debug_px4_takeoff.py --altitude 20")
     print("")
     print("5. Check MAVLink telemetry in real-time:")
-    print("   $ python3 -c 'from droneresearch.sdk.drone import Drone;")
+    print("   $ python3 -c 'from skymeshx.sdk.drone import Drone;")
     print("     d = Drone(\"tcp:127.0.0.1:14550\"); d.connect(); ")
     print("     import time; [print(f\"{d.telemetry.alt_rel:.2f}m\") or time.sleep(0.1) for _ in range(100)]'")
 

@@ -1,7 +1,7 @@
 """
-DroneResearch UI Backend Bridge.
+SkyMeshX UI Backend Bridge.
 
-Wraps DroneResearch SDK objects and emits Qt signals so the UI stays
+Wraps SkyMeshX SDK objects and emits Qt signals so the UI stays
 decoupled from the research backend.
 
 Architecture
@@ -17,7 +17,7 @@ from typing import Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-# ── DroneResearch SDK — TRULY lazy ────────────────────────────────────
+# ── SkyMeshX SDK — TRULY lazy ────────────────────────────────────
 # These imports were previously eager. They pull in MAVLink, asyncio
 # event loops and a lot of model code (~300-800ms). We now defer them
 # until the first DroneBackend.connect() call.
@@ -29,21 +29,21 @@ _sdk_loaded = False
 
 
 def _ensure_sdk_loaded() -> None:
-    """Import droneresearch SDK on first use. Cached after first call."""
+    """Import skymeshx SDK on first use. Cached after first call."""
     global _DroneSDK, _GenericUAV, _ObservationUAV, _DroneState, _sdk_loaded
     if _sdk_loaded:
         return
     _sdk_loaded = True
     try:
-        from droneresearch.sdk.drone import Drone as _D
+        from skymeshx.sdk.drone import Drone as _D
 
         _DroneSDK = _D
     except ImportError:
         pass
     try:
-        from droneresearch.core.fsm import DroneState as _S
-        from droneresearch.models.generic_uav import GenericUAVModel as _G
-        from droneresearch.models.observation_uav import ObservationUAVModel as _O
+        from skymeshx.core.fsm import DroneState as _S
+        from skymeshx.models.generic_uav import GenericUAVModel as _G
+        from skymeshx.models.observation_uav import ObservationUAVModel as _O
 
         _GenericUAV = _G
         _ObservationUAV = _O
@@ -141,7 +141,7 @@ class DroneBackend(QObject):
                 )
             else:
                 self._safe_emit(
-                    self.log_message, "ERROR", "droneresearch SDK not installed."
+                    self.log_message, "ERROR", "skymeshx SDK not installed."
                 )
                 self._safe_emit(self.connected_changed, False)
                 return

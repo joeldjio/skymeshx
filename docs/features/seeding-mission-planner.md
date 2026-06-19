@@ -31,7 +31,7 @@ The Seeding Mission Planner extends the Field Coverage system with automated see
 ### Components
 
 ```
-droneresearch/control/
+skymeshx/control/
 ├── field_coverage.py       # Base coverage planning
 └── seeding_planner.py      # Seeding mission extension
     ├── SeedingConfig       # Configuration dataclass
@@ -50,7 +50,7 @@ Field Boundary → Coverage Waypoints → Seed Interpolation → Servo Commands 
 ### Python API
 
 ```python
-from droneresearch.control.seeding_planner import (
+from skymeshx.control.seeding_planner import (
     SeedingMissionPlanner,
     SeedingConfig
 )
@@ -426,6 +426,6 @@ class SeedingConfig:
 ## Support
 
 For issues or questions:
-- GitHub Issues: [uavresearchproject/issues](https://github.com/yourusername/uavresearchproject/issues)
+- GitHub Issues: [skymeshxproject/issues](https://github.com/yourusername/skymeshxproject/issues)
 - Documentation: [docs/](../README.md)
 - Tests: [tests/test_field_coverage.py](../../tests/test_field_coverage.py)

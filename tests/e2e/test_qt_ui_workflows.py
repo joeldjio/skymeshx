@@ -21,7 +21,7 @@ def test_ui_startup_and_window_creation(qapp):
     
     # Verify window is visible
     assert window.isVisible()
-    assert window.windowTitle() == "uavresearch gcs"
+    assert window.windowTitle() == "skymeshx gcs"
     
     # Verify minimum size
     assert window.width() >= 1200

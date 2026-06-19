@@ -12,7 +12,7 @@ Tests cover:
 
 import pytest
 import time
-from droneresearch.safety.battery_monitor import BatteryMonitor, BatteryStatus, PowerSample
+from skymeshx.safety.battery_monitor import BatteryMonitor, BatteryStatus, PowerSample
 
 
 @pytest.fixture

@@ -8,7 +8,7 @@ Dieses Beispiel demonstriert:
 3. Aggressive Konfiguration (10% Sicherheitsmarge)
 """
 
-from droneresearch.safety.battery_monitor import BatteryMonitor
+from skymeshx.safety.battery_monitor import BatteryMonitor
 import time
 
 

@@ -21,17 +21,17 @@ def test_depth_camera_import_without_ros2():
     """Test that import fails gracefully without ROS2."""
     with patch.dict('sys.modules', {'rclpy': None, 'sensor_msgs.msg': None}):
         with pytest.raises(ImportError, match="ROS2.*not available"):
-            from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+            from skymeshx.sensors.depth_camera import DepthCameraSubscriber
             DepthCameraSubscriber()
 
 
 @pytest.mark.skipif(
-    not hasattr(__import__('droneresearch.sensors', fromlist=['depth_camera']), 'depth_camera'),
+    not hasattr(__import__('skymeshx.sensors', fromlist=['depth_camera']), 'depth_camera'),
     reason="ROS2 not available"
 )
 def test_depth_camera_initialization():
     """Test DepthCameraSubscriber initialization."""
-    from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+    from skymeshx.sensors.depth_camera import DepthCameraSubscriber
     
     callback = MagicMock()
     
@@ -51,12 +51,12 @@ def test_depth_camera_initialization():
 
 
 @pytest.mark.skipif(
-    not hasattr(__import__('droneresearch.sensors', fromlist=['depth_camera']), 'depth_camera'),
+    not hasattr(__import__('skymeshx.sensors', fromlist=['depth_camera']), 'depth_camera'),
     reason="ROS2 not available"
 )
 def test_depth_camera_statistics():
     """Test statistics tracking."""
-    from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+    from skymeshx.sensors.depth_camera import DepthCameraSubscriber
     
     subscriber = DepthCameraSubscriber()
     
@@ -68,14 +68,14 @@ def test_depth_camera_statistics():
 
 
 @pytest.mark.skipif(
-    not hasattr(__import__('droneresearch.sensors', fromlist=['depth_camera']), 'depth_camera'),
+    not hasattr(__import__('skymeshx.sensors', fromlist=['depth_camera']), 'depth_camera'),
     reason="ROS2 not available"
 )
 def test_depth_camera_context_manager():
     """Test context manager support."""
-    from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+    from skymeshx.sensors.depth_camera import DepthCameraSubscriber
     
-    with patch('droneresearch.sensors.depth_camera.acquire_ros', return_value=False):
+    with patch('skymeshx.sensors.depth_camera.acquire_ros', return_value=False):
         subscriber = DepthCameraSubscriber()
         
         # Context manager should call start() and stop()
@@ -105,10 +105,10 @@ def test_mock_depth_camera_workflow():
         'sensor_msgs.msg': MagicMock(),
         'sensor_msgs_py': MagicMock(),
     }):
-        with patch('droneresearch.sensors.depth_camera._ROS2_OK', True):
-            with patch('droneresearch.sensors.depth_camera.acquire_ros', return_value=True):
-                with patch('droneresearch.sensors.depth_camera.release_ros'):
-                    from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+        with patch('skymeshx.sensors.depth_camera._ROS2_OK', True):
+            with patch('skymeshx.sensors.depth_camera.acquire_ros', return_value=True):
+                with patch('skymeshx.sensors.depth_camera.release_ros'):
+                    from skymeshx.sensors.depth_camera import DepthCameraSubscriber
                     
                     callback_called = threading.Event()
                     received_points = []
@@ -158,8 +158,8 @@ def test_mock_pointcloud_processing():
         'sensor_msgs.msg': MagicMock(),
         'sensor_msgs_py': MagicMock(point_cloud2=mock_point_cloud2),
     }):
-        with patch('droneresearch.sensors.depth_camera._ROS2_OK', True):
-            from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+        with patch('skymeshx.sensors.depth_camera._ROS2_OK', True):
+            from skymeshx.sensors.depth_camera import DepthCameraSubscriber
             
             received_points = []
             
@@ -201,8 +201,8 @@ def test_mock_pointcloud_downsampling():
         'sensor_msgs.msg': MagicMock(),
         'sensor_msgs_py': MagicMock(point_cloud2=mock_point_cloud2),
     }):
-        with patch('droneresearch.sensors.depth_camera._ROS2_OK', True):
-            from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+        with patch('skymeshx.sensors.depth_camera._ROS2_OK', True):
+            from skymeshx.sensors.depth_camera import DepthCameraSubscriber
             
             received_points = []
             
@@ -243,8 +243,8 @@ def test_mock_pointcloud_range_filter():
         'sensor_msgs.msg': MagicMock(),
         'sensor_msgs_py': MagicMock(point_cloud2=mock_point_cloud2),
     }):
-        with patch('droneresearch.sensors.depth_camera._ROS2_OK', True):
-            from droneresearch.sensors.depth_camera import DepthCameraSubscriber
+        with patch('skymeshx.sensors.depth_camera._ROS2_OK', True):
+            from skymeshx.sensors.depth_camera import DepthCameraSubscriber
             
             received_points = []
             

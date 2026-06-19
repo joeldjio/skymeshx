@@ -1,5 +1,5 @@
 """
-Swarm-scaling benchmark for the uavresearch gcs.
+Swarm-scaling benchmark for the skymeshx gcs.
 
 Goal
 ----

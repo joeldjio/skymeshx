@@ -7,7 +7,7 @@ Executes a simple waypoint mission and logs all telemetry changes.
 import argparse
 import time
 import json
-from droneresearch.sdk.drone import Drone
+from skymeshx.sdk.drone import Drone
 
 def main():
     parser = argparse.ArgumentParser(description="PX4 mission debug")

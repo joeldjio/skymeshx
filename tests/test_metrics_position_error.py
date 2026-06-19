@@ -7,7 +7,7 @@ import pytest
 
 
 def _make_collector(metrics=None):
-    from droneresearch.experiment.metrics import MetricsCollector
+    from skymeshx.experiment.metrics import MetricsCollector
 
     mc = MetricsCollector(metrics or ["position_error", "flight_time"])
     backend = MagicMock()

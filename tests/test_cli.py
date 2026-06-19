@@ -1,5 +1,5 @@
 """
-Tests for droneresearch.cli.main.
+Tests for skymeshx.cli.main.
 
 Covers the pure-Python parts of the CLI without actually opening a drone
 connection or spawning the UI. We exercise:
@@ -7,7 +7,7 @@ connection or spawning the UI. We exercise:
   - Argparse: every subcommand parses without error
   - ``_resolve_port`` precedence: --port  >  $DRONE_PORT  >  default
   - The UI subcommand routes to tools.ui.app:run (not the dead
-    droneresearch.ui.app path) and surfaces a friendly error on missing deps
+    skymeshx.ui.app path) and surfaces a friendly error on missing deps
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 import pytest
 
-from droneresearch.cli import main as cli_main
+from skymeshx.cli import main as cli_main
 
 
 # ── _resolve_port precedence ────────────────────────────────────────────────
@@ -67,7 +67,7 @@ def _build_parser_via_main(argv: list[str]) -> argparse.Namespace:
          patch.object(cli_main, "_run_script",     _capture), \
          patch.object(cli_main, "_run_experiment", _capture), \
          patch.object(cli_main, "_launch_ui",      lambda: captured.update(args=SimpleNamespace(command="ui"))), \
-         patch.object(sys, "argv", ["droneresearch", *argv]):
+         patch.object(sys, "argv", ["skymeshx", *argv]):
         cli_main.main()
     return captured["args"]
 
@@ -103,14 +103,14 @@ def test_takeoff_alt_is_parsed_as_float():
 def test_goto_requires_all_three_coords():
     """Missing --alt must cause argparse to exit with code 2."""
     with pytest.raises(SystemExit) as exc_info, \
-         patch.object(sys, "argv", ["droneresearch", "goto", "--lat", "1", "--lon", "2"]):
+         patch.object(sys, "argv", ["skymeshx", "goto", "--lat", "1", "--lon", "2"]):
         cli_main.main()
     assert exc_info.value.code == 2
 
 
 def test_no_subcommand_is_error():
     with pytest.raises(SystemExit), \
-         patch.object(sys, "argv", ["droneresearch"]):
+         patch.object(sys, "argv", ["skymeshx"]):
         cli_main.main()
 
 
@@ -119,7 +119,7 @@ def test_no_subcommand_is_error():
 
 def test_launch_ui_imports_tools_ui_app(monkeypatch):
     """The launcher must use the real UI path (tools.ui.app), not the
-    long-dead droneresearch.ui.app."""
+    long-dead skymeshx.ui.app."""
     called = {"n": 0}
 
     def fake_run() -> int:

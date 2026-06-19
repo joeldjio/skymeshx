@@ -29,7 +29,7 @@ def test_send_raw_blocks_non_whitelisted_messages(fake_conn):
 
 def test_send_raw_whitelist_contains_expected_messages():
     """Verify whitelist contains commonly used message types."""
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.core.connection import MAVLinkConnection
     
     expected = {
         "heartbeat",

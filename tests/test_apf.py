@@ -1,11 +1,11 @@
-"""Tests for :mod:`droneresearch.safety.apf`."""
+"""Tests for :mod:`skymeshx.safety.apf`."""
 from __future__ import annotations
 
 import math
 
 import pytest
 
-from droneresearch.safety.apf import APFSafetyFilter, Geofence, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Geofence, Pose3D
 
 
 class TestPose3D:

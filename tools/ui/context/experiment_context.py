@@ -21,7 +21,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot, Property
 
 try:
-    from droneresearch.experiment.scenario import (
+    from skymeshx.experiment.scenario import (
         Scenario as _Scenario,
         ScenarioRunner as _ScenarioRunner,
     )
@@ -85,7 +85,7 @@ class ScriptExecutor(threading.Thread):
             sys.stdout = TeeIO(stdout_capture, self.on_log)
             sys.stderr = TeeIO(stderr_capture, self.on_log)
             
-            # Execute in isolated namespace with droneresearch available
+            # Execute in isolated namespace with skymeshx available
             namespace = {
                 '__name__': '__main__',
                 '__file__': '<experiment_script>',
@@ -98,11 +98,11 @@ class ScriptExecutor(threading.Thread):
             namespace['stop_event'] = self._stop_event
             namespace['script_should_stop'] = self._stop_event.is_set
 
-            # Add droneresearch to namespace
+            # Add skymeshx to namespace
             try:
-                import droneresearch
-                namespace['droneresearch'] = droneresearch
-                namespace['Swarm'] = droneresearch.Swarm
+                import skymeshx
+                namespace['skymeshx'] = skymeshx
+                namespace['Swarm'] = skymeshx.Swarm
             except ImportError:
                 pass
 
@@ -213,7 +213,7 @@ class ExperimentContext(QObject):
     def run(self, scenario_json: str, use_sitl: bool = True) -> None:
         """Run a JSON-defined scenario experiment."""
         if _Scenario is None:
-            self.logMessage.emit("[experiment] droneresearch SDK not installed.")
+            self.logMessage.emit("[experiment] skymeshx SDK not installed.")
             return
         if self._busy:
             return

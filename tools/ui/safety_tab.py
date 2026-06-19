@@ -16,7 +16,7 @@ from tools.ui.widgets import section_header, h_separator, MetricCard
 from tools.ui.style import Colors, DRONE_COLORS
 
 try:
-    from droneresearch.safety.apf import APFSafetyFilter as _APFSafetyFilter, Pose3D as _Pose3D
+    from skymeshx.safety.apf import APFSafetyFilter as _APFSafetyFilter, Pose3D as _Pose3D
 except ImportError:  # pragma: no cover
     _APFSafetyFilter = None  # type: ignore
     _Pose3D = None           # type: ignore
@@ -248,7 +248,7 @@ class SafetyTab(QWidget):
 
     def _apply_apf(self) -> None:
         if _APFSafetyFilter is None:
-            self._log.append("[APF] droneresearch SDK not installed.")
+            self._log.append("[APF] skymeshx SDK not installed.")
             return
         try:
             self._apf = _APFSafetyFilter(

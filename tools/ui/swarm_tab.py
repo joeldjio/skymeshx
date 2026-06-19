@@ -279,10 +279,10 @@ class SwarmTab(QWidget):
         shape   = self._combo_form.currentText()
         spacing = self._spin_spacing.value()
         leader  = self._combo_leader.currentText() or None
-        # Use DroneResearch Swarm SDK if drones are real
+        # Use SkyMeshX Swarm SDK if drones are real
         backends = self._swarm.all_backends()
         try:
-            from droneresearch.sdk.swarm_api import Swarm
+            from skymeshx.sdk.swarm_api import Swarm
             swarm = Swarm()
             for did, b in backends.items():
                 if b.is_connected and b.drone:

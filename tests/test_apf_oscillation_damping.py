@@ -9,7 +9,7 @@ Verifies that:
 5. Damping doesn't prevent convergence to target
 """
 import pytest
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 
 def test_velocity_damping_parameter():

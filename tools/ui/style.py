@@ -1,5 +1,5 @@
 """
-Dark modern Qt6 stylesheet for the uavresearch gcs.
+Dark modern Qt6 stylesheet for the skymeshx gcs.
 
 Usage
 -----

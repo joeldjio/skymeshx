@@ -16,7 +16,7 @@ with patch.dict('sys.modules', {
     'sensor_msgs.msg': MagicMock(),
     'cv_bridge': MagicMock()
 }):
-    from droneresearch.sensors.thermal_camera import (
+    from skymeshx.sensors.thermal_camera import (
         ThermalCameraSubscriber,
         ThermalHotspotDetector
     )

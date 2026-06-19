@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Memory profiling tool for uavresearch GCS.
+Memory profiling tool for skymeshx GCS.
 
 Usage:
     python tools/profile_memory.py
@@ -181,7 +181,7 @@ def main():
     """Run interactive profiler."""
     profiler = MemoryProfiler()
     
-    print("\nMemory Profiler for uavresearch GCS")
+    print("\nMemory Profiler for skymeshx GCS")
     print("This is a developer tool for detecting memory leaks.")
     print("\nRecommended workflow:")
     print("  1. Start the UI in another terminal: python -m tools.ui")

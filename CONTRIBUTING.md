@@ -1,6 +1,6 @@
-# Contributing to DroneResearch Platform
+# Contributing to SkyMeshX Platform
 
-Thank you for your interest in contributing to the DroneResearch Platform! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the SkyMeshX Platform! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -34,8 +34,8 @@ This project follows a professional code of conduct. Be respectful, constructive
 
 ```bash
 # 1. Fork and clone the repository
-git clone https://github.com/YOUR_USERNAME/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/YOUR_USERNAME/skymeshxproject.git
+cd skymeshxproject
 
 # 2. Create a virtual environment
 python -m venv .venv
@@ -162,7 +162,7 @@ We follow a test pyramid approach:
 ```python
 # tests/test_your_module.py
 import pytest
-from droneresearch.your_module import YourClass
+from skymeshx.your_module import YourClass
 
 @pytest.mark.unit
 def test_your_function():
@@ -255,8 +255,8 @@ We follow **PEP 8** with some modifications:
 make format
 
 # Or manually
-black droneresearch/ tools/ tests/
-isort droneresearch/ tools/ tests/
+black skymeshx/ tools/ tests/
+isort skymeshx/ tools/ tests/
 ```
 
 ### Type Hints
@@ -265,7 +265,7 @@ Use type hints for public APIs:
 
 ```python
 from typing import Optional, List, Dict
-from droneresearch.core.telemetry import TelemetrySnapshot
+from skymeshx.core.telemetry import TelemetrySnapshot
 
 def process_telemetry(
     snapshot: TelemetrySnapshot,
@@ -329,8 +329,8 @@ import pytest
 from pymavlink import mavutil
 
 # Local
-from droneresearch.core.fsm import StateMachine
-from droneresearch.core.telemetry import TelemetrySnapshot
+from skymeshx.core.fsm import StateMachine
+from skymeshx.core.telemetry import TelemetrySnapshot
 ```
 
 ### Naming Conventions
@@ -475,7 +475,7 @@ Your PR must pass:
 ## Project Structure
 
 ```
-droneresearch/
+skymeshx/
 ├── autopilot/          # Hardware abstraction layer
 │   ├── base.py         # AutopilotBackend ABC
 │   ├── mavlink/        # MAVLink implementation
@@ -552,4 +552,4 @@ droneresearch/
 
 ---
 
-**Thank you for contributing to DroneResearch Platform! 🚁**
+**Thank you for contributing to SkyMeshX Platform! 🚁**

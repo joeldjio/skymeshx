@@ -1,4 +1,4 @@
-# uavresearch gcs — Projekt-Überblick (für mich)
+# skymeshx gcs — Projekt-Überblick (für mich)
 
 > Persönliches Briefing-Dokument. Kein Marketing, kein Kunde-zeigen.
 > Hier steht **was wir gebaut haben, wie es zusammenhängt, und was als Nächstes ansteht.**
@@ -7,49 +7,49 @@
 
 ---
 
-## 1. Was ist uavresearch gcs?
+## 1. Was ist skymeshx gcs?
 
 Eine **Ground Control Station für Drohnen-Schwärme**, die als Windows-Installer
 (später auch Mac/Linux) ausgeliefert wird. Der eigentliche Code ist das
-`droneresearch`-Forschungs-Backend (CLI + Python-SDK), das `tools/ui` ist die
+`skymeshx`-Forschungs-Backend (CLI + Python-SDK), das `tools/ui` ist die
 PyQt6/QML-Oberfläche darauf.
 
 **Markenstruktur:**
 
 | Komponente | Branding | Wer sieht das? |
 |---|---|---|
-| `droneresearch` (Backend, CLI, SDK) | DroneResearch | Forscher, CLI-User, SDK-User |
-| `tools/ui` (Desktop-App) | **uavresearch gcs** / UAVResearch | Endkunden, Tester |
+| `skymeshx` (Backend, CLI, SDK) | SkyMeshX | Forscher, CLI-User, SDK-User |
+| `tools/ui` (Desktop-App) | **skymeshx gcs** / SkyMeshX | Endkunden, Tester |
 
-→ Der wissenschaftliche Forschungs-Stack heißt weiter „DroneResearch"
+→ Der wissenschaftliche Forschungs-Stack heißt weiter „SkyMeshX"
 (Repo-Name, Python-Imports, Logo). Nur die kommerzielle Desktop-App
-ist „uavresearch gcs".
+ist „skymeshx gcs".
 
 ---
 
 ## 2. Was wir heute gebaut haben (2026-05-16)
 
 ### 2.1 Rebrand
-- App-Titel, QApplication name/org, Status-Bar-Texte → **uavresearch gcs / UAVResearch**
-- Installer-Dateinamen → `uavresearch-gcs-setup-X.Y.Z.exe`
+- App-Titel, QApplication name/org, Status-Bar-Texte → **skymeshx gcs / SkyMeshX**
+- Installer-Dateinamen → `skymeshx-gcs-setup-X.Y.Z.exe`
 - Inno-`AppId` auf eine stabile, dedizierte GUID rotiert — damit Upgrades funktionieren
-- Spec/Inno-Dateien umbenannt: `uavresearch_gcs.spec`, `uavresearch_gcs.iss`
+- Spec/Inno-Dateien umbenannt: `skymeshx_gcs.spec`, `skymeshx_gcs.iss`
 
 ### 2.2 In-App-Updater  (`tools/ui/updater.py`)
 - `UpdaterContext` als Qt-Singleton, registriert im ServiceLocator als `updater`
 - Prüft auf Klick gegen GitHub Releases API
-  (`https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest`)
-- Sucht ein Asset mit Präfix `uavresearch-gcs-setup-` und Endung `.exe`
+  (`https://api.github.com/repos/joeldjio/skymeshx-gcs-releases/releases/latest`)
+- Sucht ein Asset mit Präfix `skymeshx-gcs-setup-` und Endung `.exe`
 - Vergleicht Tag-Version mit eingebauter `_version.VERSION`
 - QML-Banner im Help-Tab zeigt: idle / checking / available / uptodate / error / downloading
 - Download nach `%TEMP%`, dann silent install: `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`
 - Inno setzt `CloseApplications=force` und `RestartApplications=yes` → in-place Upgrade ohne User-Interaktion
-- Code-Repo `joeldjio/uavresearchproject` ist privat; öffentliches Update-/Release-Repo ist `joeldjio/uavresearch-gcs-releases`
+- Code-Repo `joeldjio/skymeshxproject` ist privat; öffentliches Update-/Release-Repo ist `joeldjio/skymeshx-gcs-releases`
 
 ### 2.3 Trial + License-Keys  (`tools/ui/license.py`)
 - `LicenseManager` als Qt-Singleton, registriert als `licenseManager`
 - **30 Tage Free Trial** ab erstem Start, Zeitstempel in
-  `%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json`
+  `%LOCALAPPDATA%\SkyMeshX\skymeshx gcs\license.json`
 - **Key-Format:** `UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD`
   - `XXXXXXXXXXXX` = erste 12 Zeichen von `base32(HMAC-SHA256(SECRET, "v1|YYYYMMDD"))`
   - Validierung **komplett offline**, kein Server
@@ -59,7 +59,7 @@ ist „uavresearch gcs".
 - **CLI-Generator:** `python tools/installer/gen_license.py --days 365 --customer "X"`
 
 ### 2.4 Code-Schutz
-- Beide PyInstaller-Specs (`uavresearch_gcs.spec`, `droneresearch_cli.spec`) bauen mit `optimize=2`
+- Beide PyInstaller-Specs (`skymeshx_gcs.spec`, `skymeshx_cli.spec`) bauen mit `optimize=2`
   → `assert`-Statements + `__doc__`-Strings werden aus dem Bytecode gestrippt
 - Source-Dateien werden **nicht** mit ausgeliefert, nur `.pyc` im PYZ-Archiv
 - `pkg_resources` und `setuptools._vendor` ausgeschlossen
@@ -82,16 +82,16 @@ ist „uavresearch gcs".
 - Branch: `ui-dashboard`
 - Commit `d553c32`: alles oben drin, gepusht
 - Tag `v0.2.0` gesetzt + gepusht (für GitHub Release)
-- Remote: `https://github.com/joeldjio/uavresearchproject.git`
+- Remote: `https://github.com/joeldjio/skymeshxproject.git`
 
 ---
 
 ## 3. Wie das alles zusammenpasst (System-Diagramm)
 
 ```
-┌────────────────────── DroneResearch (SDK / CLI) ──────────────────────┐
+┌────────────────────── SkyMeshX (SDK / CLI) ──────────────────────┐
 │                                                                       │
-│   droneresearch/                                                      │
+│   skymeshx/                                                      │
 │     ├─ core/connection.py     ← MAVLinkConnection (Heartbeat-Loop)    │
 │     ├─ autopilot/mavlink/     ← Stream-Rates, AP-Detection (APM/PX4)  │
 │     ├─ control/mission.py     ← Waypoint-Engine                       │
@@ -101,7 +101,7 @@ ist „uavresearch gcs".
 └────────────────────────────────┬──────────────────────────────────────┘
                                  │ Python Imports
 ┌────────────────────────────────▼──────────────────────────────────────┐
-│   tools/ui/  (uavresearch gcs Desktop)                                         │
+│   tools/ui/  (skymeshx gcs Desktop)                                         │
 │                                                                       │
 │   service_locator.py — registriert als Qt-Singletons:                 │
 │     • swarm           SwarmContext (mehrere Drohnen + FSM)            │
@@ -237,7 +237,7 @@ Sender (z.B. Radiomaster Boxer) steckt, und auf der Drohne sitzt ein
 ELRS-Empfänger.
 
 ### Was wir aus GCS-Sicht brauchen
-uavresearch gcs spricht **nicht direkt** mit dem ELRS-Modul. Wir reden nur
+skymeshx gcs spricht **nicht direkt** mit dem ELRS-Modul. Wir reden nur
 **MAVLink** mit dem Flight Controller. Der FC kriegt RC-Inputs vom
 Empfänger über CRSF/SBUS.
 
@@ -288,7 +288,7 @@ git push                       (was du tust)
          │
          ▼
 tools\installer\out\
-  └── uavresearch-gcs-setup-0.2.0.exe   (eine Datei, ~270 MB)
+  └── skymeshx-gcs-setup-0.2.0.exe   (eine Datei, ~270 MB)
          │
          ▼
 GitHub Release erstellen        (Web-UI oder gh CLI)
@@ -356,12 +356,12 @@ git push origin feature/com-port-scan
 ```powershell
 # 1. Versionen synchron hochzählen
 #    tools/ui/_version.py            : VERSION = "0.3.1"
-#    tools/installer/inno/uavresearch_gcs.iss  : #define AppVersion "0.3.1"
+#    tools/installer/inno/skymeshx_gcs.iss  : #define AppVersion "0.3.1"
 
 # 2. Commit + Tag
 git add -A
 git commit -m "release: v0.3.1"
-git tag -a v0.3.1 -m "uavresearch gcs 0.3.1"
+git tag -a v0.3.1 -m "skymeshx gcs 0.3.1"
 git push origin ui-dashboard --tags
 
 # 3. Windows-Installer bauen (~5 Min)
@@ -369,8 +369,8 @@ git push origin ui-dashboard --tags
 
 # 4. Release auf GitHub (Windows-Asset)
 gh release create v0.3.1 `
-  tools\installer\out\uavresearch-gcs-setup-0.3.1.exe `
-  --title "uavresearch gcs 0.3.1" `
+  tools\installer\out\skymeshx-gcs-setup-0.3.1.exe `
+  --title "skymeshx gcs 0.3.1" `
   --notes-file tools\installer\RELEASE_NOTES_v0.3.1.md
 
 # 5. Bestehende Kunden klicken im Help-Tab auf "Updates suchen" → Windows-Update läuft auto.
@@ -387,7 +387,7 @@ gh release create v0.3.1 `
 Wenn du auf GitHub einen Release mit Asset hochlädst:
 
 ```text
-uavresearch-gcs-setup-0.3.1.exe
+skymeshx-gcs-setup-0.3.1.exe
 ```
 
 dann kann jeder, der Zugriff auf die Release-Seite hat, diese `.exe`
@@ -424,17 +424,17 @@ Vor echter Kundenauslieferung:
 
 **Ja, weil der Updater jetzt nicht mehr das private Code-Repo benutzt.**
 
-Das Code-Repo `joeldjio/uavresearchproject` ist privat. Der Updater fragt
+Das Code-Repo `joeldjio/skymeshxproject` ist privat. Der Updater fragt
 stattdessen das öffentliche Release-Repo ab:
 
 ```text
-https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest
+https://api.github.com/repos/joeldjio/skymeshx-gcs-releases/releases/latest
 ```
 
 Die Einstellung steht in `tools/ui/_version.py`:
 
 ```python
-GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
+GITHUB_REPO = "joeldjio/skymeshx-gcs-releases"
 ```
 
 Wichtig: In das Release-Repo kommen **nur Installer und Release Notes**,
@@ -445,13 +445,13 @@ kein Source-Code und kein `LICENSE_SECRET`.
 ```powershell
 # 1. Versionen anpassen:
 # tools/ui/_version.py -> VERSION = "0.3.1"
-# tools/installer/inno/uavresearch_gcs.iss -> AppVersion "0.3.1"
+# tools/installer/inno/skymeshx_gcs.iss -> AppVersion "0.3.1"
 
 # 2. Commit + Tag
 git status
 git add -A
 git commit -m "release: v0.3.1"
-git tag -a v0.3.1 -m "uavresearch gcs 0.3.1"
+git tag -a v0.3.1 -m "skymeshx gcs 0.3.1"
 git push origin ui-dashboard --tags
 
 # 3. Windows-Installer bauen
@@ -459,13 +459,13 @@ git push origin ui-dashboard --tags
 
 # 4. GitHub Release erstellen
 gh release create v0.3.1 `
-  tools\installer\out\uavresearch-gcs-setup-0.3.1.exe `
-  --title "uavresearch gcs 0.3.1" `
+  tools\installer\out\skymeshx-gcs-setup-0.3.1.exe `
+  --title "skymeshx gcs 0.3.1" `
   --notes-file tools\installer\RELEASE_NOTES_v0.3.1.md
 
 # 5. Linux-.deb zusätzlich hochladen
 gh release upload v0.3.1 `
-  tools/installer/out/uavresearch-gcs_0.3.1_amd64_jammy.deb
+  tools/installer/out/skymeshx-gcs_0.3.1_amd64_jammy.deb
 ```
 
 ### 7A.5b Wie baue ich direkt auf Linux / Ubuntu 22.04 Jammy?
@@ -492,7 +492,7 @@ chmod +x tools/installer/build_linux_deb.sh
 Output:
 
 ```text
-tools/installer/out/uavresearch-gcs_0.3.1_amd64_jammy.deb
+tools/installer/out/skymeshx-gcs_0.3.1_amd64_jammy.deb
 ```
 
 Wichtig:
@@ -555,7 +555,7 @@ UAVGCS-ABCD-EFGH-IJKL-20270517
 Die App speichert Trial/Lizenz hier:
 
 ```text
-%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json
+%LOCALAPPDATA%\SkyMeshX\skymeshx gcs\license.json
 ```
 
 Darin steht:
@@ -623,7 +623,7 @@ Pflicht:
 - [ ] Better connection-string parser (Mission-Planner-kompatible Strings akzeptieren)
 
 ### 8.3 Vor erster bezahlter Auslieferung
-- [ ] **`LICENSE_SECRET` rotieren** (aktuell `uavresearch-dev-secret-CHANGE-ME-before-shipping`)
+- [ ] **`LICENSE_SECRET` rotieren** (aktuell `skymeshx-dev-secret-CHANGE-ME-before-shipping`)
 - [ ] Code-Signing-Zertifikat (sonst SmartScreen-Warnung beim Tester)
 - [x] Echter `LICENSE_CONTACT` in `_version.py`: `djiojoel2@gmail.com`
 - [ ] Entscheiden: privates Code-Repo + öffentliches Release-Repo oder eigener Update-Server
@@ -651,11 +651,11 @@ tools/installer/
   ├── build.ps1                   One-Shot-Builder
   ├── gen_license.py              Key-Generator-CLI
   ├── specs/
-  │   ├── uavresearch_gcs.spec             PyInstaller-Spec für GCS
-  │   └── droneresearch_cli.spec  PyInstaller-Spec für CLI
+  │   ├── skymeshx_gcs.spec             PyInstaller-Spec für GCS
+  │   └── skymeshx_cli.spec  PyInstaller-Spec für CLI
   ├── inno/
-  │   ├── uavresearch_gcs.iss              Inno-Setup-Skript für GCS
-  │   └── droneresearch_cli.iss   Inno-Setup-Skript für CLI
+  │   ├── skymeshx_gcs.iss              Inno-Setup-Skript für GCS
+  │   └── skymeshx_cli.iss   Inno-Setup-Skript für CLI
   └── README.md                   Detaillierte Build- + Distribution-Doku
 tests/test_license.py             Regression-Tests für Trial+Keys
 ```
@@ -681,7 +681,7 @@ python -m pytest tests\ -q
 
 ### Trial reset (zum Testen — in installierter App)
 ```powershell
-Remove-Item "$env:LOCALAPPDATA\UAVResearch\uavresearch gcs\license.json"
+Remove-Item "$env:LOCALAPPDATA\SkyMeshX\skymeshx gcs\license.json"
 ```
 
 ### Eigene Lizenz für Dev-Tests aktivieren
@@ -714,16 +714,16 @@ mehr weiß, was zu tun ist, hier anfangen.
 | Lizenzsystem | Offline-Lizenz mit HMAC-Signatur, keine Serverpflicht |
 | Trial | 30 Tage ab erstem Start |
 | Kundenkontakt | `djiojoel2@gmail.com` |
-| Installer-Name | `uavresearch-gcs-setup-X.Y.Z.exe` |
-| App-Name | `uavresearch gcs` |
-| Backend-Name | `droneresearch` bleibt intern so |
+| Installer-Name | `skymeshx-gcs-setup-X.Y.Z.exe` |
+| App-Name | `skymeshx gcs` |
+| Backend-Name | `skymeshx` bleibt intern so |
 
 ### 11.2 Was der Kunde bekommt
 
 Der Kunde bekommt **nur diese Datei**:
 
 ```text
-uavresearch-gcs-setup-X.Y.Z.exe
+skymeshx-gcs-setup-X.Y.Z.exe
 ```
 
 Der Kunde bekommt nicht:
@@ -748,7 +748,7 @@ Nicht öffentlich teilen:
 Wichtig: Der aktuelle `LICENSE_SECRET` ist noch ein Dev-Secret:
 
 ```text
-uavresearch-dev-secret-CHANGE-ME-before-shipping
+skymeshx-dev-secret-CHANGE-ME-before-shipping
 ```
 
 Vor echter Auslieferung muss er geändert werden.
@@ -759,10 +759,10 @@ Bei jedem Release muss die Version an mindestens diesen Stellen gleich sein:
 
 ```text
 tools/ui/_version.py
-tools/installer/inno/uavresearch_gcs.iss
+tools/installer/inno/skymeshx_gcs.iss
 Git tag, z. B. v0.3.1
-Installer-Datei, z. B. uavresearch-gcs-setup-0.3.1.exe
-GitHub Release, z. B. uavresearch gcs 0.3.1
+Installer-Datei, z. B. skymeshx-gcs-setup-0.3.1.exe
+GitHub Release, z. B. skymeshx gcs 0.3.1
 ```
 
 Wenn diese Versionen nicht zusammenpassen, kann der Updater falsche Ergebnisse
@@ -773,19 +773,19 @@ anzeigen oder den Installer nicht finden.
 Der Updater sucht im öffentlichen Release-Repo:
 
 ```python
-GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
+GITHUB_REPO = "joeldjio/skymeshx-gcs-releases"
 ```
 
 nach dem neuesten GitHub Release und darin nach einem Asset:
 
 ```text
-uavresearch-gcs-setup-*.exe
+skymeshx-gcs-setup-*.exe
 ```
 
 Beispiel:
 
 ```text
-uavresearch-gcs-setup-0.3.1.exe
+skymeshx-gcs-setup-0.3.1.exe
 ```
 
 Wenn der Asset-Name anders ist, findet die App kein Update.
@@ -794,12 +794,12 @@ Wenn der Asset-Name anders ist, findet die App kein Update.
 
 Für echten Verkauf ist diese Strategie jetzt aktiv:
 
-1. Code-Repo `joeldjio/uavresearchproject` privat lassen.
-2. Öffentliches Release-Repo `joeldjio/uavresearch-gcs-releases` verwenden.
+1. Code-Repo `joeldjio/skymeshxproject` privat lassen.
+2. Öffentliches Release-Repo `joeldjio/skymeshx-gcs-releases` verwenden.
 3. In `tools/ui/_version.py` ist gesetzt:
 
 ```python
-GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
+GITHUB_REPO = "joeldjio/skymeshx-gcs-releases"
 ```
 
 4. Installer nur als Release-Asset dort hochladen.
@@ -840,7 +840,7 @@ python tools\installer\gen_license.py --days 365 --customer "Kunde GmbH"
 9. App speichert Key in:
 
 ```text
-%LOCALAPPDATA%\UAVResearch\uavresearch gcs\license.json
+%LOCALAPPDATA%\SkyMeshX\skymeshx gcs\license.json
 ```
 
 10. App läuft bis Ablaufdatum.
@@ -911,7 +911,7 @@ Strengere Checkliste:
 
 | Problem | Wahrscheinliche Ursache | Lösung |
 |---|---|---|
-| Update wird nicht gefunden | Asset heißt nicht `uavresearch-gcs-setup-*.exe` | Release Asset richtig benennen |
+| Update wird nicht gefunden | Asset heißt nicht `skymeshx-gcs-setup-*.exe` | Release Asset richtig benennen |
 | Update geht bei privatem Repo nicht | GitHub API braucht Auth | Public Release-Repo verwenden |
 | Key wird abgelehnt | Falscher Secret, Tippfehler oder abgelaufen | Mit aktuellem Secret neuen Key generieren |
 | Kunde sieht Trial abgelaufen | Kein gültiger Key gespeichert | Key eingeben oder neuen Key schicken |
@@ -933,12 +933,12 @@ Strengere Checkliste:
 10. Trial + Lizenz + Update testen.
 11. Erst danach an Tester/Kunden schicken.
 
-### 11.14A Release-Repo `joeldjio/uavresearch-gcs-releases`
+### 11.14A Release-Repo `joeldjio/skymeshx-gcs-releases`
 
 Das öffentliche Release-Repo ist:
 
 ```text
-https://github.com/joeldjio/uavresearch-gcs-releases
+https://github.com/joeldjio/skymeshx-gcs-releases
 ```
 
 Zweck:
@@ -954,8 +954,8 @@ Kanal für fertige Installer.
 
 Erlaubt:
 - GitHub Releases
-- Installer-Dateien wie `uavresearch-gcs-setup-0.3.1.exe`
-- Linux-Pakete wie `uavresearch-gcs_0.3.1_amd64_jammy.deb`
+- Installer-Dateien wie `skymeshx-gcs-setup-0.3.1.exe`
+- Linux-Pakete wie `skymeshx-gcs_0.3.1_amd64_jammy.deb`
 - Release Notes
 - README mit Download-/Lizenzhinweisen
 
@@ -973,19 +973,19 @@ Nicht erlaubt:
 In `tools/ui/_version.py` steht:
 
 ```python
-GITHUB_REPO = "joeldjio/uavresearch-gcs-releases"
+GITHUB_REPO = "joeldjio/skymeshx-gcs-releases"
 ```
 
 Der Updater ruft dadurch diese URL auf:
 
 ```text
-https://api.github.com/repos/joeldjio/uavresearch-gcs-releases/releases/latest
+https://api.github.com/repos/joeldjio/skymeshx-gcs-releases/releases/latest
 ```
 
 Dann sucht er im neuesten Release ein Asset:
 
 ```text
-uavresearch-gcs-setup-*.exe
+skymeshx-gcs-setup-*.exe
 ```
 
 Wenn kein Asset mit diesem Namen vorhanden ist, findet die App kein Update.
@@ -1002,7 +1002,7 @@ Wenn kein Asset mit diesem Namen vorhanden ist, findet die App kein Update.
 3. Im Release-Repo auf GitHub öffnen:
 
 ```text
-https://github.com/joeldjio/uavresearch-gcs-releases
+https://github.com/joeldjio/skymeshx-gcs-releases
 ```
 
 4. **Releases → Draft a new release**.
@@ -1015,14 +1015,14 @@ v0.3.1
 6. Titel setzen:
 
 ```text
-uavresearch gcs 0.3.1
+skymeshx gcs 0.3.1
 ```
 
 7. Installer hochladen:
 
 ```text
-tools\installer\out\uavresearch-gcs-setup-0.3.1.exe
-tools/installer/out/uavresearch-gcs_0.3.1_amd64_jammy.deb
+tools\installer\out\skymeshx-gcs-setup-0.3.1.exe
+tools/installer/out/skymeshx-gcs_0.3.1_amd64_jammy.deb
 ```
 
 8. Release Notes schreiben.
@@ -1074,7 +1074,7 @@ Für schnellen lokalen Test auf Windows brauche ich keinen Commit:
 Ergebnis:
 
 ```text
-tools\installer\out\uavresearch-gcs-setup-X.Y.Z.exe
+tools\installer\out\skymeshx-gcs-setup-X.Y.Z.exe
 ```
 
 Das ist gut für:
@@ -1096,13 +1096,13 @@ git push origin ui-dashboard
 Danach startet der Workflow automatisch:
 
 ```text
-.github/workflows/build-uavresearch-gcs.yml
+.github/workflows/build-skymeshx-gcs.yml
 ```
 
 Alternativ kann ich ihn auf GitHub manuell starten:
 
 ```text
-GitHub → Actions → Build uavresearch gcs → Run workflow
+GitHub → Actions → Build skymeshx gcs → Run workflow
 ```
 
 #### Mac-Build
@@ -1117,7 +1117,7 @@ Von Windows aus kann ich keinen sauberen macOS-Build erzeugen.
 GitHub Actions erzeugt für macOS aktuell:
 
 ```text
-uavresearch-gcs-macOS.tar.gz
+skymeshx-gcs-macOS.tar.gz
 ```
 
 Das ist noch kein schöner `.dmg` Installer. Für echte Mac-Kunden braucht es
@@ -1140,7 +1140,7 @@ Für Windows habe ich zwei Wege:
 Erzeugt den echten Inno Setup Installer:
 
 ```text
-uavresearch-gcs-setup-X.Y.Z.exe
+skymeshx-gcs-setup-X.Y.Z.exe
 ```
 
 **GitHub Actions:**
@@ -1148,7 +1148,7 @@ uavresearch-gcs-setup-X.Y.Z.exe
 GitHub baut ein Windows-Artefakt:
 
 ```text
-uavresearch-gcs-windows.zip
+skymeshx-gcs-windows.zip
 ```
 
 Wichtig: Für den offiziellen Kunden-Installer ist aktuell der lokale
@@ -1161,7 +1161,7 @@ Für einen echten Release immer committen, taggen und pushen:
 ```powershell
 git add -A
 git commit -m "release: v0.3.1"
-git tag -a v0.3.1 -m "uavresearch gcs 0.3.1"
+git tag -a v0.3.1 -m "skymeshx gcs 0.3.1"
 git push origin ui-dashboard --tags
 ```
 
@@ -1174,8 +1174,8 @@ Dann bauen:
 Dann die Dateien hochladen:
 
 ```text
-tools\installer\out\uavresearch-gcs-setup-0.3.1.exe
-tools/installer/out/uavresearch-gcs_0.3.1_amd64_jammy.deb
+tools\installer\out\skymeshx-gcs-setup-0.3.1.exe
+tools/installer/out/skymeshx-gcs_0.3.1_amd64_jammy.deb
 ```
 
 als GitHub Release Assets zum Tag `v0.3.1`.

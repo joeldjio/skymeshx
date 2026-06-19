@@ -5,14 +5,14 @@ Tests seeding mission generation with servo commands for seed drops.
 """
 
 import pytest
-from droneresearch.control.seeding_planner import (
+from skymeshx.control.seeding_planner import (
     SeedingMissionPlanner,
     SeedingConfig,
     MAV_CMD_NAV_WAYPOINT,
     MAV_CMD_DO_SET_SERVO,
     MAV_CMD_NAV_DELAY
 )
-from droneresearch.control.field_coverage import FieldBoundary
+from skymeshx.control.field_coverage import FieldBoundary
 
 
 def test_seeding_config_validation():

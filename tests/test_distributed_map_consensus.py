@@ -6,7 +6,7 @@ conflicting observations from multiple drones.
 """
 import time
 import pytest
-from droneresearch.mapping import DistributedOccupancyMap
+from skymeshx.mapping import DistributedOccupancyMap
 
 
 def test_consensus_weighted_average():

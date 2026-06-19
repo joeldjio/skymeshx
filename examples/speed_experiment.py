@@ -7,8 +7,8 @@ Run:
     python examples/speed_experiment.py --port tcp:127.0.0.1:5760
 """
 import argparse
-from droneresearch import Drone
-from droneresearch.experiment import Experiment
+from skymeshx import Drone
+from skymeshx.experiment import Experiment
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", default="tcp:127.0.0.1:5760")

@@ -14,7 +14,7 @@ Usage:
 """
 
 import time
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 
 def main():

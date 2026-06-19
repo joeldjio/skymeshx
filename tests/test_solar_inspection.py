@@ -8,12 +8,12 @@ and mission planning for solar panel inspection operations.
 import pytest
 import math
 
-from droneresearch.control.solar_inspection import (
+from skymeshx.control.solar_inspection import (
     SolarParkInspectionPlanner,
     PanelRow,
     InspectionConfig
 )
-from droneresearch.control.mission import Waypoint
+from skymeshx.control.mission import Waypoint
 
 
 class TestPanelRow:

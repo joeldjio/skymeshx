@@ -1,5 +1,5 @@
 """
-tools.ui — uavresearch gcs (PySide6)
+tools.ui — skymeshx gcs (PySide6)
 
 Public API
 ----------

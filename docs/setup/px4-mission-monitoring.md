@@ -58,7 +58,7 @@ Das Mission-Status-Monitoring erweitert die Mission-Upload-Funktionalität um Ec
 ### PX4MissionUploader
 
 ```python
-from droneresearch.ros.px4_mission import PX4MissionUploader
+from skymeshx.ros.px4_mission import PX4MissionUploader
 
 uploader = PX4MissionUploader(namespace="px4_1")
 
@@ -92,7 +92,7 @@ uploader.on_mission_status(on_status_change)
 ### PX4ROS2Bridge
 
 ```python
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 bridge = PX4ROS2Bridge(namespace="px4_1")
 bridge.start()
@@ -219,8 +219,8 @@ bridge.on_mission_status(my_callback)
 
 ### Mit Gazebo Auto-Setup (Feature 3)
 ```python
-from droneresearch.simulation.px4_gazebo import PX4GazeboCluster
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.simulation.px4_gazebo import PX4GazeboCluster
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 # SITL starten
 with PX4GazeboCluster(num_drones=1) as cluster:

@@ -1,4 +1,4 @@
-name: Build & Publish UAVResearch GCS
+name: Build & Publish SkyMeshX GCS
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Triggers
@@ -87,17 +87,17 @@ jobs:
         if: runner.os != 'Linux'
         # Use "python -m PyInstaller" so the command works even when the
         # pyinstaller shim is not on PATH (common on Windows runners).
-        run: python -m PyInstaller tools/installer/specs/uavresearch_gcs.spec --noconfirm --clean
+        run: python -m PyInstaller tools/installer/specs/skymeshx_gcs.spec --noconfirm --clean
 
       - name: Compile Windows installer (Inno Setup)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' /Q tools\installer\inno\uavresearch_gcs.iss
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' /Q tools\installer\inno\skymeshx_gcs.iss
 
       - name: Package macOS bundle as tar.gz
         if: runner.os == 'macOS'
-        run: tar -czf "uavresearch-gcs-macos.tar.gz" -C dist UAVResearchGCS
+        run: tar -czf "skymeshx-gcs-macos.tar.gz" -C dist SkyMeshXGCS
 
       # ── Linux ─────────────────────────────────────────────────────────────
 
@@ -115,7 +115,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $file = Get-Item tools\installer\out\uavresearch-gcs-setup-*.exe
+          $file = Get-Item tools\installer\out\skymeshx-gcs-setup-*.exe
           $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
           "$hash  $($file.Name)" | Out-File -FilePath "$($file.FullName).sha256" -Encoding utf8
           Write-Host "SHA256: $hash  $($file.Name)"
@@ -123,8 +123,8 @@ jobs:
       - name: Generate SHA256 checksum (macOS)
         if: runner.os == 'macOS'
         run: |
-          shasum -a 256 uavresearch-gcs-macos.tar.gz > uavresearch-gcs-macos.tar.gz.sha256
-          cat uavresearch-gcs-macos.tar.gz.sha256
+          shasum -a 256 skymeshx-gcs-macos.tar.gz > skymeshx-gcs-macos.tar.gz.sha256
+          cat skymeshx-gcs-macos.tar.gz.sha256
 
       - name: Generate SHA256 checksum (Linux)
         if: runner.os == 'Linux'
@@ -139,25 +139,25 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: uavresearch-gcs-windows
+          name: skymeshx-gcs-windows
           path: |
-            tools/installer/out/uavresearch-gcs-setup-*.exe
-            tools/installer/out/uavresearch-gcs-setup-*.exe.sha256
+            tools/installer/out/skymeshx-gcs-setup-*.exe
+            tools/installer/out/skymeshx-gcs-setup-*.exe.sha256
 
       - name: Upload macOS bundle
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: uavresearch-gcs-macos
+          name: skymeshx-gcs-macos
           path: |
-            uavresearch-gcs-macos.tar.gz
-            uavresearch-gcs-macos.tar.gz.sha256
+            skymeshx-gcs-macos.tar.gz
+            skymeshx-gcs-macos.tar.gz.sha256
 
       - name: Upload Linux .deb
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: uavresearch-gcs-linux-jammy
+          name: skymeshx-gcs-linux-jammy
           path: tools/installer/out/*.deb*
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -211,9 +211,9 @@ jobs:
           repository: joeldjio/rz-gcs-releases
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "UAVResearch GCS ${{ steps.version.outputs.tag }}"
+          name: "SkyMeshX GCS ${{ steps.version.outputs.tag }}"
           body: |
-            ## UAVResearch GCS ${{ steps.version.outputs.tag }}
+            ## SkyMeshX GCS ${{ steps.version.outputs.tag }}
 
             Built automatically from the private source repository.
 
@@ -221,8 +221,8 @@ jobs:
 
             | Platform | File |
             |----------|------|
-            | **Windows** | `uavresearch-gcs-setup-*.exe` – run the installer |
-            | **macOS** | `uavresearch-gcs-macos.tar.gz` – extract and run the app |
+            | **Windows** | `skymeshx-gcs-setup-*.exe` – run the installer |
+            | **macOS** | `skymeshx-gcs-macos.tar.gz` – extract and run the app |
             | **Linux** (Ubuntu 22.04 Jammy) | `*.deb` – `sudo dpkg -i *.deb` |
 
             > **Note:** Windows Defender / macOS Gatekeeper may warn about an

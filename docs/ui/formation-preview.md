@@ -39,7 +39,7 @@ def getFormationOffsets(self, shape: str, count: int, spacing: float) -> list:
     Get formation offsets for preview.
     Returns list of dicts: [{"north": float, "east": float}, ...]
     """
-    from droneresearch.sdk.formations import formation_offsets
+    from skymeshx.sdk.formations import formation_offsets
     
     if count <= 0:
         count = len(self._drones)
@@ -154,6 +154,6 @@ FormationPreview {
 
 ## Siehe auch
 
-- [Formations API](../../droneresearch/sdk/formations.py)
+- [Formations API](../../skymeshx/sdk/formations.py)
 - [Swarm Context](../../tools/ui/context/swarm_context.py)
 - [UI Documentation](./ui-documentation.md)

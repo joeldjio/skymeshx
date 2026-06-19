@@ -31,7 +31,7 @@ NED = [N, E, D] = [enu_north, enu_east, -enu_up]
 The `PX4ROS2Bridge` class now tracks both NED and ENU coordinates:
 
 ```python
-# In droneresearch/ros/px4_bridge.py
+# In skymeshx/ros/px4_bridge.py
 self.telemetry: dict = {
     # ... existing fields ...
     "ned_north": 0.0,
@@ -186,7 +186,7 @@ Tests cover:
 ### Frame Conversion Functions
 
 ```python
-from droneresearch.ros.px4_bridge import ned_to_enu, enu_to_ned, frd_to_flu
+from skymeshx.ros.px4_bridge import ned_to_enu, enu_to_ned, frd_to_flu
 
 # Convert position from NED to ENU
 enu_e, enu_n, enu_u = ned_to_enu(ned_n, ned_e, ned_d)

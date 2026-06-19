@@ -1,10 +1,10 @@
 """
-Generate the UAVResearch branding assets used by the Windows installers.
+Generate the SkyMeshX branding assets used by the Windows installers.
 
 Outputs (all written under ``tools/installer/assets/``):
 
-    uavresearch_icon.ico       — multi-resolution Windows icon (16..256 px)
-    uavresearch_logo_256.png   — 256×256 source PNG (debugging / preview)
+    skymeshx_icon.ico       — multi-resolution Windows icon (16..256 px)
+    skymeshx_logo_256.png   — 256×256 source PNG (debugging / preview)
     wizard_large.bmp           — 164×314 left-strip image for Inno Setup
     wizard_small.bmp           — 55×55 top-right image for Inno Setup
 
@@ -181,7 +181,7 @@ def build_wizard_large(out_path: Path) -> None:
     title_font = _font(17)
     subtitle_font = _font(11)
 
-    title = "uavresearch gcs"
+    title = "skymeshx gcs"
     bb = title_font.getbbox(title)
     draw.text(((w - (bb[2] - bb[0])) // 2, 162), title, font=title_font, fill=WHITE)
 
@@ -202,11 +202,11 @@ def build_wizard_small(out_path: Path) -> None:
 
 
 def main() -> int:
-    print(f"Generating UAVResearch branding assets in: {ASSETS_DIR}")
-    build_icon_png(256).save(ASSETS_DIR / "uavresearch_logo_256.png")
-    print(f"[png]   wrote {ASSETS_DIR / 'uavresearch_logo_256.png'}")
+    print(f"Generating SkyMeshX branding assets in: {ASSETS_DIR}")
+    build_icon_png(256).save(ASSETS_DIR / "skymeshx_logo_256.png")
+    print(f"[png]   wrote {ASSETS_DIR / 'skymeshx_logo_256.png'}")
 
-    build_ico(ASSETS_DIR / "uavresearch_icon.ico")
+    build_ico(ASSETS_DIR / "skymeshx_icon.ico")
     build_wizard_large(ASSETS_DIR / "wizard_large.bmp")
     build_wizard_small(ASSETS_DIR / "wizard_small.bmp")
 

@@ -5,7 +5,7 @@ Verifies map data sharing, merging, cleanup, and query operations.
 """
 import time
 import pytest
-from droneresearch.mapping import DistributedOccupancyMap
+from skymeshx.mapping import DistributedOccupancyMap
 
 
 def test_basic_update_and_query():

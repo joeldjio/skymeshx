@@ -5,7 +5,7 @@ Tests for field coverage planning module.
 import math
 import pytest
 
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     CoveragePattern,
     FieldBoundary,
     CoverageConfig,

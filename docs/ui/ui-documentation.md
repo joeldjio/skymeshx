@@ -1,4 +1,4 @@
-# uavresearch gcs — UI Dokumentation
+# skymeshx gcs — UI Dokumentation
 
 > Vollständige Funktionsbeschreibung aller UI-Komponenten und Panels.  
 > Stand: Mai 2026 | Architektur: PyQt6 + QML + QtWebEngine

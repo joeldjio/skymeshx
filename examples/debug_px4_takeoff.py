@@ -15,7 +15,7 @@ Usage:
 """
 import argparse
 import time
-from droneresearch.sdk.drone import Drone
+from skymeshx.sdk.drone import Drone
 
 def print_system_info(drone):
     """Print PX4 system info and parameters."""

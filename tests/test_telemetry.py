@@ -1,4 +1,4 @@
-"""Tests for :mod:`droneresearch.core.telemetry`."""
+"""Tests for :mod:`skymeshx.core.telemetry`."""
 from __future__ import annotations
 
 import threading
@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from droneresearch.core.telemetry import TelemetryState
+from skymeshx.core.telemetry import TelemetryState
 
 
 class TestUpdate:

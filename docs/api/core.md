@@ -770,7 +770,7 @@ Check if GPS has 3D fix (gps_fix >= 3).
 ### Basic Connection
 
 ```python
-from droneresearch.core.connection import MAVLinkConnection
+from skymeshx.core.connection import MAVLinkConnection
 
 conn = MAVLinkConnection("tcp:127.0.0.1:5762")
 conn.on("connected", lambda: print("Connected!"))
@@ -787,8 +787,8 @@ if conn.connect():
 ### State Machine Integration
 
 ```python
-from droneresearch.core.connection import MAVLinkConnection
-from droneresearch.core.fsm import StateMachine, DroneState
+from skymeshx.core.connection import MAVLinkConnection
+from skymeshx.core.fsm import StateMachine, DroneState
 
 conn = MAVLinkConnection("tcp:127.0.0.1:5762")
 fsm = StateMachine(drone_id="D1")
@@ -809,7 +809,7 @@ conn.connect()
 ### Telemetry Monitoring
 
 ```python
-from droneresearch.core.connection import MAVLinkConnection
+from skymeshx.core.connection import MAVLinkConnection
 
 conn = MAVLinkConnection("tcp:127.0.0.1:5762")
 

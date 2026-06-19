@@ -1,15 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec — DroneResearch CLI (droneresearch.exe).
+PyInstaller spec — SkyMeshX CLI (skymeshx.exe).
 
 Headless build: SDK + CLI + safety + experiment runner. PyQt6 and
 QtWebEngine are explicitly excluded so the bundle stays small (~40 MB
 instead of ~280 MB).
 
 Build with:
-    pyinstaller tools/installer/specs/droneresearch_cli.spec --noconfirm
+    pyinstaller tools/installer/specs/skymeshx_cli.spec --noconfirm
 Output:
-    dist/DroneResearchCLI/droneresearch.exe   (+ _internal/ folder)
+    dist/SkyMeshXCLI/skymeshx.exe   (+ _internal/ folder)
 """
 
 import sys
@@ -28,12 +28,12 @@ block_cipher = None
 
 
 a = Analysis(
-    [str(PROJECT_ROOT / "droneresearch" / "cli" / "main.py")],
+    [str(PROJECT_ROOT / "skymeshx" / "cli" / "main.py")],
     pathex=[str(PROJECT_ROOT)],
     binaries=[],
     datas=[],
     hiddenimports=(
-        collect_submodules("droneresearch")
+        collect_submodules("skymeshx")
         + collect_submodules("pymavlink")
         + ["serial", "serial.tools.list_ports"]
     ),
@@ -65,7 +65,7 @@ a = Analysis(
         "grpc",
         "cryptography",
         # pkg_resources / setuptools are not used at runtime by the
-        # droneresearch package and pull in optional ``appdirs`` /
+        # skymeshx package and pull in optional ``appdirs`` /
         # ``jaraco`` deps that may not be installed.
         "pkg_resources",
         "setuptools._vendor",
@@ -84,7 +84,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="droneresearch",
+    name="skymeshx",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -95,7 +95,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ASSETS_DIR / "uavresearch_icon.ico"),
+    icon=str(ASSETS_DIR / "skymeshx_icon.ico"),
     version=None,
 )
 
@@ -107,5 +107,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="DroneResearchCLI",
+    name="SkyMeshXCLI",
 )

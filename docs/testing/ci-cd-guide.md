@@ -1,6 +1,6 @@
 # CI/CD Guide
 
-Complete guide for Continuous Integration and Continuous Deployment in the UAV Research Project.
+Complete guide for Continuous Integration and Continuous Deployment in the SkyMeshX Project.
 
 ## Table of Contents
 
@@ -197,7 +197,7 @@ make ci-test
 # With coverage
 pytest tests/ \
   -m "not slow and not sitl and not e2e" \
-  --cov=droneresearch \
+  --cov=skymeshx \
   --cov=tools.ui \
   --cov-report=xml \
   --cov-report=term \
@@ -256,11 +256,11 @@ make test-coverage
 
 #### Terminal Report
 ```bash
-pytest tests/ --cov=droneresearch --cov-report=term-missing
+pytest tests/ --cov=skymeshx --cov-report=term-missing
 ```
 
 #### Codecov Dashboard
-- Visit: https://codecov.io/gh/YOUR_ORG/uavresearchproject
+- Visit: https://codecov.io/gh/YOUR_ORG/skymeshxproject
 - View component breakdown
 - Track coverage trends
 - See uncovered lines
@@ -273,8 +273,8 @@ pytest tests/ --cov=droneresearch --cov-report=term-missing
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/YOUR_ORG/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/YOUR_ORG/skymeshxproject.git
+cd skymeshxproject
 
 # 2. Install with test dependencies
 make install-test
@@ -367,7 +367,7 @@ pytest tests/ -m "not system" -v
 
 #### 3. Import Errors in Tests
 
-**Problem:** `ModuleNotFoundError: No module named 'droneresearch'`
+**Problem:** `ModuleNotFoundError: No module named 'skymeshx'`
 
 **Solution:**
 ```bash
@@ -386,7 +386,7 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 ```bash
 # Check pytest.ini [coverage:run] source
 # Ensure all packages are listed
-pytest tests/ --cov=droneresearch --cov=tools.ui -v
+pytest tests/ --cov=skymeshx --cov=tools.ui -v
 ```
 
 #### 5. E2E Tests Fail (Playwright)
@@ -508,7 +508,7 @@ pytest tests/ --profile
 2. **Use Coverage Reports**
    ```bash
    # Find uncovered lines
-   pytest tests/ --cov=droneresearch --cov-report=term-missing
+   pytest tests/ --cov=skymeshx --cov-report=term-missing
    ```
 
 3. **Ignore Unreachable Code**

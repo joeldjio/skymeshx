@@ -1,6 +1,6 @@
 # Release Checklist
 
-Checkliste für jeden `uavresearch gcs` Release.
+Checkliste für jeden `skymeshx gcs` Release.
 
 ---
 
@@ -12,7 +12,7 @@ python tools/installer/bump_version.py X.Y.Z
 
 Das Script aktualisiert automatisch:
 - `tools/ui/_version.py`
-- `tools/installer/inno/uavresearch_gcs.iss`
+- `tools/installer/inno/skymeshx_gcs.iss`
 
 Dann manuell:
 - [ ] Release Notes erstellen: `docs/release/notes-vX.Y.Z.md`
@@ -35,7 +35,7 @@ python tools/installer/icon/make_assets.py
 ## 3. Committen & taggen
 
 ```bash
-git add tools/ui/_version.py tools/installer/inno/uavresearch_gcs.iss
+git add tools/ui/_version.py tools/installer/inno/skymeshx_gcs.iss
 git add docs/release/notes-vX.Y.Z.md docs/README.md
 git commit -m "Bump version to X.Y.Z"
 git tag vX.Y.Z
@@ -48,7 +48,7 @@ git push origin ui-dashboard --tags
 
 ## 4. Release prüfen
 
-- [ ] GitHub Actions Build erfolgreich: `https://github.com/joeldjio/uavresearchproject/actions`
+- [ ] GitHub Actions Build erfolgreich: `https://github.com/joeldjio/skymeshxproject/actions`
 - [ ] Release sichtbar: `https://github.com/joeldjio/rz-gcs-releases/releases`
 - [ ] Windows `.exe` + `.sha256` vorhanden
 - [ ] macOS `.tar.gz` + `.sha256` vorhanden
@@ -68,8 +68,8 @@ git push origin ui-dashboard --tags
 ## Asset-Naming-Konvention
 
 Der In-App-Updater sucht nach Assets die:
-- mit `uavresearch-gcs-setup-` beginnen
+- mit `skymeshx-gcs-setup-` beginnen
 - auf `.exe` enden
 
-**Korrekt:** `uavresearch-gcs-setup-0.3.2.exe`  
+**Korrekt:** `skymeshx-gcs-setup-0.3.2.exe`  
 **Falsch:** `setup.exe`, `GCS-Setup.exe`, `installer.exe`

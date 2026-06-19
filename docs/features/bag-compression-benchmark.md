@@ -233,7 +233,7 @@ compression: "zstd"
 The benchmark results can guide your choice in `ROS2BagRecorder`:
 
 ```python
-from droneresearch.ros.bag_recorder import ROS2BagRecorder
+from skymeshx.ros.bag_recorder import ROS2BagRecorder
 
 # Create recorder
 recorder = ROS2BagRecorder(output_dir="./bags")
@@ -285,4 +285,4 @@ python tools/benchmark_bag_compression.py --duration 10 --topics /fmu/out/vehicl
 - [ROS2 Bag Documentation](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html)
 - [ZSTD Algorithm](https://facebook.github.io/zstd/)
 - [LZ4 Algorithm](https://lz4.github.io/lz4/)
-- `droneresearch/ros/bag_recorder.py` - ROS2 bag recording implementation
+- `skymeshx/ros/bag_recorder.py` - ROS2 bag recording implementation

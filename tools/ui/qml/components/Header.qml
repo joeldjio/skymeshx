@@ -65,7 +65,7 @@ Rectangle {
         // Logo + title
         Text { text: "◉"; color: "#2563eb"; font.pixelSize: 22 }
         Text {
-            text: "UAV Research GCS"
+            text: "SkyMeshX GCS"
             color: "#e2e8f0"; font.pixelSize: 15; font.weight: Font.Bold; font.letterSpacing: 0.5
         }
         Text {

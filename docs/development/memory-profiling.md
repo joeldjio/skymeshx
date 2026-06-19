@@ -2,7 +2,7 @@
 
 ## Overview
 
-`tools/profile_memory.py` is a standalone developer tool for detecting memory leaks in the uavresearch GCS UI. It uses Python's `tracemalloc` module to track memory allocations.
+`tools/profile_memory.py` is a standalone developer tool for detecting memory leaks in the skymeshx GCS UI. It uses Python's `tracemalloc` module to track memory allocations.
 
 ## Usage
 
@@ -57,7 +57,7 @@
 ```
 $ python tools/profile_memory.py
 
-Memory Profiler for uavresearch GCS
+Memory Profiler for skymeshx GCS
 This is a developer tool for detecting memory leaks.
 
 profiler> start

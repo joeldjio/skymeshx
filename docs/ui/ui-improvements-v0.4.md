@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document describes the comprehensive UI/UX improvements implemented in version 0.4 of the UAVResearch Ground Control Station.
+This document describes the comprehensive UI/UX improvements implemented in version 0.4 of the SkyMeshX Ground Control Station.
 
 ---
 

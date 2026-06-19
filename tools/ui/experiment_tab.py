@@ -18,7 +18,7 @@ from PySide6.QtGui import QColor
 from tools.ui.widgets import section_header, h_separator, MetricCard
 
 try:
-    from droneresearch.experiment.scenario import Scenario as _Scenario, ScenarioRunner as _ScenarioRunner
+    from skymeshx.experiment.scenario import Scenario as _Scenario, ScenarioRunner as _ScenarioRunner
 except ImportError:  # pragma: no cover
     _Scenario = None        # type: ignore
     _ScenarioRunner = None  # type: ignore
@@ -37,7 +37,7 @@ class ExperimentWorker(QObject):
 
     def run(self) -> None:
         if _Scenario is None or _ScenarioRunner is None:
-            self.log_message.emit("[experiment] droneresearch SDK not installed.")
+            self.log_message.emit("[experiment] skymeshx SDK not installed.")
             self.finished.emit()
             return
         try:

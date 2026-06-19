@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DroneResearch Pi Server
+SkyMeshX Pi Server
 =======================
 Lightweight MAVLink GCS + REST API for Raspberry Pi 1.
 
@@ -294,7 +294,7 @@ _DASHBOARD_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DroneResearch</title>
+<title>SkyMeshX</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:monospace;background:#0a0e14;color:#cdd6f4;font-size:13px}
@@ -328,7 +328,7 @@ button.yel{border-color:#f9e2af;color:#f9e2af}
 <body>
 <header>
   <div id="dot"></div>
-  <h1>DroneResearch &#128641;</h1>
+  <h1>SkyMeshX &#128641;</h1>
   <span id="mode-badge" style="background:#313244;padding:2px 8px;border-radius:4px;font-size:11px">---</span>
   <span id="armed-badge" style="padding:2px 8px;border-radius:4px;font-size:11px;background:#313244">DISARMED</span>
   <span style="margin-left:auto;color:#585b70;font-size:11px" id="uptime">up 0s</span>
@@ -363,7 +363,7 @@ button.yel{border-color:#f9e2af;color:#f9e2af}
 <div id="log-wrap">
   <div id="log"></div>
 </div>
-<div id="status-bar">DroneResearch Pi &mdash; <span id="lat-lon">---</span></div>
+<div id="status-bar">SkyMeshX Pi &mdash; <span id="lat-lon">---</span></div>
 
 <script>
 const trail=[];let lastLat=0,lastLon=0;
@@ -529,7 +529,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="DroneResearch Pi Server")
+    parser = argparse.ArgumentParser(description="SkyMeshX Pi Server")
     parser.add_argument("--port",   default="tcp:127.0.0.1:5760",
                         help="MAVLink connection (e.g. /dev/ttyUSB0 or tcp:127.0.0.1:5760)")
     parser.add_argument("--baud",   type=int, default=57600)

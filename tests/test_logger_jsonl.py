@@ -9,7 +9,7 @@ import pytest
 
 class TestJSONLLogging:
     def test_events_written_immediately_as_jsonl(self, tmp_path):
-        from droneresearch.data.logger import TelemetryLogger
+        from skymeshx.data.logger import TelemetryLogger
 
         logger = TelemetryLogger(str(tmp_path))
         logger.start(drone_id="test")
@@ -26,7 +26,7 @@ class TestJSONLLogging:
         logger.stop()
 
     def test_each_line_is_valid_json(self, tmp_path):
-        from droneresearch.data.logger import TelemetryLogger
+        from skymeshx.data.logger import TelemetryLogger
 
         logger = TelemetryLogger(str(tmp_path))
         logger.start(drone_id="test2")

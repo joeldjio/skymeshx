@@ -10,7 +10,7 @@ Run with SITL:
     python examples/coordinator_demo.py
 """
 import time
-from droneresearch.models import GenericUAVModel, CoordinatorUAVModel
+from skymeshx.models import GenericUAVModel, CoordinatorUAVModel
 
 # Create coordinator as ground station
 coord = CoordinatorUAVModel.as_ground_station()

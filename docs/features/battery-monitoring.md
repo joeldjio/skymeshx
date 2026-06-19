@@ -19,7 +19,7 @@ The Smart Battery Monitor provides predictive battery management for UAVs, trigg
 ### Core Components
 
 ```
-droneresearch/safety/battery_monitor.py
+skymeshx/safety/battery_monitor.py
 ├── BatteryMonitor          # Main monitoring class
 ├── BatteryStatus           # Status dataclass
 └── PowerSample             # Historical sample dataclass
@@ -73,7 +73,7 @@ Historical power consumption sample.
 ### Basic Usage
 
 ```python
-from droneresearch.safety.battery_monitor import BatteryMonitor
+from skymeshx.safety.battery_monitor import BatteryMonitor
 
 # Create monitor with default settings
 monitor = BatteryMonitor()

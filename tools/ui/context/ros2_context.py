@@ -41,7 +41,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QTimer
 # it CAN be imported via importlib.util.find_spec, then defer the real
 # import to first bridge start.
 _ROS2_AVAILABLE   = importlib.util.find_spec("rclpy") is not None
-_BRIDGE_AVAILABLE = importlib.util.find_spec("droneresearch.ros.px4_bridge") is not None
+_BRIDGE_AVAILABLE = importlib.util.find_spec("skymeshx.ros.px4_bridge") is not None
 _PX4Bridge: Optional[type] = None  # populated on first start_bridge
 
 
@@ -53,7 +53,7 @@ def _ensure_bridge_loaded() -> bool:
     if not (_ROS2_AVAILABLE and _BRIDGE_AVAILABLE):
         return False
     try:
-        from droneresearch.ros.px4_bridge import PX4ROS2Bridge as _B
+        from skymeshx.ros.px4_bridge import PX4ROS2Bridge as _B
         _PX4Bridge = _B
         return True
     except ImportError:
@@ -407,7 +407,7 @@ class ROS2Context(QObject):
 
         def _start():
             try:
-                from droneresearch.simulation import PX4GazeboCluster
+                from skymeshx.simulation import PX4GazeboCluster
                 
                 self.ros2LogMessage.emit("INFO", "[SITL] Starting PX4 Gazebo cluster...")
                 self.ros2LogMessage.emit("INFO", f"[SITL] PX4 Dir: {self._sitl_config['px4_dir']}")
@@ -610,7 +610,7 @@ class ROS2Context(QObject):
             return self._formation_controller is not None
         
         try:
-            from droneresearch.ros.px4_formation import PX4FormationController
+            from skymeshx.ros.px4_formation import PX4FormationController
             self._formation_controller = None
             self._FormationController = PX4FormationController
             return True
@@ -797,7 +797,7 @@ class ROS2Context(QObject):
         # Lazy load bag recorder
         if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
             try:
-                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                from skymeshx.ros.bag_recorder import ROS2BagRecorder
                 import os
                 from pathlib import Path
                 
@@ -910,7 +910,7 @@ class ROS2Context(QObject):
         """
         if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
             try:
-                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                from skymeshx.ros.bag_recorder import ROS2BagRecorder
                 self._bag_recorder = ROS2BagRecorder(output_dir="./bags")
             except Exception as e:
                 self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to initialize recorder: {e}")
@@ -950,7 +950,7 @@ class ROS2Context(QObject):
         """
         if not hasattr(self, '_bag_recorder') or self._bag_recorder is None:
             try:
-                from droneresearch.ros.bag_recorder import ROS2BagRecorder
+                from skymeshx.ros.bag_recorder import ROS2BagRecorder
                 self._bag_recorder = ROS2BagRecorder(output_dir="./bags")
             except Exception as e:
                 self.ros2LogMessage.emit("ERROR", f"[BAG] Failed to initialize recorder: {e}")

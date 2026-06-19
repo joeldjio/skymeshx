@@ -7,7 +7,7 @@ Tests:
 3. SafetyContext velocity calculation
 """
 import pytest
-from droneresearch.safety.collision_predictor import (
+from skymeshx.safety.collision_predictor import (
     CollisionPredictor,
     DroneState,
 )

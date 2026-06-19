@@ -14,8 +14,8 @@ import pytest
 
 def test_upload_async_method_exists():
     """Test that MissionEngine has upload_async method."""
-    from droneresearch.control.mission import MissionEngine
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = None
@@ -28,8 +28,8 @@ def test_upload_async_method_exists():
 
 def test_is_uploading_method_exists():
     """Test that MissionEngine has is_uploading method."""
-    from droneresearch.control.mission import MissionEngine
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = None
@@ -45,8 +45,8 @@ def test_is_uploading_method_exists():
 
 def test_upload_async_starts_thread():
     """Test that upload_async starts a background thread."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -69,8 +69,8 @@ def test_upload_async_starts_thread():
 
 def test_upload_async_prevents_concurrent_uploads():
     """Test that upload_async prevents concurrent uploads."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -107,8 +107,8 @@ def test_upload_async_prevents_concurrent_uploads():
 
 def test_upload_async_progress_callback():
     """Test that progress callback is called during upload."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -138,8 +138,8 @@ def test_upload_async_progress_callback():
 
 def test_upload_async_complete_callback_success():
     """Test that complete callback is called with success=True."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -169,8 +169,8 @@ def test_upload_async_complete_callback_success():
 
 def test_upload_async_complete_callback_failure():
     """Test that complete callback is called with success=False on failure."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -200,8 +200,8 @@ def test_upload_async_complete_callback_failure():
 
 def test_upload_async_exception_handling():
     """Test that exceptions in upload are handled gracefully."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -231,8 +231,8 @@ def test_upload_async_exception_handling():
 
 def test_upload_async_callback_exception_handling():
     """Test that exceptions in callbacks don't crash the thread."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -260,8 +260,8 @@ def test_upload_async_callback_exception_handling():
 
 def test_upload_async_clears_callbacks():
     """Test that callbacks are cleared after upload completes."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()
@@ -290,8 +290,8 @@ def test_upload_async_clears_callbacks():
 
 def test_upload_async_thread_is_daemon():
     """Test that upload thread is a daemon thread."""
-    from droneresearch.control.mission import MissionEngine, Waypoint
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.control.mission import MissionEngine, Waypoint
+    from skymeshx.core.connection import MAVLinkConnection
     
     conn = Mock(spec=MAVLinkConnection)
     conn._mav = MagicMock()

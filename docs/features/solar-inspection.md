@@ -47,12 +47,12 @@ The Solar Park Inspection feature enables systematic inspection of solar panel i
 ### Basic Inspection Mission
 
 ```python
-from droneresearch.control.solar_inspection import (
+from skymeshx.control.solar_inspection import (
     SolarParkInspectionPlanner,
     PanelRow,
     InspectionConfig
 )
-from droneresearch.control.mission import MissionEngine
+from skymeshx.control.mission import MissionEngine
 
 # Initialize planner
 planner = SolarParkInspectionPlanner()
@@ -95,7 +95,7 @@ mission.start()
 ### Thermal Camera Integration
 
 ```python
-from droneresearch.sensors.thermal_camera import (
+from skymeshx.sensors.thermal_camera import (
     ThermalCameraSubscriber,
     ThermalHotspotDetector
 )
@@ -283,16 +283,16 @@ python -m pytest tests/test_thermal_camera.py -v
 ### Complete Inspection Workflow
 
 ```python
-from droneresearch.control.solar_inspection import (
+from skymeshx.control.solar_inspection import (
     SolarParkInspectionPlanner,
     PanelRow,
     InspectionConfig
 )
-from droneresearch.sensors.thermal_camera import (
+from skymeshx.sensors.thermal_camera import (
     ThermalCameraSubscriber,
     ThermalHotspotDetector
 )
-from droneresearch.control.mission import MissionEngine
+from skymeshx.control.mission import MissionEngine
 
 # 1. Plan inspection mission
 planner = SolarParkInspectionPlanner()
@@ -360,6 +360,6 @@ print(f"Coverage area: {planner.calculate_coverage_area(rows, config):.1f} m²")
 
 ## See Also
 
-- [`droneresearch.control.solar_inspection`](../api/control.md#solar-inspection)
-- [`droneresearch.sensors.thermal_camera`](../api/reference.md#thermal-camera)
+- [`skymeshx.control.solar_inspection`](../api/control.md#solar-inspection)
+- [`skymeshx.sensors.thermal_camera`](../api/reference.md#thermal-camera)
 - [Phase 4 Implementation Plan](../project/master-implementation-plan-2026.md#phase-4)

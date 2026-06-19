@@ -11,8 +11,8 @@ import time
 
 import pytest
 
-from droneresearch.safety.apf import Pose3D
-from droneresearch.safety.perception_avoidance import PerceptionEnhancedAPF
+from skymeshx.safety.apf import Pose3D
+from skymeshx.safety.perception_avoidance import PerceptionEnhancedAPF
 
 
 def test_obstacle_timeout_basic():

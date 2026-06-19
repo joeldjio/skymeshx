@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from droneresearch.control.mission import MissionEngine, Waypoint
-from droneresearch.control.mission_validation import calculate_distance
+from skymeshx.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission_validation import calculate_distance
 from tests.conftest import FakeConnection
 
 

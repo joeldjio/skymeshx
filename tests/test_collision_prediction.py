@@ -5,7 +5,7 @@ Tests the CollisionPredictor class and its integration with SafetyContext.
 """
 
 import pytest
-from droneresearch.safety.collision_predictor import (
+from skymeshx.safety.collision_predictor import (
     CollisionPredictor,
     CollisionPrediction,
     DroneState,

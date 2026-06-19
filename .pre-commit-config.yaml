@@ -80,7 +80,7 @@ repos:
     hooks:
       - id: bandit
         name: Security check with bandit
-        args: [-c, pyproject.toml, -r, droneresearch/, tools/]
+        args: [-c, pyproject.toml, -r, skymeshx/, tools/]
         additional_dependencies: ["bandit[toml]"]
         exclude: ^(tests/|examples/)
 

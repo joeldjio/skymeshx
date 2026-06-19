@@ -26,14 +26,14 @@ from typing import Any, Dict, List, NamedTuple, Tuple
 from PySide6.QtCore import QObject, QTimer, Property, Signal, Slot
 
 try:
-    from droneresearch.safety.apf import APFSafetyFilter as _APFSafetyFilter
-    from droneresearch.safety.apf import Pose3D as _Pose3D
+    from skymeshx.safety.apf import APFSafetyFilter as _APFSafetyFilter
+    from skymeshx.safety.apf import Pose3D as _Pose3D
 except ImportError:
     _APFSafetyFilter = None
     _Pose3D = None
 
 try:
-    from droneresearch.safety.collision_predictor import (
+    from skymeshx.safety.collision_predictor import (
         CollisionPredictor as _CollisionPredictor,
         DroneState as _DroneState,
     )
@@ -42,7 +42,7 @@ except ImportError:
     _DroneState = None
 
 try:
-    from droneresearch.safety.battery_monitor import (
+    from skymeshx.safety.battery_monitor import (
         BatteryMonitor as _BatteryMonitor,
         BatteryStatus as _BatteryStatus,
     )
@@ -152,7 +152,7 @@ class SafetyContext(QObject):
         """
         if _APFSafetyFilter is None:
             self.apfLogMessage.emit(
-                "[APF] ERROR: droneresearch.safety.apf not available"
+                "[APF] ERROR: skymeshx.safety.apf not available"
             )
             return
 

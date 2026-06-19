@@ -1,4 +1,4 @@
-# DroneResearch Platform - Master Implementation Plan 2026
+# SkyMeshX Platform - Master Implementation Plan 2026
 
 **Date:** 2026-06-13  
 **Version:** 2.0 (Consolidated)  
@@ -214,7 +214,7 @@ def cancelDrawingBoundary(self):
 ### 0.2 API Critical Fixes (4-5 days)
 
 #### Fix 6: Reconnect Loop Max Attempts
-**File:** `droneresearch/core/connection.py:484-518`  
+**File:** `skymeshx/core/connection.py:484-518`  
 **Issue:** Infinite reconnect loop without max attempts
 
 ```python
@@ -247,7 +247,7 @@ def _reconnect_loop(self, max_attempts: int = 10):
 ---
 
 #### Fix 7: Mission Upload Async
-**File:** `droneresearch/control/mission.py:69-110`  
+**File:** `skymeshx/control/mission.py:69-110`  
 **Issue:** Blocking upload freezes UI (~50ms per waypoint)
 
 ```python
@@ -280,7 +280,7 @@ def _do_upload_sync(self) -> bool:
 ---
 
 #### Fix 8: APF Repulsion Oscillation
-**File:** `droneresearch/safety/apf.py:202-210`  
+**File:** `skymeshx/safety/apf.py:202-210`  
 **Issue:** Extreme repulsion forces when drones very close
 
 ```python
@@ -303,7 +303,7 @@ if d < self.obstacle_radius and d > 1e-6:
 ---
 
 #### Fix 9: CollisionPredictor Implementation
-**File:** `droneresearch/safety/collision_predictor.py:127-150`  
+**File:** `skymeshx/safety/collision_predictor.py:127-150`  
 **Issue:** Incomplete implementation, code cuts off
 
 ```python
@@ -383,7 +383,7 @@ def _extrapolate_position(
 ---
 
 #### Fix 10: Takeoff Hang
-**File:** `droneresearch/sdk/drone.py:146-157`  
+**File:** `skymeshx/sdk/drone.py:146-157`  
 **Issue:** Can hang 40s if arm() fails but continues anyway
 
 ```python
@@ -409,7 +409,7 @@ def takeoff(self, altitude: float = 10.0, timeout: float = 30.0) -> bool:
 ---
 
 #### Fix 11: Frame Conversion Audit
-**File:** `droneresearch/ros/px4_bridge.py`  
+**File:** `skymeshx/ros/px4_bridge.py`  
 **Issue:** Frame conversions not consistently applied
 
 **Action:** Audit all position/velocity assignments:
@@ -451,7 +451,7 @@ def takeoff(self, altitude: float = 10.0, timeout: float = 30.0) -> bool:
 ### 1.1 API Improvements (1 week)
 
 #### Improvement 1: Mission Upload Progress
-**File:** `droneresearch/control/mission.py`
+**File:** `skymeshx/control/mission.py`
 
 ```python
 def on_upload_progress(self, cb: Callable[[int, int], None]):
@@ -468,7 +468,7 @@ for seq in range(n):
 ---
 
 #### Improvement 2: Configurable Timeouts
-**File:** `droneresearch/control/mission.py`
+**File:** `skymeshx/control/mission.py`
 
 ```python
 def __init__(self, connection: MAVLinkConnection, handshake_timeout: float = 1.0):
@@ -478,7 +478,7 @@ def __init__(self, connection: MAVLinkConnection, handshake_timeout: float = 1.0
 ---
 
 #### Improvement 3: goto() Acceptance Radius
-**File:** `droneresearch/sdk/drone.py`
+**File:** `skymeshx/sdk/drone.py`
 
 ```python
 def goto(self, lat: float, lon: float, alt: float, 
@@ -503,7 +503,7 @@ def goto(self, lat: float, lon: float, alt: float,
 ---
 
 #### Improvement 4: PX4 Connection Status
-**File:** `droneresearch/ros/px4_bridge.py`
+**File:** `skymeshx/ros/px4_bridge.py`
 
 ```python
 @property
@@ -519,7 +519,7 @@ def _update_connection_status(self, status: ConnectionStatus):
 ---
 
 #### Improvement 5: Swarm Formation Collision Check
-**File:** `droneresearch/sdk/swarm_api.py`
+**File:** `skymeshx/sdk/swarm_api.py`
 
 ```python
 def formation(self, shape: str, spacing: float = 5.0, 
@@ -608,7 +608,7 @@ Connections {
 ### 1.3 Safety Improvements (1 week)
 
 #### Improvement 9: APF Velocity Damping
-**File:** `droneresearch/safety/apf.py`
+**File:** `skymeshx/safety/apf.py`
 
 ```python
 def filter(self, positions, desired, velocities: Optional[Dict[str, Pose3D]] = None):
@@ -630,7 +630,7 @@ def filter(self, positions, desired, velocities: Optional[Dict[str, Pose3D]] = N
 ---
 
 #### Improvement 10: Battery History Persistence
-**File:** `droneresearch/safety/battery_monitor.py`
+**File:** `skymeshx/safety/battery_monitor.py`
 
 ```python
 def save_history(self, filepath: str):
@@ -717,22 +717,22 @@ This matches intuitive "altitude" semantics.
 ---
 
 #### Improvement 14: Error Handling Standardization
-Create `droneresearch/exceptions.py`:
+Create `skymeshx/exceptions.py`:
 
 ```python
-class DroneResearchError(Exception):
-    """Base exception for all DroneResearch errors."""
+class SkyMeshXError(Exception):
+    """Base exception for all SkyMeshX errors."""
     pass
 
-class ConnectionError(DroneResearchError):
+class ConnectionError(SkyMeshXError):
     """Connection-related errors."""
     pass
 
-class MissionError(DroneResearchError):
+class MissionError(SkyMeshXError):
     """Mission planning/execution errors."""
     pass
 
-class SafetyError(DroneResearchError):
+class SafetyError(SkyMeshXError):
     """Safety system errors."""
     pass
 ```
@@ -740,7 +740,7 @@ class SafetyError(DroneResearchError):
 ---
 
 #### Improvement 15: Performance Optimization
-**File:** `droneresearch/core/telemetry.py`
+**File:** `skymeshx/core/telemetry.py`
 
 ```python
 def __init__(self):
@@ -770,7 +770,7 @@ def snapshot(self) -> dict:
 ---
 
 #### Improvement 16: Security - Command Injection Protection
-**File:** `droneresearch/core/connection.py`
+**File:** `skymeshx/core/connection.py`
 
 ```python
 _ALLOWED_MSG_TYPES = {
@@ -794,7 +794,7 @@ def send_raw(self, msg_type: str, **kwargs):
 
 ### 2.1 Perception-Based Collision Avoidance (2-3 weeks)
 
-**New Module:** `droneresearch/safety/perception_avoidance.py`
+**New Module:** `skymeshx/safety/perception_avoidance.py`
 
 ```python
 class PerceptionEnhancedAPF(APFSafetyFilter):
@@ -825,7 +825,7 @@ class PerceptionEnhancedAPF(APFSafetyFilter):
             self._obstacle_map[voxel_key] = current_time
 ```
 
-**ROS2 Integration:** `droneresearch/sensors/depth_camera.py`
+**ROS2 Integration:** `skymeshx/sensors/depth_camera.py`
 
 ```python
 class DepthCameraSubscriber:
@@ -852,7 +852,7 @@ class DepthCameraSubscriber:
 
 ### 2.2 Distributed Task Allocation (3-4 weeks)
 
-**New Module:** `droneresearch/exploration/distributed_allocation.py`
+**New Module:** `skymeshx/exploration/distributed_allocation.py`
 
 ```python
 class DistributedTaskAllocator:
@@ -895,7 +895,7 @@ class DistributedTaskAllocator:
                 workload_cost * 0.3 + risk_cost * 2.0)
 ```
 
-**Communication Protocol:** `droneresearch/communication/swarm_protocol.py`
+**Communication Protocol:** `skymeshx/communication/swarm_protocol.py`
 
 ```python
 class SwarmCommunicationProtocol:
@@ -928,7 +928,7 @@ class SwarmCommunicationProtocol:
 
 ### 2.3 Adaptive Safety Margins (1-2 weeks)
 
-**Enhancement:** `droneresearch/safety/apf.py`
+**Enhancement:** `skymeshx/safety/apf.py`
 
 ```python
 class AdaptiveAPFSafetyFilter(APFSafetyFilter):
@@ -976,7 +976,7 @@ class AdaptiveAPFSafetyFilter(APFSafetyFilter):
 
 ### 2.4 Distributed Mapping Consensus (2-3 weeks)
 
-**New Module:** `droneresearch/mapping/distributed_map.py`
+**New Module:** `skymeshx/mapping/distributed_map.py`
 
 ```python
 class DistributedOccupancyMap:
@@ -1012,7 +1012,7 @@ class DistributedOccupancyMap:
 
 ### 3.1 Field Coverage Planning (Already Implemented ✅)
 
-**Status:** ✅ Fully implemented in `droneresearch/control/field_coverage.py`
+**Status:** ✅ Fully implemented in `skymeshx/control/field_coverage.py`
 
 **Enhancements Needed:**
 1. Multi-drone waypoint distribution optimization
@@ -1023,7 +1023,7 @@ class DistributedOccupancyMap:
 
 ### 3.2 Smart Battery Monitoring & RTL (1-2 weeks)
 
-**Enhancement:** `droneresearch/safety/battery_monitor.py`
+**Enhancement:** `skymeshx/safety/battery_monitor.py`
 
 ```python
 def should_rtl(self, drone_id: str, home_distance: float) -> Tuple[bool, str]:
@@ -1068,7 +1068,7 @@ def should_rtl(self, drone_id: str, home_distance: float) -> Tuple[bool, str]:
 
 **Status:** COMPLETED - Full implementation with UI integration, testing, and documentation
 
-**Implementation:** [`droneresearch/control/seeding_planner.py`](../../droneresearch/control/seeding_planner.py)
+**Implementation:** [`skymeshx/control/seeding_planner.py`](../../skymeshx/control/seeding_planner.py)
 
 **Completed Features:**
 - ✅ SeedingMissionPlanner class with servo control
@@ -1083,7 +1083,7 @@ def should_rtl(self, drone_id: str, home_distance: float) -> Tuple[bool, str]:
 
 **Documentation:** [`docs/features/seeding-mission-planner.md`](../features/seeding-mission-planner.md)
 
-**Original Specification:** `droneresearch/control/seeding_planner.py`
+**Original Specification:** `skymeshx/control/seeding_planner.py`
 
 ```python
 class SeedingMissionPlanner:
@@ -1160,7 +1160,7 @@ class SeedingMissionPlanner:
 
 ### 4.1 Solar Park Inspection Planner (2-3 weeks)
 
-**New Module:** `droneresearch/control/solar_inspection.py`
+**New Module:** `skymeshx/control/solar_inspection.py`
 
 ```python
 class SolarParkInspectionPlanner:
@@ -1228,7 +1228,7 @@ class SolarParkInspectionPlanner:
 
 ### 4.2 ROS2 Thermal Camera Integration (1-2 weeks)
 
-**New Module:** `droneresearch/sensors/thermal_camera.py`
+**New Module:** `skymeshx/sensors/thermal_camera.py`
 
 ```python
 class ThermalCameraSubscriber:
@@ -1283,7 +1283,7 @@ class ThermalCameraSubscriber:
 
 ### 5.1 Mission Template System (1-2 weeks)
 
-**New Module:** `droneresearch/control/mission_templates.py`
+**New Module:** `skymeshx/control/mission_templates.py`
 
 ```python
 class MissionTemplate:
@@ -1324,7 +1324,7 @@ class MissionTemplate:
 
 ### 5.2 Dynamic Formation Transitions (1-2 weeks)
 
-**Enhancement:** `droneresearch/sdk/formations.py`
+**Enhancement:** `skymeshx/sdk/formations.py`
 
 ```python
 def transition_formation(
@@ -1652,7 +1652,7 @@ Total Timeline: 16-22 weeks (4-5.5 months)
 
 ### Weekly Status Report Template
 ```markdown
-# DroneResearch Implementation Status - Week X
+# SkyMeshX Implementation Status - Week X
 
 ## Completed This Week
 - [List completed tasks]

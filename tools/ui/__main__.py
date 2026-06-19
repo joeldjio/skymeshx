@@ -26,7 +26,7 @@ def main():
         from tools.ui.main_window import MainWindow
 
         app = QApplication(sys.argv)
-        app.setApplicationName("uavresearch gcs")
+        app.setApplicationName("SkyMeshX")
         app.setApplicationVersion(VERSION)
         app.setFont(QFont("Segoe UI", 10))
 

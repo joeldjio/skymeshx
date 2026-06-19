@@ -4,7 +4,7 @@ Test APF Acceleration Limiting (Improvement 9).
 Verifies that the APF filter limits acceleration to prevent jerky movements.
 """
 import pytest
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 
 def test_acceleration_limiting_prevents_sudden_changes():

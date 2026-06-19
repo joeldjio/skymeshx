@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Das UAVResearch-Projekt hat eine **exzellente Test-Infrastruktur** mit **71 Test-Dateien** und einer klaren **Test-Pyramide**. Die Tests sind **hardware-frei** designed und erreichen **hohe Coverage** (>80% für kritische Module).
+Das SkyMeshX-Projekt hat eine **exzellente Test-Infrastruktur** mit **71 Test-Dateien** und einer klaren **Test-Pyramide**. Die Tests sind **hardware-frei** designed und erreichen **hohe Coverage** (>80% für kritische Module).
 
 ### Test-Pyramide Status
 
@@ -272,7 +272,7 @@ def test_swarm_broadcast(fake_conn):
 ```python
 def test_ros2_context_lifecycle():
     """Integration: ROS2 context reference counting"""
-    from droneresearch.ros.context import acquire_ros, release_ros
+    from skymeshx.ros.context import acquire_ros, release_ros
     
     # First acquire
     ctx1 = acquire_ros()
@@ -527,7 +527,7 @@ def test_ui_startup_and_navigation(page):
     page.goto("http://localhost:8080")
     
     # Wait for UI to load
-    page.wait_for_selector("text=uavresearch gcs", timeout=5000)
+    page.wait_for_selector("text=skymeshx gcs", timeout=5000)
     
     # Verify all tabs are visible
     tabs = ["Map", "Telemetry", "Swarm", "Safety", "ROS2", "Scenario", "Log"]
@@ -554,7 +554,7 @@ def test_ui_startup_and_navigation(page):
 def test_drone_connection_workflow(page):
     """E2E: Connect drone via UI"""
     page.goto("http://localhost:8080")
-    page.wait_for_selector("text=uavresearch gcs")
+    page.wait_for_selector("text=skymeshx gcs")
     
     # Navigate to Dashboard
     page.click("text=Telemetry")
@@ -673,14 +673,14 @@ def test_swarm_formation_workflow(page):
 ```
 Module                          Statements   Missing   Coverage
 ----------------------------------------------------------------
-droneresearch/core/fsm.py              156         0    100.0%
-droneresearch/core/telemetry.py         89         0    100.0%
-droneresearch/safety/apf.py            312        15     95.2%
-droneresearch/control/mission.py       245        25     89.8%
-droneresearch/sdk/drone.py             198        22     88.9%
-droneresearch/sdk/swarm_api.py         167        18     89.2%
-droneresearch/ros/bridge.py            134        27     79.9%
-droneresearch/ros/px4_bridge.py        189        32     83.1%
+skymeshx/core/fsm.py              156         0    100.0%
+skymeshx/core/telemetry.py         89         0    100.0%
+skymeshx/safety/apf.py            312        15     95.2%
+skymeshx/control/mission.py       245        25     89.8%
+skymeshx/sdk/drone.py             198        22     88.9%
+skymeshx/sdk/swarm_api.py         167        18     89.2%
+skymeshx/ros/bridge.py            134        27     79.9%
+skymeshx/ros/px4_bridge.py        189        32     83.1%
 tools/ui/context/*.py                  456         0    100.0%
 tools/ui/backend.py                    312        15     95.2%
 ----------------------------------------------------------------
@@ -735,7 +735,7 @@ jobs:
     
     - name: Run unit tests
       run: |
-        pytest tests/ -m "unit" -v --cov=droneresearch --cov-report=xml
+        pytest tests/ -m "unit" -v --cov=skymeshx --cov-report=xml
     
     - name: Run integration tests
       run: |
@@ -757,7 +757,7 @@ pytest tests/ -m "not slow and not system and not e2e" -v
 pytest tests/ -v
 
 # With coverage
-pytest tests/ --cov=droneresearch --cov-report=html
+pytest tests/ --cov=skymeshx --cov-report=html
 
 # Specific category
 pytest tests/ -m "unit" -v
@@ -869,7 +869,7 @@ def test_full_workflow():
 
 ```ini
 [coverage:run]
-source = droneresearch,tools.ui
+source = skymeshx,tools.ui
 omit = */tests/*, */venv/*
 
 [coverage:report]
@@ -1011,7 +1011,7 @@ def test_apf_filter_performance(benchmark):
 pip install mutmut
 
 # Run mutation tests
-mutmut run --paths-to-mutate droneresearch/
+mutmut run --paths-to-mutate skymeshx/
 
 # Show results
 mutmut results
@@ -1024,7 +1024,7 @@ mutmut html
 
 ### Google Test Pyramid
 
-| Level | Google | UAVResearch | Status |
+| Level | Google | SkyMeshX | Status |
 |-------|--------|-------------|--------|
 | Unit | 70% | 49% | ⚠️ Könnte mehr sein |
 | Integration | 20% | 32% | ✅ Gut |
@@ -1036,7 +1036,7 @@ mutmut html
 
 ### Microsoft Test Standards
 
-| Metrik | Microsoft | UAVResearch | Status |
+| Metrik | Microsoft | SkyMeshX | Status |
 |--------|-----------|-------------|--------|
 | Coverage | >80% | 93.2% | ✅ Excellent |
 | Test Speed | <10s | <5s | ✅ Excellent |
@@ -1111,9 +1111,9 @@ mutmut html
 ### Unit Test Template
 
 ```python
-"""Tests for :mod:`droneresearch.module.submodule`."""
+"""Tests for :mod:`skymeshx.module.submodule`."""
 import pytest
-from droneresearch.module.submodule import MyClass
+from skymeshx.module.submodule import MyClass
 
 @pytest.mark.unit
 class TestMyClass:
@@ -1148,13 +1148,13 @@ class TestMyClass:
 ### Integration Test Template
 
 ```python
-"""Integration tests for :mod:`droneresearch.module.submodule`."""
+"""Integration tests for :mod:`skymeshx.module.submodule`."""
 import pytest
 
 @pytest.mark.integration
 def test_integration_with_fake_connection(fake_conn, make_msg):
     """Integration: MyClass works with fake MAVLink connection"""
-    from droneresearch.module.submodule import MyClass
+    from skymeshx.module.submodule import MyClass
     
     obj = MyClass(fake_conn)
     
@@ -1170,15 +1170,15 @@ def test_integration_with_fake_connection(fake_conn, make_msg):
 ### System Test Template
 
 ```python
-"""System tests for :mod:`droneresearch.module.submodule`."""
+"""System tests for :mod:`skymeshx.module.submodule`."""
 import pytest
 
 @pytest.mark.system
 @pytest.mark.sitl
 def test_system_with_sitl():
     """System: MyClass works with real SITL"""
-    from droneresearch.simulation.sitl import SITLLauncher
-    from droneresearch.module.submodule import MyClass
+    from skymeshx.simulation.sitl import SITLLauncher
+    from skymeshx.module.submodule import MyClass
     
     sitl = SITLLauncher()
     sitl.start()

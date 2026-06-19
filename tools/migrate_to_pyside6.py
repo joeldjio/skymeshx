@@ -3,7 +3,7 @@
 Migrate PySide6 imports to PySide6 for license compliance.
 
 This script automates the conversion from PySide6 (GPL v3) to PySide6 (LGPL v3)
-to enable commercial use of the UAVResearch project.
+to enable commercial use of the SkyMeshX project.
 
 Changes made:
 1. PySide6 → PySide6 in all imports

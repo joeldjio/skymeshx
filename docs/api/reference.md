@@ -1,13 +1,13 @@
 # API Reference - Quick Guide
 
-Complete API reference for the UAV Research Platform.
+Complete API reference for the SkyMeshX Platform.
 
 ## High-Level SDK
 
 ### Drone Class
 
 ```python
-from droneresearch import Drone
+from skymeshx import Drone
 
 drone = Drone(connection_string, drone_id="drone", log_dir="logs", auto_log=True)
 ```
@@ -49,7 +49,7 @@ drone = Drone(connection_string, drone_id="drone", log_dir="logs", auto_log=True
 ### Swarm Class
 
 ```python
-from droneresearch import Swarm
+from skymeshx import Swarm
 
 swarm = Swarm(log_dir="logs", auto_log=True)
 ```
@@ -90,7 +90,7 @@ swarm = Swarm(log_dir="logs", auto_log=True)
 ### MAVLinkConnection
 
 ```python
-from droneresearch.core.connection import MAVLinkConnection
+from skymeshx.core.connection import MAVLinkConnection
 
 conn = MAVLinkConnection(connection_string, source_system=255, auto_reconnect=True)
 ```
@@ -105,7 +105,7 @@ conn = MAVLinkConnection(connection_string, source_system=255, auto_reconnect=Tr
 ### StateMachine
 
 ```python
-from droneresearch.core.fsm import StateMachine, DroneState
+from skymeshx.core.fsm import StateMachine, DroneState
 
 fsm = StateMachine(drone_id="drone")
 ```
@@ -127,7 +127,7 @@ fsm = StateMachine(drone_id="drone")
 ### TelemetryState
 
 ```python
-from droneresearch.core.telemetry import TelemetryState
+from skymeshx.core.telemetry import TelemetryState
 
 tel = TelemetryState()
 ```
@@ -152,7 +152,7 @@ tel = TelemetryState()
 ### MissionEngine
 
 ```python
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission import MissionEngine, Waypoint
 
 mission = MissionEngine(connection)
 ```
@@ -177,7 +177,7 @@ mission = MissionEngine(connection)
 ### Waypoint
 
 ```python
-from droneresearch.control.mission import Waypoint
+from skymeshx.control.mission import Waypoint
 
 wp = Waypoint(lat, lon, alt=10.0, speed=None, hold=0.0, cmd=16, radius=2.0)
 ```
@@ -187,7 +187,7 @@ wp = Waypoint(lat, lon, alt=10.0, speed=None, hold=0.0, cmd=16, radius=2.0)
 ### APFSafetyFilter
 
 ```python
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 apf = APFSafetyFilter(
     min_separation=2.0,
@@ -210,7 +210,7 @@ apf = APFSafetyFilter(
 ### Pose3D
 
 ```python
-from droneresearch.safety.apf import Pose3D
+from skymeshx.safety.apf import Pose3D
 
 pos = Pose3D(x=0.0, y=0.0, z=0.0)  # x=North, y=East, z=altitude (positive up)
 ```
@@ -229,7 +229,7 @@ pos = Pose3D(x=0.0, y=0.0, z=0.0)  # x=North, y=East, z=altitude (positive up)
 ### Geofence
 
 ```python
-from droneresearch.safety.apf import Geofence
+from skymeshx.safety.apf import Geofence
 
 fence = Geofence(origin_x=0.0, origin_y=0.0, radius=50.0, alt_min=1.0, alt_max=30.0)
 ```
@@ -241,7 +241,7 @@ fence = Geofence(origin_x=0.0, origin_y=0.0, radius=50.0, alt_min=1.0, alt_max=3
 ### APFFilterLoop
 
 ```python
-from droneresearch.safety.apf import APFFilterLoop
+from skymeshx.safety.apf import APFFilterLoop
 
 loop = APFFilterLoop(apf, get_positions, get_desired, on_safe, hz=20.0, on_violation=None)
 ```
@@ -255,8 +255,8 @@ loop = APFFilterLoop(apf, get_positions, get_desired, on_safe, hz=20.0, on_viola
 ### PX4Bridge
 
 ```python
-from droneresearch.ros.context import acquire_ros, release_ros
-from droneresearch.ros.px4_bridge import PX4Bridge
+from skymeshx.ros.context import acquire_ros, release_ros
+from skymeshx.ros.px4_bridge import PX4Bridge
 
 acquire_ros()
 try:
@@ -283,7 +283,7 @@ finally:
 ### BagRecorder
 
 ```python
-from droneresearch.ros.bag_recorder import BagRecorder
+from skymeshx.ros.bag_recorder import BagRecorder
 
 recorder = BagRecorder(output_dir="bags")
 ```
@@ -298,7 +298,7 @@ recorder = BagRecorder(output_dir="bags")
 ### formation_offsets
 
 ```python
-from droneresearch.sdk.formations import formation_offsets, SHAPES
+from skymeshx.sdk.formations import formation_offsets, SHAPES
 
 offsets = formation_offsets(shape, count, spacing)
 # Returns: List[(north_m, east_m)]
@@ -316,7 +316,7 @@ offsets = formation_offsets(shape, count, spacing)
 ### TelemetryLogger
 
 ```python
-from droneresearch.data.logger import TelemetryLogger
+from skymeshx.data.logger import TelemetryLogger
 
 logger = TelemetryLogger(log_dir="logs")
 logger.start(drone_id="D1")
@@ -327,7 +327,7 @@ logger.stop()
 ### TelemetryStore
 
 ```python
-from droneresearch.data.store import TelemetryStore
+from skymeshx.data.store import TelemetryStore
 
 store = TelemetryStore()
 store.push(drone_id, telemetry_dict)
@@ -340,7 +340,7 @@ csv = store.export_csv(drone_id)
 ### SITLInstance
 
 ```python
-from droneresearch.simulation.sitl import SITLInstance
+from skymeshx.simulation.sitl import SITLInstance
 
 sitl = SITLInstance(
     vehicle="copter",
@@ -356,7 +356,7 @@ sitl.stop()
 ### PX4Gazebo
 
 ```python
-from droneresearch.simulation.px4_gazebo import PX4Gazebo
+from skymeshx.simulation.px4_gazebo import PX4Gazebo
 
 sim = PX4Gazebo(
     model="iris",
@@ -372,7 +372,7 @@ sim.stop()
 ## Lazy Imports
 
 ```python
-from droneresearch import get_backend, get_sitl, get_coordinator, get_swarm_commander
+from skymeshx import get_backend, get_sitl, get_coordinator, get_swarm_commander
 
 # Get autopilot backend
 backend = get_backend("mavlink")  # or "ardupilot", "px4"

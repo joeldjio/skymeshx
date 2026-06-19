@@ -9,15 +9,15 @@ Provides Qt/QML integration for all ESCAPE framework features:
 """
 from typing import Dict, List, Optional, Tuple
 from PySide6.QtCore import QObject, Signal as Signal, Slot as Slot, Property 
-from droneresearch.safety.apf import Pose3D
+from skymeshx.safety.apf import Pose3D
 
 # Optional ESCAPE imports
 try:
-    from droneresearch.safety.perception_avoidance import PerceptionEnhancedAPF
-    from droneresearch.communication import SwarmCommunicationProtocol
-    from droneresearch.exploration import DistributedTaskAllocator
-    from droneresearch.safety import AdaptiveAPFSafetyFilter
-    from droneresearch.mapping import DistributedOccupancyMap
+    from skymeshx.safety.perception_avoidance import PerceptionEnhancedAPF
+    from skymeshx.communication import SwarmCommunicationProtocol
+    from skymeshx.exploration import DistributedTaskAllocator
+    from skymeshx.safety import AdaptiveAPFSafetyFilter
+    from skymeshx.mapping import DistributedOccupancyMap
     _ESCAPE_OK = True
 except ImportError:
     _ESCAPE_OK = False

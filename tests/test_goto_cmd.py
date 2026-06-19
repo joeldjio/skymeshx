@@ -9,7 +9,7 @@ import pytest
 
 def test_goto_uses_set_position_target_global_int():
     """goto() must call set_position_target_global_int_send, not mission_item_send."""
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.core.connection import MAVLinkConnection
 
     conn = MAVLinkConnection.__new__(MAVLinkConnection)
     # Minimal setup — bypass __init__
@@ -29,7 +29,7 @@ def test_goto_uses_set_position_target_global_int():
 
 def test_goto_encodes_lat_lon_correctly():
     """lat/lon must be encoded as int32 (degrees * 1e7)."""
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.core.connection import MAVLinkConnection
 
     conn = MAVLinkConnection.__new__(MAVLinkConnection)
     conn._mav = MagicMock()
@@ -53,7 +53,7 @@ def test_goto_encodes_lat_lon_correctly():
 
 def test_goto_uses_relative_alt_frame():
     """Frame must be MAV_FRAME_GLOBAL_RELATIVE_ALT (6)."""
-    from droneresearch.core.connection import MAVLinkConnection
+    from skymeshx.core.connection import MAVLinkConnection
 
     conn = MAVLinkConnection.__new__(MAVLinkConnection)
     conn._mav = MagicMock()

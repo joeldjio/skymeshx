@@ -854,7 +854,7 @@ class SwarmContext(QObject):
         except Exception:
             import pathlib
 
-            fallback = pathlib.Path.home() / ".uavresearch_gcs" / "syslogs"
+            fallback = pathlib.Path.home() / ".skymeshx_gcs" / "syslogs"
             fallback.mkdir(parents=True, exist_ok=True)
             return str(fallback)
 
@@ -1702,7 +1702,7 @@ class SwarmContext(QObject):
             List of dicts with keys: north, east (in meters relative to leader)
             Example: [{"north": -10.0, "east": 5.0}, {"north": -10.0, "east": -5.0}]
         """
-        from droneresearch.sdk.formations import formation_offsets
+        from skymeshx.sdk.formations import formation_offsets
         
         offsets = formation_offsets(shape, count, spacing)
         

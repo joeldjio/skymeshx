@@ -1,6 +1,6 @@
 # E2E Testing Setup Guide
 
-End-to-end testing for the UAV Research Platform UI.
+End-to-end testing for the SkyMeshX Platform UI.
 
 ## Overview
 

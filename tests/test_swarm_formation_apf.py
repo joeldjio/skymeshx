@@ -2,7 +2,7 @@
 
 import pytest
 import time
-from droneresearch.sdk.swarm_api import Swarm
+from skymeshx.sdk.swarm_api import Swarm
 
 
 def test_formation_parallel_default(fake_conn, snap_factory):

@@ -31,7 +31,7 @@ Run:
 """
 import math
 import time
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge, ned_to_enu, enu_to_ned
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge, ned_to_enu, enu_to_ned
 
 # Single vehicle (default namespace)
 bridge = PX4ROS2Bridge(namespace="uav_1")

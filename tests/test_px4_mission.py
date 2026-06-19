@@ -15,7 +15,7 @@ def mock_rclpy():
     mock.ok.return_value = True
     
     with patch.dict(sys.modules, {"rclpy": mock, "rclpy.node": MagicMock()}):
-        with patch("droneresearch.ros.px4_mission._ROS2_OK", True):
+        with patch("skymeshx.ros.px4_mission._ROS2_OK", True):
             yield mock
 
 
@@ -33,9 +33,9 @@ def mock_px4_msgs():
     mock_msgs.msg.VehicleMissionAck = mock_ack
     
     with patch.dict(sys.modules, {"px4_msgs": mock_msgs, "px4_msgs.msg": mock_msgs.msg}):
-        with patch("droneresearch.ros.px4_mission._PX4_MSGS_OK", True):
+        with patch("skymeshx.ros.px4_mission._PX4_MSGS_OK", True):
             # Import module after patching to ensure flags are set correctly
-            import droneresearch.ros.px4_mission as mission_module
+            import skymeshx.ros.px4_mission as mission_module
             mission_module._MISSION_ACK_OK = True
             mission_module.VehicleMissionItemCount = mock_count
             mission_module.VehicleMissionItem = mock_item
@@ -60,13 +60,13 @@ def mock_node():
 @pytest.fixture
 def uploader(mock_rclpy, mock_px4_msgs, mock_node):
     """Create PX4MissionUploader instance."""
-    from droneresearch.ros.px4_mission import PX4MissionUploader
+    from skymeshx.ros.px4_mission import PX4MissionUploader
     return PX4MissionUploader(mock_node, namespace="uav_1")
 
 
 def test_uploader_init(mock_rclpy, mock_px4_msgs, mock_node):
     """Test uploader initialization."""
-    from droneresearch.ros.px4_mission import PX4MissionUploader
+    from skymeshx.ros.px4_mission import PX4MissionUploader
     
     uploader = PX4MissionUploader(mock_node, namespace="uav_1")
     
@@ -87,7 +87,7 @@ def test_uploader_init(mock_rclpy, mock_px4_msgs, mock_node):
 
 def test_uploader_init_no_namespace(mock_rclpy, mock_px4_msgs, mock_node):
     """Test uploader initialization without namespace."""
-    from droneresearch.ros.px4_mission import PX4MissionUploader
+    from skymeshx.ros.px4_mission import PX4MissionUploader
     
     uploader = PX4MissionUploader(mock_node, namespace="")
     
@@ -299,11 +299,11 @@ def test_ack_callback_error_codes(uploader):
 
 def test_bridge_mission_methods():
     """Test PX4ROS2Bridge mission methods."""
-    with patch("droneresearch.ros.px4_bridge._ROS2_OK", True), \
-         patch("droneresearch.ros.px4_bridge._PX4_MSGS_OK", True), \
-         patch("droneresearch.ros.px4_bridge.acquire_ros", return_value=True):
+    with patch("skymeshx.ros.px4_bridge._ROS2_OK", True), \
+         patch("skymeshx.ros.px4_bridge._PX4_MSGS_OK", True), \
+         patch("skymeshx.ros.px4_bridge.acquire_ros", return_value=True):
         
-        from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+        from skymeshx.ros.px4_bridge import PX4ROS2Bridge
         
         bridge = PX4ROS2Bridge(namespace="uav_1")
         
@@ -326,11 +326,11 @@ def test_bridge_mission_methods():
 
 def test_bridge_mission_methods_no_uploader():
     """Test bridge mission methods when uploader not available."""
-    with patch("droneresearch.ros.px4_bridge._ROS2_OK", True), \
-         patch("droneresearch.ros.px4_bridge._PX4_MSGS_OK", True), \
-         patch("droneresearch.ros.px4_bridge.acquire_ros", return_value=True):
+    with patch("skymeshx.ros.px4_bridge._ROS2_OK", True), \
+         patch("skymeshx.ros.px4_bridge._PX4_MSGS_OK", True), \
+         patch("skymeshx.ros.px4_bridge.acquire_ros", return_value=True):
         
-        from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+        from skymeshx.ros.px4_bridge import PX4ROS2Bridge
         
         bridge = PX4ROS2Bridge()
         bridge._mission_uploader = None
@@ -346,11 +346,11 @@ def test_bridge_mission_methods_no_uploader():
 
 def test_bridge_start_mission():
     """Test bridge start_mission command."""
-    with patch("droneresearch.ros.px4_bridge._ROS2_OK", True), \
-         patch("droneresearch.ros.px4_bridge._PX4_MSGS_OK", True), \
-         patch("droneresearch.ros.px4_bridge.acquire_ros", return_value=True):
+    with patch("skymeshx.ros.px4_bridge._ROS2_OK", True), \
+         patch("skymeshx.ros.px4_bridge._PX4_MSGS_OK", True), \
+         patch("skymeshx.ros.px4_bridge.acquire_ros", return_value=True):
         
-        from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+        from skymeshx.ros.px4_bridge import PX4ROS2Bridge
         
         bridge = PX4ROS2Bridge()
         bridge._send_vehicle_command = Mock()
@@ -367,11 +367,11 @@ def test_bridge_start_mission():
 
 def test_bridge_pause_mission():
     """Test bridge pause_mission command."""
-    with patch("droneresearch.ros.px4_bridge._ROS2_OK", True), \
-         patch("droneresearch.ros.px4_bridge._PX4_MSGS_OK", True), \
-         patch("droneresearch.ros.px4_bridge.acquire_ros", return_value=True):
+    with patch("skymeshx.ros.px4_bridge._ROS2_OK", True), \
+         patch("skymeshx.ros.px4_bridge._PX4_MSGS_OK", True), \
+         patch("skymeshx.ros.px4_bridge.acquire_ros", return_value=True):
         
-        from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+        from skymeshx.ros.px4_bridge import PX4ROS2Bridge
         
         bridge = PX4ROS2Bridge()
         bridge._send_vehicle_command = Mock()

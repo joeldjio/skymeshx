@@ -2,9 +2,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="droneresearch",
-    version="0.2.0",
-    packages=find_packages(include=["droneresearch*"]),
+    name="skymeshx",
+    version="0.3.7",
+    packages=find_packages(include=["skymeshx*"]),
     install_requires=[
         "pymavlink>=2.4.40",
         "pyserial>=3.5",
@@ -16,7 +16,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "droneresearch=droneresearch.cli.main:main",
+            "skymeshx=skymeshx.cli.main:main",
         ],
     },
 )

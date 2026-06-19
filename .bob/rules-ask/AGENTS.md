@@ -3,7 +3,7 @@
 ## Documentation Context
 
 ### Project Structure Quirks
-- `droneresearch/` is the main package, NOT `src/`
+- `skymeshx/` is the main package, NOT `src/`
 - `tools/ui/` contains QML-based GCS (on `ui-dashboard` branch only)
 - `pi/` is standalone server, separate from main package
 - `examples/` are runnable scripts, NOT unit tests
@@ -22,19 +22,19 @@
 
 ### Frame Convention Documentation
 - PX4 ROS2 integration uses **uXRCE-DDS**, NOT MAVLink-over-ROS or FastRTPS
-- Frame conversions in [`droneresearch/ros/px4_bridge.py`](../../droneresearch/ros/px4_bridge.py) are critical
+- Frame conversions in [`skymeshx/ros/px4_bridge.py`](../../skymeshx/ros/px4_bridge.py) are critical
 - NED (PX4) ↔ ENU (ROS2) conversion: `[x,y,z]_enu = [y, x, -z]_ned`
 - Topics: `/fmu/out/*` (PX4→ROS2), `/fmu/in/*` (ROS2→PX4)
 
 ### APF Filter Coordinate System
 - Despite using "NED" terminology, APF filter expects **positive z_up** for altitude
 - Filter handles inversion internally
-- [`Pose3D`](../../droneresearch/safety/apf.py): `x=North, y=East, z=altitude_above_ground`
+- [`Pose3D`](../../skymeshx/safety/apf.py): `x=North, y=East, z=altitude_above_ground`
 
 ### Optional Dependencies
 - ROS2 (`rclpy`, `px4_msgs`) is optional - package works without it
 - UI (`PyQt6`) is optional - core is headless
-- Lazy imports in [`droneresearch/__init__.py`](../../droneresearch/__init__.py) prevent hard dependencies
+- Lazy imports in [`skymeshx/__init__.py`](../../skymeshx/__init__.py) prevent hard dependencies
 - Use factory functions: `get_backend()`, `get_sitl()`, `get_coordinator()`
 
 ### Raspberry Pi Server
@@ -44,13 +44,13 @@
 - Separate from main package by design
 
 ### Mission Upload Blocking Behavior
-- [`MissionEngine.upload()`](../../droneresearch/control/mission.py) is **blocking** (~50ms per waypoint)
+- [`MissionEngine.upload()`](../../skymeshx/control/mission.py) is **blocking** (~50ms per waypoint)
 - This is intentional - uses hybrid protocol with 250ms timeout
 - Documentation should warn against calling from UI thread
 
 ### ROS2 Context Sharing
 - Multiple bridges share single `rclpy` context via reference counting
-- [`acquire_ros()`](../../droneresearch/ros/context.py) / [`release_ros()`](../../droneresearch/ros/context.py) pattern is mandatory
+- [`acquire_ros()`](../../skymeshx/ros/context.py) / [`release_ros()`](../../skymeshx/ros/context.py) pattern is mandatory
 - Second `rclpy.init()` raises `RCLError` - this is why the pattern exists
 
 ## Common Misconceptions

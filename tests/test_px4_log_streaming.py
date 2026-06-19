@@ -11,7 +11,7 @@ import os
 
 def test_log_callback_called():
     """Test that log callback is called with process output."""
-    from droneresearch.simulation import PX4GazeboCluster
+    from skymeshx.simulation import PX4GazeboCluster
     
     # Mock callback
     log_callback = Mock()
@@ -19,7 +19,7 @@ def test_log_callback_called():
     # Create temporary directory for PX4
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create cluster with callback
-        with patch('droneresearch.simulation.px4_gazebo.subprocess.Popen') as mock_popen:
+        with patch('skymeshx.simulation.px4_gazebo.subprocess.Popen') as mock_popen:
             # Mock process with fake output
             mock_proc = Mock()
             mock_proc.poll.return_value = None  # Process running
@@ -43,7 +43,7 @@ def test_log_callback_called():
 
 def test_log_streaming_thread_safety():
     """Test that log streaming doesn't block main thread."""
-    from droneresearch.simulation import PX4GazeboCluster
+    from skymeshx.simulation import PX4GazeboCluster
     
     logs_received = []
     
@@ -69,7 +69,7 @@ def test_log_streaming_thread_safety():
 
 def test_no_callback_doesnt_crash():
     """Test that cluster works without log callback."""
-    from droneresearch.simulation import PX4GazeboCluster
+    from skymeshx.simulation import PX4GazeboCluster
     
     # Create temporary directory for PX4
     with tempfile.TemporaryDirectory() as tmpdir:

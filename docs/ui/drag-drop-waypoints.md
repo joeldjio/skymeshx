@@ -2,7 +2,7 @@
 
 ## Overview
 
-The UAV Research GCS now supports intuitive drag-and-drop editing of mission waypoints directly on the map. This feature allows operators to quickly adjust flight paths by simply dragging waypoint markers to new positions.
+The SkyMeshX GCS now supports intuitive drag-and-drop editing of mission waypoints directly on the map. This feature allows operators to quickly adjust flight paths by simply dragging waypoint markers to new positions.
 
 ## Features
 

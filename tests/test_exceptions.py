@@ -5,14 +5,14 @@ Verifies that all exception classes are properly defined and can be raised/caugh
 """
 import pytest
 
-from droneresearch.exceptions import (
+from skymeshx.exceptions import (
     BatteryLowError,
     CollisionRiskError,
     CommandRejectedError,
     CommandTimeoutError,
     ConnectionError,
     DependencyError,
-    DroneResearchError,
+    SkyMeshXError,
     GeofenceBreachError,
     HeartbeatTimeoutError,
     InvalidConnectionStringError,
@@ -27,13 +27,13 @@ from droneresearch.exceptions import (
 
 def test_base_exception():
     """Base exception can be raised and caught."""
-    with pytest.raises(DroneResearchError):
-        raise DroneResearchError("test error")
+    with pytest.raises(SkyMeshXError):
+        raise SkyMeshXError("test error")
 
 
 def test_connection_error():
-    """ConnectionError inherits from DroneResearchError."""
-    with pytest.raises(DroneResearchError):
+    """ConnectionError inherits from SkyMeshXError."""
+    with pytest.raises(SkyMeshXError):
         raise ConnectionError("connection failed")
     
     with pytest.raises(ConnectionError):
@@ -156,13 +156,13 @@ def test_timeout_error():
 
 def test_exception_hierarchy():
     """Verify exception inheritance hierarchy."""
-    # All custom exceptions inherit from DroneResearchError
-    assert issubclass(ConnectionError, DroneResearchError)
-    assert issubclass(CommandRejectedError, DroneResearchError)
-    assert issubclass(MissionUploadError, DroneResearchError)
-    assert issubclass(StateTransitionError, DroneResearchError)
-    assert issubclass(ROS2NotAvailableError, DroneResearchError)
-    assert issubclass(GeofenceBreachError, DroneResearchError)
+    # All custom exceptions inherit from SkyMeshXError
+    assert issubclass(ConnectionError, SkyMeshXError)
+    assert issubclass(CommandRejectedError, SkyMeshXError)
+    assert issubclass(MissionUploadError, SkyMeshXError)
+    assert issubclass(StateTransitionError, SkyMeshXError)
+    assert issubclass(ROS2NotAvailableError, SkyMeshXError)
+    assert issubclass(GeofenceBreachError, SkyMeshXError)
     
     # Specific inheritance chains
     assert issubclass(HeartbeatTimeoutError, ConnectionError)
@@ -184,7 +184,7 @@ def test_catch_base_exception():
     ]
     
     for exc in exceptions_to_test:
-        with pytest.raises(DroneResearchError):
+        with pytest.raises(SkyMeshXError):
             raise exc
 
 # Made with Bob

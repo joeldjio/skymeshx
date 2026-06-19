@@ -1,10 +1,10 @@
 #!/bin/bash
-# DroneResearch Pi 1 installer
+# SkyMeshX Pi 1 installer
 # Run as: bash pi/install.sh
 
 set -e
 
-echo "=== DroneResearch Pi installer ==="
+echo "=== SkyMeshX Pi installer ==="
 
 # Python 3 (minimal)
 sudo apt-get update -q
@@ -14,15 +14,15 @@ sudo apt-get install -y python3 python3-pip python3-serial --no-install-recommen
 pip3 install --no-cache-dir pymavlink pyserial
 
 # Copy service file
-sudo cp pi/droneresearch.service /etc/systemd/system/
+sudo cp pi/skymeshx.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable droneresearch
+sudo systemctl enable skymeshx
 
 # Serial port permission
 sudo usermod -aG dialout pi
 
 echo ""
 echo "=== Done ==="
-echo "Edit /etc/systemd/system/droneresearch.service to set your port."
-echo "Then: sudo systemctl start droneresearch"
+echo "Edit /etc/systemd/system/skymeshx.service to set your port."
+echo "Then: sudo systemctl start skymeshx"
 echo "Dashboard: http://$(hostname -I | cut -d' ' -f1):8080"

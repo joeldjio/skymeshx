@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     FieldCoveragePlanner,
     FieldBoundary,
     CoverageConfig,

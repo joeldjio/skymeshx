@@ -54,7 +54,7 @@ safety.configureCollisionPredictor({
 ### Python API
 
 ```python
-from droneresearch.safety.collision_predictor import CollisionPredictor, DroneState
+from skymeshx.safety.collision_predictor import CollisionPredictor, DroneState
 
 # Create predictor
 predictor = CollisionPredictor(
@@ -220,7 +220,7 @@ pytest tests/test_collision_prediction.py -v
 pytest tests/test_collision_prediction.py::TestCollisionPredictor::test_head_on_collision -v
 
 # Run with coverage
-pytest tests/test_collision_prediction.py --cov=droneresearch.safety.collision_predictor
+pytest tests/test_collision_prediction.py --cov=skymeshx.safety.collision_predictor
 ```
 
 ## Performance
@@ -337,7 +337,7 @@ class CollisionPrediction:
 ### Example 1: Basic Collision Detection
 
 ```python
-from droneresearch.safety.collision_predictor import CollisionPredictor, DroneState
+from skymeshx.safety.collision_predictor import CollisionPredictor, DroneState
 
 predictor = CollisionPredictor()
 

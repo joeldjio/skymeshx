@@ -1,11 +1,11 @@
-"""Tests for :mod:`droneresearch.core.fsm`."""
+"""Tests for :mod:`skymeshx.core.fsm`."""
 from __future__ import annotations
 
 import threading
 
 import pytest
 
-from droneresearch.core.fsm import (
+from skymeshx.core.fsm import (
     AIRBORNE_STATES,
     SAFE_STATES,
     DroneState,

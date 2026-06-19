@@ -17,7 +17,7 @@
 
 **Ursache**:
 ```python
-# droneresearch/ros/px4_bridge.py hat KEINE Mission-Upload-Methode
+# skymeshx/ros/px4_bridge.py hat KEINE Mission-Upload-Methode
 # Nur: arm(), takeoff(), land(), rtl(), set_position_setpoint_*()
 ```
 
@@ -91,7 +91,7 @@ def upload_mission_mavlink_monitor_ros2(self, drone_id: str, waypoints: list):
 **Implementierung**:
 
 ```python
-# Neue Datei: droneresearch/ros/px4_mission.py
+# Neue Datei: skymeshx/ros/px4_mission.py
 
 from px4_msgs.msg import VehicleMissionItem, VehicleMissionItemCount
 
@@ -174,9 +174,9 @@ class PX4MissionUploader:
 **Integration in PX4ROS2Bridge**:
 
 ```python
-# In droneresearch/ros/px4_bridge.py
+# In skymeshx/ros/px4_bridge.py
 
-from droneresearch.ros.px4_mission import PX4MissionUploader
+from skymeshx.ros.px4_mission import PX4MissionUploader
 
 class PX4ROS2Bridge:
     def __init__(self, ...):
@@ -336,7 +336,7 @@ def currentWaypoint(self, drone_id: str) -> int:
 **Lösung**: Automatisiertes Setup-Script
 
 ```python
-# Neue Datei: droneresearch/simulation/px4_gazebo.py
+# Neue Datei: skymeshx/simulation/px4_gazebo.py
 
 import subprocess
 import time
@@ -421,8 +421,8 @@ class PX4GazeboCluster:
 **Verwendung**:
 
 ```python
-from droneresearch.simulation import PX4GazeboCluster
-from droneresearch.ros.px4_bridge import PX4ROS2Bridge
+from skymeshx.simulation import PX4GazeboCluster
+from skymeshx.ros.px4_bridge import PX4ROS2Bridge
 
 # Start 3 drones in Gazebo
 with PX4GazeboCluster(num_drones=3) as cluster:
@@ -525,7 +525,7 @@ Rectangle {
 ### Feature 5: Multi-Vehicle Formation mit PX4
 
 ```python
-# Neue Datei: droneresearch/ros/px4_formation.py
+# Neue Datei: skymeshx/ros/px4_formation.py
 
 class PX4FormationController:
     """
@@ -548,7 +548,7 @@ class PX4FormationController:
             formation: "line", "v", "grid", "circle"
             spacing: Distance between drones (m)
         """
-        from droneresearch.sdk.formations import formation_offsets
+        from skymeshx.sdk.formations import formation_offsets
         
         follower_ids = [id for id in self.bridges if id != self.leader_id]
         offsets = list(formation_offsets(formation, len(follower_ids), spacing))
@@ -659,11 +659,11 @@ source ~/ros2_ws/install/setup.bash
 ros2 topic list | grep fmu
 ```
 
-### Schritt 2: uavresearch gcs starten
+### Schritt 2: skymeshx gcs starten
 
 ```bash
 # Terminal 4: GCS
-cd ~/uavresearchproject
+cd ~/skymeshxproject
 source ~/ros2_ws/install/setup.bash
 python -m tools.ui
 ```

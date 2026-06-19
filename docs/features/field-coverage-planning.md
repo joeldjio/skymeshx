@@ -20,7 +20,7 @@ The Field Coverage Planning module generates optimized waypoint patterns for cov
 Generates parallel lines across the field with alternating direction for efficiency.
 
 ```python
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     FieldCoveragePlanner,
     FieldBoundary,
     CoverageConfig,
@@ -159,7 +159,7 @@ waypoints = planner.generate_coverage_waypoints(boundary, config)
 Use with `MissionEngine` for execution:
 
 ```python
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission import MissionEngine, Waypoint
 
 # Generate coverage waypoints
 coverage_waypoints = planner.generate_coverage_waypoints(boundary, config)
@@ -201,7 +201,7 @@ success = mission_engine.upload(mission_waypoints)
 ## Example: Complete Agricultural Mission
 
 ```python
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     FieldCoveragePlanner,
     FieldBoundary,
     CoverageConfig,

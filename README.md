@@ -1,18 +1,18 @@
-# UAVResearch - Advanced Drone Research Platform
+# SkyMeshX - Advanced Drone Swarm Coordination Platform
 
-**Open-Source Ground Control Station with Modern Architecture**
+**Open-Source Ground Control Station with Mesh Network Architecture**
 
-[![Tests](https://github.com/joeldjio/uavresearchproject/workflows/Tests/badge.svg)](https://github.com/joeldjio/uavresearchproject/actions)
-[![Coverage](https://codecov.io/gh/joeldjio/uavresearchproject/branch/main/graph/badge.svg)](https://codecov.io/gh/joeldjio/uavresearchproject)
+[![Tests](https://github.com/joeldjio/skymeshx/workflows/Tests/badge.svg)](https://github.com/joeldjio/skymeshx/actions)
+[![Coverage](https://codecov.io/gh/joeldjio/skymeshx/branch/main/graph/badge.svg)](https://codecov.io/gh/joeldjio/skymeshx)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PySide6](https://img.shields.io/badge/UI-PySide6%20%2F%20QML-green.svg)](https://doc.qt.io/qtforpython/)
 
-> Professional drone control platform with declarative QML UI, real-time telemetry, swarm coordination, and advanced safety systems.
+> Professional drone swarm platform with mesh network coordination, real-time telemetry, distributed control, and advanced safety systems.
 
-**Author:** Joel Djio  
-**License:** MIT (Core) + LGPL v3 (UI)  
-**Repository:** https://github.com/joeldjio/uavresearchproject
+**Author:** Joel Djio
+**License:** MIT (Core) + LGPL v3 (UI)
+**Repository:** https://github.com/joeldjio/skymeshx
 
 ---
 
@@ -78,19 +78,19 @@
 - **System Health** - Sensor status, calibration, errors
 
 ### 🔒 Safety Systems
-- **APF Filter** ([`apf.py`](droneresearch/safety/apf.py))
+- **APF Filter** ([`apf.py`](skymeshx/safety/apf.py))
   - Artificial Potential Field collision avoidance
   - 20Hz update rate
   - Configurable repulsion/attraction forces
   - Adaptive safety margins based on velocity
   
-- **Collision Predictor** ([`collision_predictor.py`](droneresearch/safety/collision_predictor.py))
+- **Collision Predictor** ([`collision_predictor.py`](skymeshx/safety/collision_predictor.py))
   - Predictive collision detection
   - Time-to-collision (TTC) estimation
   - Velocity-based risk assessment
   - Multi-drone conflict resolution
 
-- **Battery Monitor** ([`battery_monitor.py`](droneresearch/safety/battery_monitor.py))
+- **Battery Monitor** ([`battery_monitor.py`](skymeshx/safety/battery_monitor.py))
   - Real-time battery tracking
   - Low battery alerts (configurable thresholds)
   - Automatic RTL on critical level
@@ -103,25 +103,25 @@
   - Visual feedback in UI
 
 ### 🧪 Research Framework
-- **Experiment Manager** ([`experiment/manager.py`](droneresearch/experiment/manager.py))
+- **Experiment Manager** ([`experiment/manager.py`](skymeshx/experiment/manager.py))
   - YAML-based scenario definition
   - Automated execution
   - Real-time metrics collection
   - Data export (CSV, JSON, ROS2 bags)
 
-- **Field Coverage Planner** ([`field_coverage.py`](droneresearch/control/field_coverage.py))
+- **Field Coverage Planner** ([`field_coverage.py`](skymeshx/control/field_coverage.py))
   - Multi-drone area coverage
   - Boustrophedon pattern generation
   - Optimized waypoint allocation
   - Overlap configuration
 
-- **Solar Inspection** ([`solar_inspection.py`](droneresearch/control/solar_inspection.py))
+- **Solar Inspection** ([`solar_inspection.py`](skymeshx/control/solar_inspection.py))
   - Automated solar panel inspection
   - Thermal camera integration
   - Defect detection
   - Grid-based flight patterns
 
-- **Mission Engine** ([`mission.py`](droneresearch/control/mission.py))
+- **Mission Engine** ([`mission.py`](skymeshx/control/mission.py))
   - Waypoint mission management
   - Async mission upload (non-blocking UI)
   - Mission validation
@@ -210,8 +210,8 @@ All cross-thread communication uses Qt signals/slots for thread safety.
 
 | Platform | Download | Installation |
 |----------|----------|--------------|
-| **Windows** | [uavresearch-gcs-setup-*.exe](https://github.com/joeldjio/rz-gcs-releases/releases/latest) | Run the installer |
-| **macOS** | [uavresearch-gcs-macos.tar.gz](https://github.com/joeldjio/rz-gcs-releases/releases/latest) | Extract and drag to Applications |
+| **Windows** | [skymeshx-gcs-setup-*.exe](https://github.com/joeldjio/rz-gcs-releases/releases/latest) | Run the installer |
+| **macOS** | [skymeshx-gcs-macos.tar.gz](https://github.com/joeldjio/rz-gcs-releases/releases/latest) | Extract and drag to Applications |
 | **Linux (Ubuntu 22.04)** | [*.deb](https://github.com/joeldjio/rz-gcs-releases/releases/latest) | `sudo dpkg -i *.deb` |
 
 > **Note:** Windows Defender / macOS Gatekeeper may warn about unsigned binaries. Click *More info → Run anyway* (Windows) or right-click → Open (macOS).
@@ -220,8 +220,8 @@ All cross-thread communication uses Qt signals/slots for thread safety.
 
 ```bash
 # Clone repository
-git clone https://github.com/joeldjio/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/joeldjio/skymeshxproject.git
+cd skymeshxproject
 
 # Install core package
 pip install -e .
@@ -265,7 +265,7 @@ make px4_sitl gazebo
 ### Basic Flight Control
 
 ```python
-from droneresearch.sdk import Drone
+from skymeshx.sdk import Drone
 
 # Connect to drone
 drone = Drone("tcp:127.0.0.1:5762")
@@ -285,7 +285,7 @@ drone.land()
 ### Swarm Formation
 
 ```python
-from droneresearch.sdk import Swarm
+from skymeshx.sdk import Swarm
 
 # Create swarm
 swarm = Swarm([
@@ -312,7 +312,7 @@ swarm.land_all()
 ### Field Coverage Planning
 
 ```python
-from droneresearch.control import FieldCoveragePlanner
+from skymeshx.control import FieldCoveragePlanner
 
 # Define field boundary (lat/lon polygon)
 boundary = [
@@ -343,7 +343,7 @@ for drone_id, mission in missions.items():
 ### Safety Systems
 
 ```python
-from droneresearch.safety import APFFilter, BatteryMonitor
+from skymeshx.safety import APFFilter, BatteryMonitor
 
 # Configure APF filter
 apf = APFFilter(
@@ -398,7 +398,7 @@ pytest tests/ -k "apf or collision or battery"
 pytest tests/e2e/ -m e2e
 
 # With coverage report
-pytest tests/ --cov=droneresearch --cov=tools.ui --cov-report=html
+pytest tests/ --cov=skymeshx --cov=tools.ui --cov-report=html
 
 # Fast tests only (skip slow markers)
 pytest tests/ -m "not slow"
@@ -452,7 +452,7 @@ pytest tests/ -m "not slow"
 
 ### Project License
 
-**UAVResearch** is licensed under the **MIT License**, allowing:
+**SkyMeshX** is licensed under the **MIT License**, allowing:
 - ✅ Commercial use
 - ✅ Modification
 - ✅ Distribution
@@ -504,8 +504,8 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Clone and install
-git clone https://github.com/joeldjio/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/joeldjio/skymeshxproject.git
+cd skymeshxproject
 pip install -r requirements.txt
 pip install -e ".[dev]"
 
@@ -563,8 +563,8 @@ python tools/ui/startup_profiler.py
 ## 📞 Support
 
 - **Documentation:** [`docs/`](docs/)
-- **Issues:** [GitHub Issues](https://github.com/joeldjio/uavresearchproject/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/joeldjio/uavresearchproject/discussions)
+- **Issues:** [GitHub Issues](https://github.com/joeldjio/skymeshxproject/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/joeldjio/skymeshxproject/discussions)
 
 ---
 

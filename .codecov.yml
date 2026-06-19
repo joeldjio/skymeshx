@@ -25,27 +25,27 @@ component_management:
     - component_id: core
       name: Core (FSM, Connection, Telemetry)
       paths:
-        - droneresearch/core/**
+        - skymeshx/core/**
       
     - component_id: control
       name: Control (Mission, Script)
       paths:
-        - droneresearch/control/**
+        - skymeshx/control/**
       
     - component_id: safety
       name: Safety (APF)
       paths:
-        - droneresearch/safety/**
+        - skymeshx/safety/**
       
     - component_id: sdk
       name: SDK (Drone, Swarm, Formations)
       paths:
-        - droneresearch/sdk/**
+        - skymeshx/sdk/**
       
     - component_id: ros2
       name: ROS2 (Bridge, Context, PX4)
       paths:
-        - droneresearch/ros/**
+        - skymeshx/ros/**
       
     - component_id: ui
       name: UI (Qt/QML Backend)
@@ -55,22 +55,22 @@ component_management:
     - component_id: data
       name: Data (Logger, Store)
       paths:
-        - droneresearch/data/**
+        - skymeshx/data/**
       
     - component_id: simulation
       name: Simulation (SITL, Replay)
       paths:
-        - droneresearch/simulation/**
+        - skymeshx/simulation/**
       
     - component_id: experiment
       name: Experiment (Manager, Metrics)
       paths:
-        - droneresearch/experiment/**
+        - skymeshx/experiment/**
       
     - component_id: autopilot
       name: Autopilot (MAVLink, ArduPilot, PX4)
       paths:
-        - droneresearch/autopilot/**
+        - skymeshx/autopilot/**
 
 # Ignore patterns
 ignore:
@@ -96,7 +96,7 @@ comment:
 flags:
   unittests:
     paths:
-      - droneresearch/**
+      - skymeshx/**
       - tools/ui/**
     carryforward: true
   

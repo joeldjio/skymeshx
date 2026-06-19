@@ -1,10 +1,10 @@
 """
-uavresearch gcs — offline trial + license-key system.
+skymeshx gcs — offline trial + license-key system.
 
 Concept
 -------
 * On first launch the app stamps an install timestamp into
-  ``%LOCALAPPDATA%\\UAVResearch\\uavresearch gcs\\license.json``.
+  ``%LOCALAPPDATA%\\SkyMeshX\\skymeshx gcs\\license.json``.
 * For ``TRIAL_DAYS`` days the app is fully unlocked (state = "trial").
 * After that the app still starts but ``LicenseManager.state`` flips
   to "expired" — QML covers the entire window with ``LicenseOverlay``
@@ -138,7 +138,7 @@ class LicenseManager(QObject):
         base = QStandardPaths.writableLocation(
             QStandardPaths.StandardLocation.AppLocalDataLocation
         )
-        path = Path(base) if base else Path.home() / ".uavresearch_gcs"
+        path = Path(base) if base else Path.home() / ".skymeshx_gcs"
         path.mkdir(parents=True, exist_ok=True)
         return path / "license.json"
 

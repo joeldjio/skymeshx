@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document describes the migration from PyQt6 (GPL v3) to PySide6 (LGPL v3) to enable commercial use of the UAVResearch project without GPL restrictions.
+This document describes the migration from PyQt6 (GPL v3) to PySide6 (LGPL v3) to enable commercial use of the SkyMeshX project without GPL restrictions.
 
 ## Why Migrate?
 

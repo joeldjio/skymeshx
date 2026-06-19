@@ -25,7 +25,7 @@ Window {
     height: 900
     minimumWidth:  1100
     minimumHeight: 700
-    title: "uavresearch gcs"
+    title: "skymeshx gcs"
     color: "#0f1117"
 
     // ── Tab definitions ───────────────────────────────────────────────────────
@@ -903,7 +903,7 @@ Window {
 
                 Text {
                     id: statusMsg
-                    text: "uavresearch gcs ready."
+                    text: "skymeshx gcs ready."
                     color: parent.parent.lastLevel === "ERROR" ? "white" : (parent.parent.lastLevel === "WARN" ? "#fcd34d" : "#94a3b8")
                     font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
@@ -985,7 +985,7 @@ Window {
                 Timer {
                     id: clearTimer; interval: 5000
                     onTriggered: {
-                        statusMsg.text = "uavresearch gcs ready."
+                        statusMsg.text = "skymeshx gcs ready."
                         statusBar.lastLevel = "INFO"
                     }
                 }
@@ -996,7 +996,7 @@ Window {
                 spacing: 16
                 Text { text: "PySide6 + QML"; color: "#2d3748"; font.pixelSize: 9 }
                 Text {
-                    text: "uavresearch gcs " + ((typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?")
+                    text: "skymeshx gcs " + ((typeof updater !== "undefined" && updater) ? "v" + updater.currentVersion : "v?")
                     color: "#2d3748"; font.pixelSize: 9
                 }
             }

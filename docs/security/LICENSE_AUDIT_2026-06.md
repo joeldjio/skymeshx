@@ -1,4 +1,4 @@
-# License Audit: Commercial Use Compliance
+l# License Audit: Commercial Use Compliance
 
 **Datum:** 2026-06-16  
 **Auditor:** License Compliance Analysis  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Das UAVResearch-Projekt verwendet **MIT License** für eigenen Code und **PySide6 (LGPL v3)** für die UI, was kommerzielle Nutzung **ermöglicht**.
+Das SkyMeshX-Projekt verwendet **MIT License** für eigenen Code und **PySide6 (LGPL v3)** für die UI, was kommerzielle Nutzung **ermöglicht**.
 
 ### ✅ RESOLVED: Kommerzielle Nutzung ist möglich
 
@@ -275,7 +275,7 @@ from PySide6.QtCore import Signal as pyqtSignal
 **Code:** Nicht öffentlich verfügbar (nur Paper)
 
 **Verwendung in Projekt:**
-- `droneresearch/safety/apf.py` - APF Safety Filter basiert auf Paper
+- `skymeshx/safety/apf.py` - APF Safety Filter basiert auf Paper
 
 **Lizenz-Status:**
 - ✅ **Algorithmus-Implementierung ist erlaubt** (Papers sind nicht urheberrechtlich geschützt)
@@ -284,7 +284,7 @@ from PySide6.QtCore import Signal as pyqtSignal
 
 **Compliance:**
 ```python
-# droneresearch/safety/apf.py
+# skymeshx/safety/apf.py
 """
 APF Safety Filter — Artificial Potential Field collision avoidance.
 
@@ -307,7 +307,7 @@ Based on: SkySim (Shibu et al., 2025)
 **Lizenz:** **BSD-3-Clause**
 
 **Verwendung in Projekt:**
-- `droneresearch/exploration/vswarm_bridge.py` - ROS2 Bridge zu vswarm
+- `skymeshx/exploration/vswarm_bridge.py` - ROS2 Bridge zu vswarm
 
 **Lizenz-Status:**
 - ✅ **BSD-3-Clause erlaubt kommerzielle Nutzung**
@@ -332,7 +332,7 @@ Based on: SkySim (Shibu et al., 2025)
 **Lizenz:** **BSD-3-Clause**
 
 **Verwendung in Projekt:**
-- `droneresearch/exploration/frontier_bridge.py` - ROS2 Bridge zu Frontier Explorer
+- `skymeshx/exploration/frontier_bridge.py` - ROS2 Bridge zu Frontier Explorer
 
 **Lizenz-Status:**
 - ✅ **BSD-3-Clause erlaubt kommerzielle Nutzung**
@@ -495,7 +495,7 @@ pytest tests/test_ui_*.py -v
 ## 📄 Template: THIRD_PARTY_LICENSES.txt
 
 ```text
-UAVResearch Ground Control Station
+SkyMeshX Ground Control Station
 Third-Party Software Licenses
 
 This software includes the following third-party components:
@@ -564,7 +564,7 @@ Frontier Exploration Integration based on:
 ## 📄 Template: NOTICE.txt
 
 ```text
-UAVResearch Ground Control Station
+SkyMeshX Ground Control Station
 Copyright (c) 2025 Joel Djio / Aerospace Research
 
 This product includes software developed by:

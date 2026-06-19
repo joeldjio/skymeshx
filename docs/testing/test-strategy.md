@@ -1,4 +1,4 @@
-# Test-Strategie — uavresearch GCS
+# Test-Strategie — skymeshx GCS
 
 **Version:** 1.0  
 **Datum:** 2026-06-09  
@@ -8,7 +8,7 @@
 
 ## Übersicht
 
-Die uavresearch GCS Test-Strategie folgt der **Test-Pyramide** mit vier Ebenen:
+Die skymeshx GCS Test-Strategie folgt der **Test-Pyramide** mit vier Ebenen:
 
 ```
          /\
@@ -57,7 +57,7 @@ Unit-Tests testen **einzelne Funktionen/Klassen isoliert** ohne externe Abhängi
 ```python
 def test_apf_repulsion_force():
     """Test repulsion force calculation"""
-    from droneresearch.safety.apf import APFFilter
+    from skymeshx.safety.apf import APFFilter
     
     apf = APFFilter(min_separation=5.0, repulsion_gain=2.0)
     
@@ -120,8 +120,8 @@ Integrationstests testen **Zusammenspiel mehrerer Komponenten** mit echten Abhä
 ```python
 def test_swarm_mission_upload_and_start(fake_conn):
     """Test mission upload and start with multiple drones"""
-    from droneresearch.sdk.swarm import Swarm
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.sdk.swarm import Swarm
+    from skymeshx.control.mission import Waypoint
     
     swarm = Swarm()
     swarm.add("UAV_1", fake_conn)
@@ -191,9 +191,9 @@ Systemtests testen das **gesamte System End-to-End** mit SITL oder Mock-Backend.
 @pytest.mark.sitl
 def test_full_mission_workflow_with_sitl():
     """Test complete mission workflow with ArduCopter SITL"""
-    from droneresearch.simulation.sitl import SITLManager
-    from droneresearch.sdk.drone import Drone
-    from droneresearch.control.mission import Waypoint
+    from skymeshx.simulation.sitl import SITLManager
+    from skymeshx.sdk.drone import Drone
+    from skymeshx.control.mission import Waypoint
     
     # Start SITL
     sitl = SITLManager()
@@ -289,7 +289,7 @@ def test_single_drone_connect_and_arm(page: Page):
     page.goto("http://localhost:8080")
     
     # Wait for UI to load
-    expect(page.locator("text=uavresearch gcs")).to_be_visible()
+    expect(page.locator("text=skymeshx gcs")).to_be_visible()
     
     # Navigate to Dashboard
     page.click("text=Telemetry")
@@ -423,7 +423,7 @@ pytest tests/ -m e2e
 pytest tests/ -k "not slow"
 
 # Mit Coverage
-pytest tests/ --cov=droneresearch --cov-report=html
+pytest tests/ --cov=skymeshx --cov-report=html
 ```
 
 ---
@@ -464,7 +464,7 @@ pytest tests/ --cov=droneresearch --cov-report=html
 ```python
 # tests/conftest.py
 import pytest
-from droneresearch.core.connection import FakeConnection
+from skymeshx.core.connection import FakeConnection
 
 @pytest.fixture
 def fake_conn():

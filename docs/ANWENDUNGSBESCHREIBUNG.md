@@ -1,8 +1,8 @@
-# UAV Research Project - Anwendungsbeschreibung
+# SkyMeshX Project - Anwendungsbeschreibung
 
 ## Überblick
 
-Das **UAV Research Project** (auch bekannt als **droneresearch**) ist eine umfassende Python-basierte Forschungsplattform für die Steuerung und Koordination von unbemannten Luftfahrzeugen (UAVs/Drohnen). Die Anwendung dient als Ground Control Station (GCS) mit moderner grafischer Benutzeroberfläche und bietet fortgeschrittene Funktionen für Schwarmsteuerung, autonome Missionen und Sicherheitsüberwachung.
+Das **SkyMeshX Project** (auch bekannt als **skymeshx**) ist eine umfassende Python-basierte Forschungsplattform für die Steuerung und Koordination von unbemannten Luftfahrzeugen (UAVs/Drohnen). Die Anwendung dient als Ground Control Station (GCS) mit moderner grafischer Benutzeroberfläche und bietet fortgeschrittene Funktionen für Schwarmsteuerung, autonome Missionen und Sicherheitsüberwachung.
 
 ## Hauptfunktionen
 
@@ -46,7 +46,7 @@ Das **UAV Research Project** (auch bekannt als **droneresearch**) ist eine umfas
 ### Kernkomponenten
 
 ```
-droneresearch/
+skymeshx/
 ├── core/              # Grundlegende Funktionen
 │   ├── connection.py  # MAVLink-Verbindungsverwaltung
 │   ├── fsm.py         # Zustandsmaschine für Drohnensteuerung
@@ -124,7 +124,7 @@ tools/ui/
 ### 1. Verbindungsaufbau
 
 ```python
-from droneresearch.sdk import Drone
+from skymeshx.sdk import Drone
 
 # Verbindung zu einer Drohne herstellen
 drone = Drone()
@@ -161,7 +161,7 @@ DISCONNECTED → CONNECTED → ARMED → AIRBORNE → MISSION → LANDING → LA
 ### 3. Missionsausführung
 
 ```python
-from droneresearch.control import MissionEngine
+from skymeshx.control import MissionEngine
 
 # Mission erstellen
 mission = MissionEngine(drone.connection)
@@ -184,7 +184,7 @@ drone.set_mode("AUTO")
 ### 4. Schwarmkoordination
 
 ```python
-from droneresearch.sdk import SwarmAPI
+from skymeshx.sdk import SwarmAPI
 
 # Schwarm erstellen
 swarm = SwarmAPI()
@@ -214,7 +214,7 @@ swarm.circle_formation(radius=20, altitude=15)
 - Verwendet lokale NED-Koordinaten (North-East-Down)
 
 ```python
-from droneresearch.safety import APFFilter
+from skymeshx.safety import APFFilter
 
 # APF-Filter erstellen
 apf = APFFilter(
@@ -239,7 +239,7 @@ safe_position = apf.filter(
 - Automatische Konvertierung durch `px4_bridge.py`
 
 ```python
-from droneresearch.ros import PX4Bridge
+from skymeshx.ros import PX4Bridge
 
 # Bridge erstellen
 bridge = PX4Bridge(drone_id="D1")
@@ -257,7 +257,7 @@ bridge.send_position_setpoint(
 
 **JSONL-Logging:**
 ```python
-from droneresearch.data import Logger
+from skymeshx.data import Logger
 
 # Logger erstellen
 logger = Logger("flight_data.jsonl")
@@ -277,7 +277,7 @@ logger.stop()
 
 **ROS2 Bag Recording:**
 ```python
-from droneresearch.ros import BagRecorder
+from skymeshx.ros import BagRecorder
 
 # Recorder erstellen
 recorder = BagRecorder(output_dir="bags/")
@@ -296,11 +296,11 @@ recorder.stop_recording()
 ### 1. Einzeldrohnen-Steuerung
 ```bash
 # CLI verwenden
-droneresearch connect --port tcp:127.0.0.1:5762
-droneresearch arm
-droneresearch takeoff --altitude 10
-droneresearch goto --lat 47.398 --lon 8.546 --alt 15
-droneresearch land
+skymeshx connect --port tcp:127.0.0.1:5762
+skymeshx arm
+skymeshx takeoff --altitude 10
+skymeshx goto --lat 47.398 --lon 8.546 --alt 15
+skymeshx land
 ```
 
 ### 2. Schwarmflug
@@ -423,7 +423,7 @@ pytest tests/test_apf.py -v
 pytest tests/test_mission.py -v
 
 # Mit Coverage
-pytest tests/ --cov=droneresearch
+pytest tests/ --cov=skymeshx
 ```
 
 **Test-Architektur:**
@@ -451,7 +451,7 @@ Lizenzprüfung erfolgt über `tools/ui/license.py` mit Hardware-ID-basierter Akt
 
 ## Support und Entwicklung
 
-**Repository:** https://github.com/yourusername/uavresearchproject
+**Repository:** https://github.com/yourusername/skymeshxproject
 
 **Entwicklung:**
 - Feature Branches für neue Funktionen

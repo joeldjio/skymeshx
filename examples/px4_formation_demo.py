@@ -24,7 +24,7 @@ import time
 import math
 
 try:
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
 except ImportError as e:
     print(f"Error: {e}")
     print("Install ROS2 Humble+ and px4_msgs package")

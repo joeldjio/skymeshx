@@ -20,7 +20,7 @@ The `PX4MissionUploader` class provides asynchronous mission upload functionalit
 ### Basic Async Upload
 
 ```python
-from droneresearch.ros.px4_mission import PX4MissionUploader
+from skymeshx.ros.px4_mission import PX4MissionUploader
 
 # Create uploader
 uploader = PX4MissionUploader(node, namespace="uav_1")

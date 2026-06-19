@@ -8,7 +8,7 @@
 
 ## Overview
 
-Version 0.3.3 completes **Phase 1** of the DroneResearch platform improvements, delivering 16 enhancements across API, UI, Safety, Documentation, and Testing. This release focuses on production readiness with comprehensive documentation, performance optimizations, and security hardening.
+Version 0.3.3 completes **Phase 1** of the SkyMeshX platform improvements, delivering 16 enhancements across API, UI, Safety, Documentation, and Testing. This release focuses on production readiness with comprehensive documentation, performance optimizations, and security hardening.
 
 ---
 
@@ -18,39 +18,39 @@ Version 0.3.3 completes **Phase 1** of the DroneResearch platform improvements, 
 
 #### Thread-Safety Documentation (Improvement 12)
 - **All major classes now document thread-safety guarantees**
-- Core Module (`droneresearch/core/`):
+- Core Module (`skymeshx/core/`):
   - `MAVLinkConnection`: All public methods thread-safe, callbacks run from receive thread
   - `StateMachine`: All methods thread-safe, state transitions protected by lock
   - `TelemetryState`: `update()`/`snapshot()` thread-safe, direct field access NOT safe
-- Safety Module (`droneresearch/safety/`):
+- Safety Module (`skymeshx/safety/`):
   - `APFSafetyFilter`: Stateless and thread-safe, `filter()` can be called concurrently
   - `BatteryMonitor`: All public methods thread-safe, internal state protected by lock
   - `CollisionPredictor`: Stateless and thread-safe, `predict()` can be called concurrently
-- Control Module (`droneresearch/control/`):
+- Control Module (`skymeshx/control/`):
   - `MissionEngine`: Mission building NOT thread-safe, `upload()` spawns background thread
-- ROS2 Module (`droneresearch/ros/`):
+- ROS2 Module (`skymeshx/ros/`):
   - `ROS2Bridge`: `start()` spawns background thread, `stop()` safe from any thread
 
 #### Frame Convention Documentation (Improvement 13)
 - **Standardized coordinate system documentation across all modules**
-- Safety Module (`droneresearch/safety/apf.py`):
+- Safety Module (`skymeshx/safety/apf.py`):
   - Clarified NED coordinates with positive z_up (altitude above ground)
   - x: North (meters), y: East (meters), z: Altitude above ground (meters, positive UP)
   - Note: z inverted from standard NED for intuitive altitude semantics
-- ROS2 Module (`droneresearch/ros/px4_bridge.py`):
+- ROS2 Module (`skymeshx/ros/px4_bridge.py`):
   - Documented PX4 ↔ ROS2 frame conversions
   - PX4: NED position, FRD body frame; ROS2: ENU position, FLU body frame
   - Conversion formulas: NED→ENU: [y, x, -z], FRD→FLU: [x, -y, -z]
   - Bridge handles all conversions automatically
-- Control Module (`droneresearch/control/field_coverage.py`):
+- Control Module (`skymeshx/control/field_coverage.py`):
   - GPS coordinates for field boundaries, altitude positive UP
   - Internal calculations use local NED meters
-- Exploration Module (`droneresearch/exploration/frontier_bridge.py`):
+- Exploration Module (`skymeshx/exploration/frontier_bridge.py`):
   - NED coordinates with positive z_up
   - Odometry converted to ROS2 ENU for explorer, frontier points converted back to NED
 
 #### Error Handling Documentation (Improvement 14)
-- **Enhanced `droneresearch/exceptions.py` with comprehensive hierarchy documentation**
+- **Enhanced `skymeshx/exceptions.py` with comprehensive hierarchy documentation**
 - Added visual exception tree showing all 20+ exception types
 - Documented inheritance relationships and use cases
 - Organized by category: Connection, Command, Mission, State, Configuration, ROS2, Safety, Dependency, Timeout, Data errors
@@ -98,7 +98,7 @@ Version 0.3.3 completes **Phase 1** of the DroneResearch platform improvements, 
 ### 🐛 Bug Fixes
 
 #### Frontier Bridge Completion (Improvement 14)
-- Fixed incomplete `call_save_octomap()` method in `droneresearch/exploration/frontier_bridge.py`
+- Fixed incomplete `call_save_octomap()` method in `skymeshx/exploration/frontier_bridge.py`
 - Added missing else clause with service unavailable warning
 - Ensures consistent error handling pattern across all service calls
 
@@ -159,7 +159,7 @@ All 16 improvements from Phase 1 are now complete:
 
 1. **Update Version:**
    ```bash
-   pip install --upgrade droneresearch
+   pip install --upgrade skymeshx
    ```
 
 2. **Review Thread-Safety Documentation:**
@@ -206,7 +206,7 @@ All 16 improvements from Phase 1 are now complete:
 
 ## Links
 
-- **GitHub Repository:** https://github.com/joeldjio/uavresearchproject
+- **GitHub Repository:** https://github.com/joeldjio/skymeshxproject
 - **Documentation:** [docs/](../README.md)
 - **Issue Tracker:** GitHub Issues
 - **Previous Release:** [v0.3.2](notes-v0.3.2.md)
@@ -237,4 +237,4 @@ All 16 improvements from Phase 1 are now complete:
 
 ---
 
-**Full Changelog:** https://github.com/joeldjio/uavresearchproject/compare/v0.3.2...v0.3.3
+**Full Changelog:** https://github.com/joeldjio/skymeshxproject/compare/v0.3.2...v0.3.3

@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for the droneresearch test suite.
+Shared pytest fixtures for the skymeshx test suite.
 
 The suite is intentionally hardware-free: no MAVLink, no ROS2, no Qt event
 loop. Anything that needs those is mocked here.
@@ -36,7 +36,7 @@ sys.modules['px4_msgs.msg'] = MagicMock()
 
 
 class FakeTelemetry:
-    """Minimal stand-in for ``droneresearch.core.telemetry.TelemetryState``.
+    """Minimal stand-in for ``skymeshx.core.telemetry.TelemetryState``.
 
     Only carries the attributes used by :class:`MissionEngine.upload` and
     ``MissionEngine._on_message`` so we don't have to drag in the real
@@ -125,7 +125,7 @@ class FakeConnection:
     def send_raw(self, msg_type: str, **kwargs):
         """Send raw MAVLink message (test stub with whitelist check)."""
         # Import here to avoid circular dependency
-        from droneresearch.core.connection import MAVLinkConnection
+        from skymeshx.core.connection import MAVLinkConnection
         
         if msg_type not in MAVLinkConnection.ALLOWED_RAW_MESSAGES:
             raise ValueError(

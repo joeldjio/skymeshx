@@ -19,8 +19,8 @@ Run with local Ollama:
 """
 import argparse
 import time
-from droneresearch.safety import APFSafetyFilter, Pose3D
-from droneresearch.llm import SwarmCommander
+from skymeshx.safety import APFSafetyFilter, Pose3D
+from skymeshx.llm import SwarmCommander
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--backend", default="mock",

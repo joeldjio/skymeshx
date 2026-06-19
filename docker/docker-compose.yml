@@ -1,6 +1,6 @@
 version: "3.9"
 
-# DroneResearch docker-compose
+# SkyMeshX docker-compose
 # Simulates the full heterogeneous swarm stack locally (SITL)
 #
 # Start: docker compose up
@@ -12,8 +12,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.x86
-    image: droneresearch:x86
-    container_name: droneresearch-gcs
+    image: skymeshx:x86
+    container_name: skymeshx-gcs
     ports:
       - "8080:8080"
     environment:
@@ -41,8 +41,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.pi
-    image: droneresearch:pi
-    container_name: droneresearch-uav1
+    image: skymeshx:pi
+    container_name: skymeshx-uav1
     environment:
       - DRONE_PORT=tcp:host.docker.internal:5761
     ports:
@@ -70,8 +70,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.jetson
-    image: droneresearch:jetson
-    container_name: droneresearch-uav2
+    image: skymeshx:jetson
+    container_name: skymeshx-uav2
     environment:
       - DRONE_PORT=tcp:host.docker.internal:5762
     ports:

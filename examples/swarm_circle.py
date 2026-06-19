@@ -8,7 +8,7 @@ Run (single SITL via Mission Planner, port 5762):
     python examples/swarm_circle.py --single tcp:127.0.0.1:5762
 """
 import argparse
-from droneresearch import Swarm
+from skymeshx import Swarm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--single", default=None, help="Use a single SITL port for all drones")

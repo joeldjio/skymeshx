@@ -1,7 +1,7 @@
 """Test configurable timeouts in MissionEngine."""
 
 import pytest
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission import MissionEngine, Waypoint
 
 
 def test_default_timeouts(fake_conn):

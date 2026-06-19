@@ -1,5 +1,5 @@
 """
-Plot flight telemetry from a DroneResearch CSV log.
+Plot flight telemetry from a SkyMeshX CSV log.
 
 Usage:
     python tools/plot_flight.py                        # latest log

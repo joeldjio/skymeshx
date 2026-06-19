@@ -8,13 +8,13 @@ Run:
 
 Then in another terminal:
     ros2 topic list
-    ros2 topic echo /droneresearch/drone/attitude
-    ros2 topic echo /droneresearch/drone/gps
+    ros2 topic echo /skymeshx/drone/attitude
+    ros2 topic echo /skymeshx/drone/gps
 """
 import argparse
 import time
-from droneresearch import Drone
-from droneresearch.ros import ROS2Bridge
+from skymeshx import Drone
+from skymeshx.ros import ROS2Bridge
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", default="tcp:127.0.0.1:5760")

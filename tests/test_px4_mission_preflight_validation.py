@@ -5,7 +5,7 @@ Tests the validate() method in PX4MissionUploader to ensure
 waypoints are checked before upload.
 """
 import pytest
-from droneresearch.ros.px4_mission import PX4MissionUploader
+from skymeshx.ros.px4_mission import PX4MissionUploader
 
 
 @pytest.fixture

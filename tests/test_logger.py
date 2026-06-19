@@ -1,4 +1,4 @@
-"""Tests for :mod:`droneresearch.data.logger`."""
+"""Tests for :mod:`skymeshx.data.logger`."""
 from __future__ import annotations
 
 import csv
@@ -8,7 +8,7 @@ from queue import Queue
 
 import pytest
 
-from droneresearch.data.logger import TelemetryLogger
+from skymeshx.data.logger import TelemetryLogger
 
 
 @pytest.fixture

@@ -29,7 +29,7 @@ def mock_rclpy():
 @pytest.fixture
 def recorder(temp_bag_dir, mock_rclpy):
     """Create ROS2BagRecorder instance with mocked dependencies."""
-    from droneresearch.ros.bag_recorder import ROS2BagRecorder
+    from skymeshx.ros.bag_recorder import ROS2BagRecorder
     return ROS2BagRecorder(output_dir=temp_bag_dir)
 
 

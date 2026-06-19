@@ -1,6 +1,6 @@
-# UAVResearch GCS — Dokumentation
+# SkyMeshX GCS — Dokumentation
 
-Vollständige Dokumentation des UAVResearch GCS Projekts.
+Vollständige Dokumentation des SkyMeshX GCS Projekts.
 
 ---
 
@@ -53,7 +53,7 @@ Vollständige Dokumentation des UAVResearch GCS Projekts.
 python tools/installer/bump_version.py 0.4.0
 
 # 2. Committen, taggen und pushen
-git add tools/ui/_version.py tools/installer/inno/uavresearch_gcs.iss
+git add tools/ui/_version.py tools/installer/inno/skymeshx_gcs.iss
 git commit -m "Bump version to 0.4.0"
 git tag v0.4.0
 git push origin ui-dashboard --tags

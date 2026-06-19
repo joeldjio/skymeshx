@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to set up **real PX4 hardware** (actual drones) with the UAV Research Platform using uXRCE-DDS for ROS2 integration.
+This guide explains how to set up **real PX4 hardware** (actual drones) with the SkyMeshX Platform using uXRCE-DDS for ROS2 integration.
 
 **Important**: This is for **real hardware**, not simulation. For SITL/Gazebo setup, see [px4-sitl-automation.md](px4-sitl-automation.md).
 
@@ -53,7 +53,7 @@ This guide explains how to set up **real PX4 hardware** (actual drones) with the
 **On Ground Station:**
 - Windows 10/11, Ubuntu 22.04+, or macOS
 - Python 3.10+
-- UAV Research Platform installed
+- SkyMeshX Platform installed
 
 ## Quick Start
 
@@ -120,10 +120,10 @@ git clone https://github.com/PX4/px4_msgs.git -b release/1.14
 cd ~/ros2_ws && colcon build
 source install/setup.bash
 
-# Install UAV Research Platform
+# Install SkyMeshX Platform
 cd ~
-git clone https://github.com/yourusername/uavresearchproject.git
-cd uavresearchproject
+git clone https://github.com/yourusername/skymeshxproject.git
+cd skymeshxproject
 pip3 install -e ".[ros]"
 ```
 

@@ -18,7 +18,7 @@ sys.modules['px4_msgs.msg'] = MagicMock()
 
 def test_ned_enu_conversion():
     """Test NED ↔ ENU frame conversion."""
-    from droneresearch.ros.px4_formation import ned_to_enu, enu_to_ned
+    from skymeshx.ros.px4_formation import ned_to_enu, enu_to_ned
     
     # NED to ENU
     east, north, up = ned_to_enu(10.0, 5.0, -15.0)
@@ -43,7 +43,7 @@ def test_ned_enu_conversion():
 
 def test_formation_controller_init():
     """Test formation controller initialization."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",
@@ -61,7 +61,7 @@ def test_formation_controller_init():
 
 def test_formation_offsets_v_shape():
     """Test V-formation offset calculation."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",
@@ -89,7 +89,7 @@ def test_formation_offsets_v_shape():
 
 def test_formation_offsets_line_shape():
     """Test line formation offset calculation."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",
@@ -108,7 +108,7 @@ def test_formation_offsets_line_shape():
 
 def test_leader_position_setting():
     """Test setting and getting leader position."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",
@@ -129,7 +129,7 @@ def test_leader_position_setting():
 
 def test_follower_positions():
     """Test follower position calculation."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",
@@ -160,8 +160,8 @@ def test_follower_positions():
 
 def test_formation_shapes():
     """Test all formation shapes."""
-    from droneresearch.ros.px4_formation import PX4FormationController
-    from droneresearch.sdk.formations import SHAPES
+    from skymeshx.ros.px4_formation import PX4FormationController
+    from skymeshx.sdk.formations import SHAPES
     
     for shape in SHAPES:
         controller = PX4FormationController(
@@ -182,7 +182,7 @@ def test_formation_shapes():
 
 def test_thread_safety():
     """Test thread-safe position updates."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     import threading
     
     controller = PX4FormationController(
@@ -216,7 +216,7 @@ def test_thread_safety():
 
 def test_altitude_conversion():
     """Test altitude conversion (positive up vs negative down)."""
-    from droneresearch.ros.px4_formation import PX4FormationController
+    from skymeshx.ros.px4_formation import PX4FormationController
     
     controller = PX4FormationController(
         leader_ns="uav_1",

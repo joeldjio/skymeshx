@@ -5,8 +5,8 @@ import threading
 
 import pytest
 
-from droneresearch.ros import context as ros_ctx
-from droneresearch.ros.context import (
+from skymeshx.ros import context as ros_ctx
+from skymeshx.ros.context import (
     acquire_ros,
     is_available,
     release_ros,

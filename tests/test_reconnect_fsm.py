@@ -9,14 +9,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from droneresearch.core.fsm import DroneState
+from skymeshx.core.fsm import DroneState
 
 
 def _make_uav(armed=False, alt=0.0, mode="STABILIZE"):
     """Build a GenericUAVModel without a real MAVLink connection."""
-    with patch("droneresearch.sdk.drone.MAVLinkConnection") as MockConn:
+    with patch("skymeshx.sdk.drone.MAVLinkConnection") as MockConn:
         instance = MockConn.return_value
-        from droneresearch.core.telemetry import TelemetryState
+        from skymeshx.core.telemetry import TelemetryState
 
         tel = TelemetryState()
         tel.update(armed=armed, alt_rel=alt, flight_mode=mode)
@@ -24,7 +24,7 @@ def _make_uav(armed=False, alt=0.0, mode="STABILIZE"):
         instance.connected = True
         instance.on = MagicMock()
 
-        from droneresearch.models.generic_uav import GenericUAVModel
+        from skymeshx.models.generic_uav import GenericUAVModel
 
         uav = GenericUAVModel.__new__(GenericUAVModel)
         uav.id = "D_test"
@@ -34,7 +34,7 @@ def _make_uav(armed=False, alt=0.0, mode="STABILIZE"):
         uav._mission = MagicMock()
         uav._event_cbs = {}
         uav._stop = __import__("threading").Event()
-        from droneresearch.core.fsm import StateMachine
+        from skymeshx.core.fsm import StateMachine
 
         uav.fsm = StateMachine("D_test")
         uav.swarm_role = "none"

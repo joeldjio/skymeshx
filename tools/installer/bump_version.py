@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-bump_version.py – Bump the UAVResearch GCS version in all relevant files.
+bump_version.py – Bump the SkyMeshX GCS version in all relevant files.
 
 Usage:
     python tools/installer/bump_version.py 0.4.0
 
 Updates:
     - tools/ui/_version.py          (VERSION = "x.y.z")
-    - tools/installer/inno/uavresearch_gcs.iss  (#define AppVersion "x.y.z")
+    - tools/installer/inno/skymeshx_gcs.iss  (#define AppVersion "x.y.z")
 
 Then prints the git commands to tag and push the release.
 """
@@ -28,7 +28,7 @@ FILES = [
         r"\g<1>{version}\g<2>",
     ),
     (
-        PROJECT_ROOT / "tools" / "installer" / "inno" / "uavresearch_gcs.iss",
+        PROJECT_ROOT / "tools" / "installer" / "inno" / "skymeshx_gcs.iss",
         r'(#define\s+AppVersion\s+")[^"]+(")',
         r"\g<1>{version}\g<2>",
     ),
@@ -63,7 +63,7 @@ def bump(new_version: str) -> None:
         return
 
     print(f"\nVersion bumped to {new_version}. Run these commands to release:\n")
-    print(f"  git add tools/ui/_version.py tools/installer/inno/uavresearch_gcs.iss")
+    print(f"  git add tools/ui/_version.py tools/installer/inno/skymeshx_gcs.iss")
     print(f'  git commit -m "Bump version to {new_version}"')
     print(f"  git tag v{new_version}")
     print(f"  git push origin ui-dashboard --tags")

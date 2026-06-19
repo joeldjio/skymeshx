@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────
-//  UpdateBanner — shows the current uavresearch gcs version + lets the user
+//  UpdateBanner — shows the current skymeshx gcs version + lets the user
 //  check for updates and one-click install a newer release.
 //
 //  Bound to the ``updater`` context property exposed by

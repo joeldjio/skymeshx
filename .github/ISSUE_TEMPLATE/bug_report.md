@@ -30,7 +30,7 @@ What actually happened.
 
 - **OS:** [e.g., Ubuntu 22.04, Windows 11, macOS 14]
 - **Python Version:** [e.g., 3.11.5]
-- **DroneResearch Version:** [e.g., 0.3.1]
+- **SkyMeshX Version:** [e.g., 0.3.1]
 - **Autopilot:** [e.g., ArduPilot 4.5, PX4 v1.14]
 - **Connection:** [e.g., SITL, Serial, UDP]
 - **ROS2:** [Yes/No, version if yes]

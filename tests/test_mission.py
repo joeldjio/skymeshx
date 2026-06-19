@@ -1,4 +1,4 @@
-"""Tests for :mod:`droneresearch.control.mission`.
+"""Tests for :mod:`skymeshx.control.mission`.
 
 These regression-test the lifecycle fixes:
 * ``_done_event`` is now set on last-waypoint, mode-change, and abort.
@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from droneresearch.control.mission import MissionEngine, Waypoint
+from skymeshx.control.mission import MissionEngine, Waypoint
 
 
 @pytest.fixture

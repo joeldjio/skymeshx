@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Das UAVResearch-Projekt zeigt **gute Thread-Safety-Grundlagen** mit konsequenter Lock-Verwendung in Kernmodulen. Es wurden jedoch **12 kritische Schwachstellen** identifiziert, die zu Race Conditions, Deadlocks oder Datenverlust führen können.
+Das SkyMeshX-Projekt zeigt **gute Thread-Safety-Grundlagen** mit konsequenter Lock-Verwendung in Kernmodulen. Es wurden jedoch **12 kritische Schwachstellen** identifiziert, die zu Race Conditions, Deadlocks oder Datenverlust führen können.
 
 ### Kritische Findings
 
@@ -34,7 +34,7 @@ Das UAVResearch-Projekt zeigt **gute Thread-Safety-Grundlagen** mit konsequenter
 
 ### TS-01: Ungeschützter Callback-Dispatch in MAVLinkConnection
 
-**Datei:** `droneresearch/core/connection.py:420-425`
+**Datei:** `skymeshx/core/connection.py:420-425`
 
 ```python
 def _emit(self, event: str, *args):
@@ -82,7 +82,7 @@ def _emit(self, event: str, *args):
 
 ### TS-02: Shared Mutable State in APFSafetyFilter
 
-**Datei:** `droneresearch/safety/apf.py:180-181, 317-318`
+**Datei:** `skymeshx/safety/apf.py:180-181, 317-318`
 
 ```python
 class APFSafetyFilter:
@@ -138,7 +138,7 @@ class APFSafetyFilter:
 
 ### TS-03: Mission Build nicht Thread-Safe
 
-**Datei:** `droneresearch/control/mission.py:52-56, 92-96`
+**Datei:** `skymeshx/control/mission.py:52-56, 92-96`
 
 ```python
 class MissionEngine:
@@ -208,7 +208,7 @@ def add(self, wp: Waypoint):
 
 ### TS-04: `_pending_cmds` Race Condition
 
-**Datei:** `droneresearch/core/connection.py:197-198, 447-453, 678-679`
+**Datei:** `skymeshx/core/connection.py:197-198, 447-453, 678-679`
 
 ```python
 class MAVLinkConnection:
@@ -263,7 +263,7 @@ def _command_long(self, cmd, ...):
 
 ### TS-05: Callback während Lock in StateMachine
 
-**Datei:** `droneresearch/core/fsm.py:135-166`
+**Datei:** `skymeshx/core/fsm.py:135-166`
 
 ```python
 def transition(self, new_state: DroneState, force: bool = False) -> bool:
@@ -323,7 +323,7 @@ def transition(self, new_state: DroneState, force: bool = False) -> bool:
 
 ### TS-06: Direct Field Access in TelemetryState
 
-**Datei:** `droneresearch/core/telemetry.py:7-9, 28-79`
+**Datei:** `skymeshx/core/telemetry.py:7-9, 28-79`
 
 ```python
 """
@@ -391,7 +391,7 @@ class TelemetryState:
 
 ### TS-07: APFFilterLoop Stop Race
 
-**Datei:** `droneresearch/safety/apf.py:381-399`
+**Datei:** `skymeshx/safety/apf.py:381-399`
 
 ```python
 class APFFilterLoop:
@@ -452,7 +452,7 @@ class APFFilterLoop:
 
 ### TS-08: Reconnect Backoff Race
 
-**Datei:** `droneresearch/core/connection.py:537-571`
+**Datei:** `skymeshx/core/connection.py:537-571`
 
 ```python
 def _reconnect_loop(self):
@@ -499,7 +499,7 @@ def _reconnect_loop(self):
 
 ### TS-09: Mission Upload Abort Race
 
-**Datei:** `droneresearch/control/mission.py:69-70, 180`
+**Datei:** `skymeshx/control/mission.py:69-70, 180`
 
 ```python
 class MissionEngine:
@@ -551,7 +551,7 @@ class MissionEngine:
 
 ### TS-10: `last_nack` ohne Lock
 
-**Datei:** `droneresearch/core/connection.py:200, 681`
+**Datei:** `skymeshx/core/connection.py:200, 681`
 
 ```python
 class MAVLinkConnection:
@@ -591,7 +591,7 @@ with self._lock:
 
 ### TS-11: `_obstacles` nicht Thread-Safe
 
-**Datei:** `droneresearch/safety/apf.py:179, 183-188, 246-255`
+**Datei:** `skymeshx/safety/apf.py:179, 183-188, 246-255`
 
 ```python
 class APFSafetyFilter:
@@ -642,7 +642,7 @@ class APFSafetyFilter:
 
 ### TS-12: FSM History Truncation Race
 
-**Datei:** `droneresearch/core/fsm.py:147-148`
+**Datei:** `skymeshx/core/fsm.py:147-148`
 
 ```python
 def transition(self, new_state: DroneState, force: bool = False) -> bool:
@@ -735,7 +735,7 @@ def __init__(self, ...):
 
 import threading
 import pytest
-from droneresearch.core.connection import MAVLinkConnection
+from skymeshx.core.connection import MAVLinkConnection
 
 def test_concurrent_listener_modification():
     """Test TS-01: Concurrent on()/off() during _emit()"""
@@ -763,7 +763,7 @@ def test_concurrent_listener_modification():
 
 def test_apf_concurrent_filter():
     """Test TS-02: Concurrent filter() calls"""
-    from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+    from skymeshx.safety.apf import APFSafetyFilter, Pose3D
     
     apf = APFSafetyFilter()
     positions = {"D1": Pose3D(0, 0, 10), "D2": Pose3D(5, 0, 10)}

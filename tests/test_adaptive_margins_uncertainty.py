@@ -6,7 +6,7 @@ uncertainty (GPS accuracy) and environmental conditions (wind), providing
 larger separation when positioning is less reliable.
 """
 import pytest
-from droneresearch.safety.apf import AdaptiveAPFSafetyFilter, Pose3D
+from skymeshx.safety.apf import AdaptiveAPFSafetyFilter, Pose3D
 
 
 def test_adaptive_margin_increases_with_gps_uncertainty():

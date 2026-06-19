@@ -12,15 +12,15 @@ from typing import List, Tuple, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
-from droneresearch.control.field_coverage import (
+from skymeshx.control.field_coverage import (
     FieldCoveragePlanner,
     FieldBoundary,
     CoverageConfig,
     CoveragePattern,
     MultiDroneStrategy,
 )
-from droneresearch.control.mission import MissionEngine, Waypoint
-from droneresearch.control.seeding_planner import SeedingMissionPlanner, SeedingConfig
+from skymeshx.control.mission import MissionEngine, Waypoint
+from skymeshx.control.seeding_planner import SeedingMissionPlanner, SeedingConfig
 
 if TYPE_CHECKING:
     from tools.ui.context.swarm_context import SwarmContext
@@ -1307,7 +1307,7 @@ class MissionContext(QObject):
     def generateSolarInspection(self):
         """Generate solar inspection mission waypoints."""
         try:
-            from droneresearch.control.solar_inspection import (
+            from skymeshx.control.solar_inspection import (
                 SolarParkInspectionPlanner,
                 PanelRow,
                 InspectionConfig

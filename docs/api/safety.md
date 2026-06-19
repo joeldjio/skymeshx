@@ -37,7 +37,7 @@ class Pose3D:
 
 **Example:**
 ```python
-from droneresearch.safety.apf import Pose3D
+from skymeshx.safety.apf import Pose3D
 
 # Drone at 10m north, 5m east, 15m altitude
 pos = Pose3D(x=10.0, y=5.0, z=15.0)
@@ -168,7 +168,7 @@ class Geofence:
 
 **Example:**
 ```python
-from droneresearch.safety.apf import Geofence
+from skymeshx.safety.apf import Geofence
 
 # 100m radius, 2-50m altitude
 fence = Geofence(
@@ -258,7 +258,7 @@ APFSafetyFilter(
 
 **Example:**
 ```python
-from droneresearch.safety.apf import APFSafetyFilter
+from skymeshx.safety.apf import APFSafetyFilter
 
 apf = APFSafetyFilter(
     min_separation=2.0,      # Keep 2m apart
@@ -417,7 +417,7 @@ APFFilterLoop(
 
 **Example:**
 ```python
-from droneresearch.safety.apf import APFSafetyFilter, APFFilterLoop
+from skymeshx.safety.apf import APFSafetyFilter, APFFilterLoop
 
 apf = APFSafetyFilter()
 
@@ -480,8 +480,8 @@ Stop the filter loop.
 ## Complete Usage Example
 
 ```python
-from droneresearch import Swarm
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx import Swarm
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 # Create swarm
 swarm = Swarm()
@@ -641,8 +641,8 @@ if new_position outside geofence:
 ## Integration with Mission Planning
 
 ```python
-from droneresearch.control.mission import MissionEngine, Waypoint
-from droneresearch.safety.apf import APFSafetyFilter, Pose3D
+from skymeshx.control.mission import MissionEngine, Waypoint
+from skymeshx.safety.apf import APFSafetyFilter, Pose3D
 
 # Mission waypoints
 mission_waypoints = [
@@ -704,7 +704,7 @@ Predicts future collisions based on current drone trajectories or planned waypoi
 ### Constructor
 
 ```python
-from droneresearch.safety.collision_predictor import CollisionPredictor
+from skymeshx.safety.collision_predictor import CollisionPredictor
 
 predictor = CollisionPredictor(
     time_horizon=10.0,        # seconds to look ahead
@@ -740,7 +740,7 @@ Predict collisions based on current velocities (velocity-based prediction).
 
 **Example:**
 ```python
-from droneresearch.safety.collision_predictor import DroneState
+from skymeshx.safety.collision_predictor import DroneState
 
 states = {
     "D1": DroneState(x=0, y=0, z=10, vx=2, vy=0, vz=0, armed=True),
@@ -1008,7 +1008,7 @@ Smart battery monitoring with predictive Return-to-Launch (RTL) capabilities.
 ### Constructor
 
 ```python
-from droneresearch.safety.battery_monitor import BatteryMonitor
+from skymeshx.safety.battery_monitor import BatteryMonitor
 
 monitor = BatteryMonitor(
     critical_threshold=20.0,  # Battery % to trigger immediate RTL
@@ -1224,7 +1224,7 @@ ELSE:
 ## Complete Usage Example
 
 ```python
-from droneresearch.safety.battery_monitor import BatteryMonitor
+from skymeshx.safety.battery_monitor import BatteryMonitor
 import time
 
 # Initialize monitor

@@ -31,7 +31,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from droneresearch.ros import PX4ROS2Bridge
+from skymeshx.ros import PX4ROS2Bridge
 
 
 def test_connection(namespace: str = "px4_0"):
