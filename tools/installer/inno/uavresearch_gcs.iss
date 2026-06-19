@@ -1,5 +1,5 @@
 ; ════════════════════════════════════════════════════════════════════════
-;  skymeshx gcs — Windows Installer (Inno Setup 6+)
+;  SkyMeshX — Windows Installer (Inno Setup 6+)
 ; ════════════════════════════════════════════════════════════════════════
 ;
 ;  Build:
@@ -19,11 +19,11 @@
 ;    seamless one-click upgrade flow.
 ; ════════════════════════════════════════════════════════════════════════
 
-#define AppName        "skymeshx gcs"
+#define AppName        "skymeshx"
 #define AppPublisher   "SkyMeshX"
-#define AppVersion     "0.3.6.1"
+#define AppVersion     "0.3.7"
 #define AppURL         "https://github.com/joeldjio/skymeshx-gcs-releases"
-#define AppExeName     "skymeshx gcs.exe"
+#define AppExeName     "skymeshx.exe"
 ; Stable, randomly-generated GUID. DO NOT change this once published
 ; — it would break upgrade detection on existing installs.
 #define AppId          "{{8F7E2D14-3A6B-4F2C-9B4E-3A2C0B1D0001}"
@@ -41,7 +41,7 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\SkyMeshX\skymeshx gcs
+DefaultDirName={autopf}\SkyMeshX
 DefaultGroupName=SkyMeshX
 DisableProgramGroupPage=no
 LicenseFile={#ProjectRoot}\LICENSE
@@ -52,7 +52,7 @@ OutputBaseFilename=skymeshx-gcs-setup-{#AppVersion}
 SetupIconFile={#AssetsDir}\skymeshx_icon.ico
 ; ── Silent / in-place upgrade support (used by the in-app updater) ──
 ; CloseApplications=force lets us replace _internal/ even while the
-; previous skymeshx gcs.exe was running, and RestartApplications=yes brings
+; previous SkyMeshX.exe was running, and RestartApplications=yes brings
 ; it back up after the upgrade finishes.
 CloseApplications=force
 CloseApplicationsFilter=*.exe,*.dll,*.pyd
@@ -112,7 +112,7 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major < 10) then
   begin
-    MsgBox('skymeshx gcs requires Windows 10 or later (uses Qt 6 / WebEngine).',
+    MsgBox('SkyMeshX requires Windows 10 or later (uses Qt 6 / WebEngine).',
            mbCriticalError, MB_OK);
     Result := False;
   end
