@@ -93,7 +93,12 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     enabled: !(mission && mission.missionLocked)
-                                    onClicked: if (mission) mission.missionMode = 0
+                                    onClicked: {
+                                        if (mission && root.Window.window) {
+                                            root.Window.window.cancelAllMapModes()
+                                            mission.missionMode = 0
+                                        }
+                                    }
                                 }
                             }
 
@@ -115,7 +120,12 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     enabled: !(mission && mission.missionLocked)
-                                    onClicked: if (mission) mission.missionMode = 1
+                                    onClicked: {
+                                        if (mission && root.Window.window) {
+                                            root.Window.window.cancelAllMapModes()
+                                            mission.missionMode = 1
+                                        }
+                                    }
                                 }
                             }
 
@@ -137,7 +147,12 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     enabled: !(mission && mission.missionLocked)
-                                    onClicked: if (mission) mission.missionMode = 2
+                                    onClicked: {
+                                        if (mission && root.Window.window) {
+                                            root.Window.window.cancelAllMapModes()
+                                            mission.missionMode = 2
+                                        }
+                                    }
                                 }
                             }
                         }

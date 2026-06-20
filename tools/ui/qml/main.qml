@@ -139,6 +139,32 @@ Window {
         selectTab(0)  // jump to Map tab so user can click
     }
 
+    // ── Cancel all active map interaction modes ────────────────────────────────
+    function cancelAllMapModes() {
+        // Cancel waypoint mode
+        if (mapWaypointMode) {
+            mapWaypointMode = false
+            if (mapLoader.item) mapLoader.item.setPickMode(false)
+        }
+        
+        // Cancel pick mode
+        if (mapPickMode) {
+            mapPickMode = false
+            if (mapLoader.item) mapLoader.item.setPickMode(false)
+            _mapPickTarget = null
+        }
+        
+        // Cancel boundary drawing
+        if (typeof mission !== "undefined" && mission && mission.drawingMode) {
+            mission.cancelDrawingBoundary()
+        }
+        
+        // Cancel solar row drawing
+        if (typeof mission !== "undefined" && mission && mission.addingSolarRow) {
+            mission.cancelSolarRowDrawing()
+        }
+    }
+
     function deliverMapPick(lat, lon) {
         // Routing: either waypoint-add mode OR legacy single-pick mode
         if (mapWaypointMode) {
@@ -1119,6 +1145,16 @@ Window {
         onActivated: {
             root.toggleMapWaypointMode()
             root._scFeedback("Waypoint-Modus: " + (root.mapWaypointMode ? "AN" : "AUS"))
+        }
+    }
+
+    // ESC — Cancel all map modes
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            root.cancelAllMapModes()
+            root._scFeedback("Map modes cancelled")
         }
     }
 

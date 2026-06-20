@@ -1242,6 +1242,20 @@ class MissionContext(QObject):
         except Exception as e:
             self.logMessage.emit("ERROR", f"[SOLAR] addSolarRowPoint failed: {e}")
     
+    @Slot()
+    def cancelSolarRowDrawing(self):
+        """Cancel solar row drawing mode."""
+        self._adding_solar_row = False
+        self._solar_row_start_lat = 0.0
+        self._solar_row_start_lon = 0.0
+        self.solarRowDrawingModeChanged.emit(False)
+        self.logMessage.emit("INFO", "[SOLAR] ❌ Solar row drawing cancelled")
+    
+    @Property(bool, notify=solarRowDrawingModeChanged)
+    def addingSolarRow(self):
+        """Return whether solar row drawing mode is active."""
+        return self._adding_solar_row
+    
     @Slot(float, float, float, float)
     def addSolarRow(self, start_lat: float, start_lon: float, end_lat: float, end_lon: float):
         """Add a solar panel row defined by start and end coordinates."""
