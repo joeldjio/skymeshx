@@ -292,5 +292,3 @@ def test_damping_reset_on_new_drone():
     
     assert "D1" in apf._prev_positions
     assert "D2" in apf._prev_positions
-
-# Made with Bob

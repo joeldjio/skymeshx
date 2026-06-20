@@ -47,5 +47,3 @@ def test_is_connected_uses_status():
     # Should not be connected initially
     assert not bridge.is_connected()
     assert bridge.connection_status != ConnectionStatus.CONNECTED
-
-# Made with Bob

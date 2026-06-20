@@ -242,5 +242,3 @@ def test_validate_error_messages_include_waypoint_index():
     # Error should mention WP1 (second waypoint, 0-indexed)
     assert any("WP1" in e for e in errors)
 
-
-# Made with Bob

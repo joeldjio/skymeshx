@@ -40,5 +40,3 @@ for f in sorted(changed)[:30]:
     print(f"  {f}")
 if len(changed) > 30:
     print(f"  ... and {len(changed)-30} more")
-
-# Made with Bob

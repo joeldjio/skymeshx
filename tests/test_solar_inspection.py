@@ -352,5 +352,3 @@ class TestIntegration:
         print(f"  Total waypoints: {len(waypoints)}")
         print(f"  Coverage area: {coverage_area:.1f} m²")
         print(f"  Estimated time: {mission_time:.1f} seconds")
-
-# Made with Bob

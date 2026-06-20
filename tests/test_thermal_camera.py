@@ -359,5 +359,3 @@ class TestIntegration:
         assert stats['frame_count'] == 5
         # FPS calculation uses exponential moving average, so exact value varies
         assert stats['fps'] > 0
-
-# Made with Bob

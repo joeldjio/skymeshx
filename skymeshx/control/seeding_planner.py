@@ -449,5 +449,3 @@ class SeedingMissionPlanner:
 
 
 __all__ = ["SeedingMissionPlanner", "SeedingConfig"]
-
-# Made with Bob

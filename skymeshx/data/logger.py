@@ -116,7 +116,17 @@ class TelemetryLogger:
             # Anything other than Full is a real bug — surface it.
             print(f"[logger:{self._drone_id}] ERROR: log enqueue failed: {e}")
 
-    def log_event(self, event: str, data: dict = None):
+    def log_event(self, event: str, data: Optional[dict] = None):
+        """
+        Log a discrete event (arm, takeoff, land, etc.) to JSONL file.
+        
+        Args:
+            event: Event name (e.g., "armed", "takeoff", "land")
+            data: Optional event data dictionary
+        """
+        if not self._running:
+            return
+            
         entry = {
             "timestamp": time.time(),
             "drone_id": self._drone_id,
@@ -129,8 +139,8 @@ class TelemetryLogger:
             try:
                 self._jsonl_file.write(json.dumps(entry) + "\n")
                 self._jsonl_file.flush()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[logger:{self._drone_id}] ERROR: JSONL write failed: {e}")
 
     def stop(self):
         self._running = False

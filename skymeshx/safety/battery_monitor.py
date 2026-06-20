@@ -88,7 +88,8 @@ class BatteryMonitor:
         safety_margin: float = 1.2,
         history_size: int = 100,
         min_samples_for_prediction: int = 10,
-        persistence_path: Optional[str] = None  # Improvement 10: history persistence
+        persistence_path: Optional[str] = None,  # Improvement 10: history persistence
+        auto_save_interval: float = 300.0  # Auto-save every 5 minutes
     ):
         """
         Initialize battery monitor.
@@ -100,6 +101,7 @@ class BatteryMonitor:
             history_size: Number of power samples to keep
             min_samples_for_prediction: Minimum samples needed for prediction
             persistence_path: Optional path to save/load battery history (Improvement 10)
+            auto_save_interval: Seconds between automatic history saves (default: 300 = 5 min)
         """
         self.critical_threshold = critical_threshold
         self.warning_threshold = warning_threshold
@@ -107,6 +109,7 @@ class BatteryMonitor:
         self.min_samples = min_samples_for_prediction
         self.history_size = history_size
         self.persistence_path = Path(persistence_path) if persistence_path else None
+        self.auto_save_interval = auto_save_interval
         
         # Per-drone monitoring data
         self._monitoring: Dict[str, bool] = {}
@@ -116,10 +119,17 @@ class BatteryMonitor:
         self._callbacks: Dict[str, Callable] = {}
         
         self._lock = threading.Lock()
+        self._last_save_time: float = time.time()
+        self._auto_save_thread: Optional[threading.Thread] = None
+        self._stop_auto_save = threading.Event()
         
         # Load persisted history if available (Improvement 10)
         if self.persistence_path and self.persistence_path.exists():
             self.load_history()
+        
+        # Start auto-save thread if persistence is enabled
+        if self.persistence_path and auto_save_interval > 0:
+            self._start_auto_save()
     
     def start_monitoring(self, drone_id: str, callback: Optional[Callable] = None):
         """
@@ -189,6 +199,10 @@ class BatteryMonitor:
             
             self._power_history[drone_id].append(sample)
             self._last_sample[drone_id] = sample
+            
+            # Check if auto-save is needed
+            if self.persistence_path and (time.time() - self._last_save_time) >= self.auto_save_interval:
+                self._auto_save_history()
     
     def should_trigger_rtl(self, drone_id: str, home_position: Tuple[float, float, float]) -> Tuple[bool, str]:
         """
@@ -487,8 +501,39 @@ class BatteryMonitor:
         """Reset RTL trigger flag (e.g., after manual override)."""
         with self._lock:
             self._rtl_triggered[drone_id] = False
+    
+    def _start_auto_save(self):
+        """Start background thread for periodic history saves."""
+        self._stop_auto_save.clear()
+        self._auto_save_thread = threading.Thread(
+            target=self._auto_save_worker,
+            daemon=True,
+            name="battery-autosave"
+        )
+        self._auto_save_thread.start()
+    
+    def _auto_save_worker(self):
+        """Background worker that periodically saves history."""
+        while not self._stop_auto_save.wait(timeout=self.auto_save_interval):
+            self._auto_save_history()
+    
+    def _auto_save_history(self):
+        """Internal method to save history (called by auto-save thread or update)."""
+        try:
+            if self.save_history():
+                self._last_save_time = time.time()
+        except Exception as e:
+            print(f"[BatteryMonitor] Auto-save failed: {e}")
+    
+    def shutdown(self):
+        """Stop auto-save thread and perform final save."""
+        if self._auto_save_thread:
+            self._stop_auto_save.set()
+            self._auto_save_thread.join(timeout=2.0)
+        
+        # Final save
+        if self.persistence_path:
+            self.save_history()
 
 
 __all__ = ["BatteryMonitor", "BatteryStatus", "PowerSample"]
-
-# Made with Bob

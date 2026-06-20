@@ -232,8 +232,8 @@ def run() -> int:
     def cleanup_battery_history():
         safety_ctx = contexts.get("safety")
         if safety_ctx and hasattr(safety_ctx, "_battery_monitor") and safety_ctx._battery_monitor:
-            if safety_ctx._battery_monitor.save_history():
-                print("[GCS] Battery history saved on shutdown")
+            safety_ctx._battery_monitor.shutdown()
+            print("[GCS] Battery history saved on shutdown")
     
     app.aboutToQuit.connect(cleanup_battery_history)
 

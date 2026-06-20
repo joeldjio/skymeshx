@@ -435,5 +435,3 @@ class ESCAPEContext(QObject):
     def available(self) -> bool:
         """Check if ESCAPE framework is available."""
         return _ESCAPE_OK
-
-# Made with Bob

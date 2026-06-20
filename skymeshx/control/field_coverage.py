@@ -390,9 +390,6 @@ class FieldCoveragePlanner:
             total_distance += distance
         
         return total_distance / speed
-
-# Made with Bob
-
     
     def distribute_waypoints_for_swarm(
         self,

@@ -269,5 +269,3 @@ def test_mock_pointcloud_range_filter():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

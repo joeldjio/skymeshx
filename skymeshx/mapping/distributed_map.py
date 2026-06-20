@@ -375,5 +375,3 @@ class DistributedOccupancyMap:
             self._update_count = 0
             self._merge_count = 0
             self._consensus_count = 0
-
-# Made with Bob

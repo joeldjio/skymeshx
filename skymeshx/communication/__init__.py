@@ -9,5 +9,3 @@ from __future__ import annotations
 __all__ = ["SwarmCommunicationProtocol"]
 
 from skymeshx.communication.swarm_protocol import SwarmCommunicationProtocol
-
-# Made with Bob

@@ -272,5 +272,3 @@ class SwarmCommunicationProtocol:
         """Context manager support."""
         self.stop()
         return False
-
-# Made with Bob

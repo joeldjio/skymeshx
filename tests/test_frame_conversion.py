@@ -159,5 +159,3 @@ def test_north_east_swap():
     enu_e, enu_n, enu_u = ned_to_enu(0.0, 10.0, 0.0)
     assert enu_e == 10.0 and enu_n == 0.0, \
         f"Pure East failed: expected (10, 0, 0), got ({enu_e}, {enu_n}, {enu_u})"
-
-# Made with Bob

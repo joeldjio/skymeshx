@@ -100,5 +100,3 @@ def test_formation_empty_swarm(fake_conn):
     
     # Should not crash with empty swarm
     swarm.formation("line", spacing=5.0, use_apf=True)
-
-# Made with Bob

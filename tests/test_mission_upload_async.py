@@ -309,5 +309,3 @@ def test_upload_async_thread_is_daemon():
         
         # Cleanup
         mission._upload_thread.join(timeout=1.0)
-
-# Made with Bob

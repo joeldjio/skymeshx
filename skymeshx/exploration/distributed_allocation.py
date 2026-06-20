@@ -387,5 +387,3 @@ class DistributedTaskAllocator:
                 "active_tasks": len(self._my_tasks),
                 "total_tasks": len(self._tasks)
             }
-
-# Made with Bob

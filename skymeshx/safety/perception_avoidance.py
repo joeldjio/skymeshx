@@ -283,5 +283,3 @@ class PerceptionEnhancedAPF(APFSafetyFilter):
         """
         with self._obstacle_lock:
             return self._obstacle_map.copy()
-
-# Made with Bob

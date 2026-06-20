@@ -240,5 +240,3 @@ class LogFileError(DataError):
 class InvalidDataFormatError(DataError):
     """Raised when data format is invalid or corrupted."""
     pass
-
-# Made with Bob

@@ -186,5 +186,3 @@ def test_multiple_takeoff_attempts_dont_accumulate(fake_conn):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

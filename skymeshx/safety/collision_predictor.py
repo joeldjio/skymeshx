@@ -393,5 +393,3 @@ class CollisionPredictor:
         
         # If t is beyond trajectory, return last position
         return (trajectory[-1][1], trajectory[-1][2], trajectory[-1][3])
-
-# Made with Bob

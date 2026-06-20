@@ -151,5 +151,3 @@ exclude: |
 
 # Minimum pre-commit version
 minimum_pre_commit_version: 3.0.0
-
-# Made with Bob

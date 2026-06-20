@@ -242,5 +242,3 @@ def test_consensus_replaces_old_local_data():
     # Should use remote data since local is too old
     assert occ is not None
     assert abs(occ - 0.2) < 0.1  # Close to remote value
-
-# Made with Bob

@@ -8,5 +8,3 @@ understanding.
 from skymeshx.mapping.distributed_map import DistributedOccupancyMap
 
 __all__ = ["DistributedOccupancyMap"]
-
-# Made with Bob

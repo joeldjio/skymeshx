@@ -65,5 +65,3 @@ def test_longer_handshake_timeout(fake_conn, fake_mav):
     
     # Should succeed via handshake path
     assert result is True
-
-# Made with Bob

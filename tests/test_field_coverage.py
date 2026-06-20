@@ -322,5 +322,3 @@ def test_overlap_parameter(planner, simple_field):
     
     # Should generate waypoints (overlap affects spacing calculation)
     assert len(waypoints) > 0
-
-# Made with Bob

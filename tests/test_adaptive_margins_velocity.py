@@ -246,5 +246,3 @@ def test_reaction_time_scaling():
     expected_delta = 4.0 * (1.0 - 0.2)
     actual_delta = margin_long - margin_short
     assert abs(actual_delta - expected_delta) < 0.01
-
-# Made with Bob

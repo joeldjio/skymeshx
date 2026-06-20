@@ -331,7 +331,11 @@ if connected:
         target: experiment
 
         function onResultReady(result) {
-            resultsModel.append({ success: result.success ?? false, duration: result.duration_s ?? 0, mode: "JSON" })
+            resultsModel.append({
+                success: result.success !== undefined ? result.success : false,
+                duration: result.duration_s !== undefined ? result.duration_s : 0,
+                mode: "JSON"
+            })
         }
 
         function onScriptFinished(success, message) {

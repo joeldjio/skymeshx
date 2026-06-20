@@ -60,8 +60,8 @@ class Drone:
 
         # Wire core events → high-level events
         self._conn.on("telemetry", self._on_telemetry)
-        self._conn.on("armed", lambda v: self._emit("armed", v))
-        self._conn.on("mode", lambda v: self._emit("mode", v))
+        self._conn.on("armed", self._on_armed)
+        self._conn.on("mode", self._on_mode)
         self._conn.on("statustext", lambda t, s: self._emit("statustext", t, s))
         self._conn.on("connected", lambda: self._emit("connected"))
         self._conn.on("disconnected", lambda: self._emit("disconnected"))
@@ -136,6 +136,8 @@ class Drone:
         """Arm the drone. Returns immediately if already armed."""
         if self._conn.telemetry.armed:
             return True
+        if self._logger:
+            self._logger.log_event("arm_command", {"force": force})
         self._conn.arm(force=force)
         return self._wait_for(lambda: self._conn.telemetry.armed, timeout)
 
@@ -143,6 +145,8 @@ class Drone:
         """Disarm the drone. Returns immediately if already disarmed."""
         if not self._conn.telemetry.armed:
             return True
+        if self._logger:
+            self._logger.log_event("disarm_command", {"force": force})
         self._conn.disarm(force=force)
         return self._wait_for(lambda: not self._conn.telemetry.armed, timeout)
 
@@ -168,6 +172,9 @@ class Drone:
         """
         import time
         start_time = time.time()
+        
+        if self._logger:
+            self._logger.log_event("takeoff_command", {"altitude": altitude})
         
         # Arm with portion of timeout
         if not self.armed:
@@ -202,6 +209,8 @@ class Drone:
         """Land the drone. Returns immediately if already disarmed."""
         if not self._conn.telemetry.armed:
             return True
+        if self._logger:
+            self._logger.log_event("land_command", {})
         self._conn.land()
         return self._wait_for(
             lambda: not self._conn.telemetry.armed,
@@ -209,6 +218,9 @@ class Drone:
         )
 
     def rtl(self):
+        """Return to launch and log the command."""
+        if self._logger:
+            self._logger.log_event("rtl_command", {})
         self._conn.rtl()
 
     def goto(
@@ -242,6 +254,12 @@ class Drone:
             - (Optional) Altitude error < 1.0m
             - (Optional) Groundspeed < 0.5 m/s (drone has stopped)
         """
+        if self._logger:
+            self._logger.log_event("goto_command", {
+                "lat": lat, "lon": lon, "alt": alt,
+                "acceptance_radius": acceptance_radius
+            })
+        
         start_time = time.time()
         
         # PX4 uses OFFBOARD for position commands; ArduPilot uses GUIDED.
@@ -332,7 +350,7 @@ class Drone:
 
     # ── Events ────────────────────────────────────────────────────────────
 
-    def on(self, event: str, callback: Callable = None):
+    def on(self, event: str, callback: Optional[Callable] = None):
         """Register event callback. Can be used as decorator."""
         if callback is None:
 
@@ -364,11 +382,18 @@ class Drone:
         if self._logger:
             self._logger.log(snap)
         self._emit("telemetry", tel)
-        self._emit("altitude", tel.alt_rel)
-        self._emit("position", tel.lat, tel.lon, tel.alt_rel)
-        self._emit("attitude", tel.roll, tel.pitch, tel.yaw)
-        self._emit("battery", tel.battery_pct)
-        self._emit("speed", tel.groundspeed)
+    
+    def _on_armed(self, armed: bool):
+        """Handle armed state change and log event."""
+        if self._logger:
+            self._logger.log_event("armed" if armed else "disarmed", {"armed": armed})
+        self._emit("armed", armed)
+    
+    def _on_mode(self, mode: str):
+        """Handle mode change and log event."""
+        if self._logger:
+            self._logger.log_event("mode_change", {"mode": mode})
+        self._emit("mode", mode)
 
     def _wait_for(self, condition: Callable, timeout: float) -> bool:
         deadline = time.time() + timeout

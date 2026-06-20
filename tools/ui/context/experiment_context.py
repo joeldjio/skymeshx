@@ -192,10 +192,44 @@ class ExperimentContext(QObject):
         self._busy = False
         self._progress = 0
         self._current_executor = None
-        self._scripts_dir = Path("experiments/uploads")
+        self._scripts_dir = Path("experiments/uploads").resolve()
         self._scripts_dir.mkdir(parents=True, exist_ok=True)
         # 0 = no timeout. UI can override via setScriptTimeout().
         self._script_timeout_s: float = 0.0
+    
+    def _validate_script_path(self, filename: str) -> Path:
+        """Validate script filename and return safe path within uploads directory.
+        
+        Args:
+            filename: User-provided filename
+            
+        Returns:
+            Validated Path object within uploads directory
+            
+        Raises:
+            ValueError: If filename is invalid or attempts path traversal
+        """
+        # Extract basename only - prevents directory traversal
+        safe_name = Path(filename).name
+        
+        # Reject empty, hidden, or suspicious names
+        if not safe_name or safe_name.startswith('.') or '..' in safe_name:
+            raise ValueError(f"Invalid script filename: {filename}")
+        
+        # Reject absolute paths
+        if Path(filename).is_absolute():
+            raise ValueError(f"Absolute paths not allowed: {filename}")
+        
+        # Build and resolve full path
+        filepath = (self._scripts_dir / safe_name).resolve()
+        
+        # Ensure path is within uploads directory (prevents traversal)
+        try:
+            filepath.relative_to(self._scripts_dir)
+        except ValueError:
+            raise ValueError(f"Path traversal attempt detected: {filename}")
+        
+        return filepath
         
     # ── Properties ─────────────────────────────────────────────────────────
     
@@ -301,11 +335,15 @@ class ExperimentContext(QObject):
     def saveAndRunScript(self, filename: str, code: str) -> None:
         """Save script to experiments/uploads/ and then execute it."""
         try:
-            filepath = self._scripts_dir / filename
+            # Validate filename to prevent path traversal
+            filepath = self._validate_script_path(filename)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(code)
             self.scriptLogMessage.emit(f"[INFO] Script saved to: {filepath}")
             self.runPythonFile(str(filepath))
+        except ValueError as e:
+            self.scriptLogMessage.emit(f"[SECURITY] {e}")
+            self.scriptFinished.emit(False, str(e))
         except Exception as e:
             self.scriptLogMessage.emit(f"[ERROR] Failed to save script: {e}")
             self.scriptFinished.emit(False, str(e))
@@ -349,10 +387,15 @@ class ExperimentContext(QObject):
     def deleteScript(self, filename: str) -> None:
         """Delete an uploaded script."""
         try:
-            filepath = self._scripts_dir / filename
+            # Validate filename to prevent path traversal
+            filepath = self._validate_script_path(filename)
             if filepath.exists():
                 filepath.unlink()
                 self.scriptLogMessage.emit(f"[INFO] Deleted: {filename}")
+            else:
+                self.scriptLogMessage.emit(f"[WARN] Script not found: {filename}")
+        except ValueError as e:
+            self.scriptLogMessage.emit(f"[SECURITY] {e}")
         except Exception as e:
             self.scriptLogMessage.emit(f"[ERROR] Failed to delete: {e}")
             
@@ -360,7 +403,8 @@ class ExperimentContext(QObject):
     def readScript(self, filename: str) -> str:
         """Read an uploaded script's content."""
         try:
-            filepath = self._scripts_dir / filename
+            # Validate filename to prevent path traversal
+            filepath = self._validate_script_path(filename)
             if filepath.exists():
                 with open(filepath, 'r', encoding='utf-8') as f:
                     return f.read()

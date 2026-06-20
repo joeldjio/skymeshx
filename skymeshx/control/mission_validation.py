@@ -106,5 +106,3 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 
 __all__ = ["validate_waypoints", "calculate_distance"]
-
-# Made with Bob

@@ -315,5 +315,3 @@ class SolarParkInspectionPlanner:
         flight_time = total_distance / config.speed
         
         return flight_time + transition_time
-
-# Made with Bob

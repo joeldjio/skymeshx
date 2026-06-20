@@ -186,5 +186,3 @@ def test_catch_base_exception():
     for exc in exceptions_to_test:
         with pytest.raises(SkyMeshXError):
             raise exc
-
-# Made with Bob

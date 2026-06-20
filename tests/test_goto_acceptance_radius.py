@@ -145,5 +145,3 @@ def test_goto_mode_change_timeout_budget(fake_conn, snap_factory):
     
     # Mode should have been changed to GUIDED
     assert fake_conn.telemetry.flight_mode == "GUIDED"
-
-# Made with Bob
