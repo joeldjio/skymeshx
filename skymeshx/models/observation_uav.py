@@ -42,8 +42,9 @@ class ObservationUAVModel(GenericUAVModel):
         camera_index:      int  = 0,
         log_dir:           str  = "logs",
         auto_log:          bool = True,
+        baud:              Optional[int] = None,
     ):
-        super().__init__(drone_id, connection_string, log_dir=log_dir, auto_log=auto_log)
+        super().__init__(drone_id, connection_string, log_dir=log_dir, auto_log=auto_log, baud=baud)
         self.camera_index    = camera_index
         self._gimbal_pitch   = 0.0
         self._gimbal_roll    = 0.0

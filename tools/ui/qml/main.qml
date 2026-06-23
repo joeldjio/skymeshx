@@ -141,27 +141,41 @@ Window {
 
     // ── Cancel all active map interaction modes ────────────────────────────────
     function cancelAllMapModes() {
-        // Cancel waypoint mode
-        if (mapWaypointMode) {
-            mapWaypointMode = false
-            if (mapLoader.item) mapLoader.item.setPickMode(false)
-        }
-        
-        // Cancel pick mode
-        if (mapPickMode) {
-            mapPickMode = false
-            if (mapLoader.item) mapLoader.item.setPickMode(false)
-            _mapPickTarget = null
-        }
-        
-        // Cancel boundary drawing
-        if (typeof mission !== "undefined" && mission && mission.drawingMode) {
-            mission.cancelDrawingBoundary()
-        }
-        
-        // Cancel solar row drawing
-        if (typeof mission !== "undefined" && mission && mission.addingSolarRow) {
-            mission.cancelSolarRowDrawing()
+        try {
+            // Cancel waypoint mode
+            if (mapWaypointMode) {
+                mapWaypointMode = false
+                if (mapLoader.item) mapLoader.item.setPickMode(false)
+            }
+            
+            // Cancel pick mode
+            if (mapPickMode) {
+                mapPickMode = false
+                if (mapLoader.item) mapLoader.item.setPickMode(false)
+                _mapPickTarget = null
+            }
+            
+            // Cancel boundary drawing (async to avoid blocking)
+            if (typeof mission !== "undefined" && mission) {
+                try {
+                    if (mission.drawingMode && typeof mission.cancelDrawingBoundary === "function") {
+                        Qt.callLater(mission.cancelDrawingBoundary)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] cancelDrawingBoundary error:", e)
+                }
+                
+                // Cancel solar row drawing (async to avoid blocking)
+                try {
+                    if (mission.addingSolarRow && typeof mission.cancelSolarRowDrawing === "function") {
+                        Qt.callLater(mission.cancelSolarRowDrawing)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] cancelSolarRowDrawing error:", e)
+                }
+            }
+        } catch (e) {
+            console.error("[MAIN] cancelAllMapModes error:", e)
         }
     }
 
@@ -217,7 +231,12 @@ Window {
     function handleBoundaryPoint(lat, lon) {
         try {
             if (typeof mission !== "undefined" && mission) {
-                if (mission.drawingMode === true) {
+                // Check if in mission waypoint mode first
+                if (mission.missionWaypointMode === true) {
+                    mission.addMissionWaypoint(lat, lon)
+                }
+                // Otherwise check if in boundary drawing mode
+                else if (mission.drawingMode === true) {
                     mission.addBoundaryPoint(lat, lon)
                 }
             }
@@ -233,6 +252,18 @@ Window {
             }
         } catch (e) {
             console.error("[MAIN] handleSolarRowPoint error:", e)
+        }
+    }
+    
+    function handleMissionWaypointPoint(lat, lon) {
+        try {
+            if (typeof mission !== "undefined" && mission) {
+                if (mission.missionWaypointMode === true) {
+                    mission.addMissionWaypoint(lat, lon)
+                }
+            }
+        } catch (e) {
+            console.error("[MAIN] handleMissionWaypointPoint error:", e)
         }
     }
 
@@ -1153,8 +1184,11 @@ Window {
         sequence: "Escape"
         context: Qt.ApplicationShortcut
         onActivated: {
-            root.cancelAllMapModes()
-            root._scFeedback("Map modes cancelled")
+            // Call asynchronously to avoid blocking UI thread
+            Qt.callLater(function() {
+                root.cancelAllMapModes()
+                root._scFeedback("Map modes cancelled")
+            })
         }
     }
 

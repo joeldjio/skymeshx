@@ -80,11 +80,11 @@ class SwarmContext(QObject):
 
     @Slot(str, str)
     def addDrone(self, drone_id: str, connection_string: str) -> None:
-        self.addDroneTyped(drone_id, connection_string, DRONE_TYPE_GENERIC)
+        self.addDroneTyped(drone_id, connection_string, DRONE_TYPE_GENERIC, 0)
 
-    @Slot(str, str, str)
+    @Slot(str, str, str, int)
     def addDroneTyped(
-        self, drone_id: str, connection_string: str, drone_type: str
+        self, drone_id: str, connection_string: str, drone_type: str, baud: int = 0
     ) -> None:
         if self._backend.get_backend(drone_id) is not None:
             self.logMessage.emit(
@@ -92,11 +92,19 @@ class SwarmContext(QObject):
                 f"[{drone_id}] duplicate drone id refused — remove it first before re-adding",
             )
             return
-        self.logMessage.emit(
-            "INFO",
-            f"[{drone_id}] 🔄 Connecting ({drone_type}) to {connection_string}...",
-        )
-        b = self._backend.add_drone(drone_id, connection_string, drone_type=drone_type)
+        baud_opt = baud if baud > 0 else None
+        conn_str = connection_string
+        if baud_opt:
+            self.logMessage.emit(
+                "INFO",
+                f"[{drone_id}] 🔄 Connecting ({drone_type}) to {conn_str} @ {baud_opt} baud...",
+            )
+        else:
+            self.logMessage.emit(
+                "INFO",
+                f"[{drone_id}] 🔄 Connecting ({drone_type}) to {conn_str}...",
+            )
+        b = self._backend.add_drone(drone_id, conn_str, drone_type=drone_type, baud=baud_opt)
         b.connected_changed.connect(
             lambda ok, did=drone_id: self._on_connection_changed(did, ok)
         )
@@ -788,10 +796,25 @@ class SwarmContext(QObject):
 
     @Slot(result="QVariant")
     def availableSerialPorts(self) -> list:
+        """Return list of available serial ports with descriptions.
+        
+        Returns list of dicts: [{"port": "COM5", "description": "USB Serial Port"}]
+        """
         try:
             import serial.tools.list_ports
 
-            return [p.device for p in serial.tools.list_ports.comports()]
+            ports = []
+            for p in serial.tools.list_ports.comports():
+                # Build a user-friendly description
+                desc = p.description if p.description else p.device
+                # If it's a generic "USB Serial Port", try to add manufacturer
+                if "USB Serial" in desc and p.manufacturer:
+                    desc = f"{p.manufacturer} {desc}"
+                ports.append({
+                    "port": p.device,
+                    "description": desc
+                })
+            return ports
         except Exception:
             return []
 

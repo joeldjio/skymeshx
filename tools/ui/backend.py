@@ -84,12 +84,14 @@ class DroneBackend(QObject):
         drone_id: str,
         connection_string: str,
         drone_type: str = DRONE_TYPE_GENERIC,
+        baud: Optional[int] = None,
         parent=None,
     ):
         super().__init__(parent)
         self.drone_id: str = drone_id
         self.connection_string: str = connection_string
         self.drone_type: str = drone_type
+        self.baud: Optional[int] = baud
         self._drone: Optional[_DroneSDK] = None
         self._fsm_state: str = "DISCONNECTED"
         # Swarm role state
@@ -129,15 +131,15 @@ class DroneBackend(QObject):
                 and _ObservationUAV is not None
             ):
                 self._drone = _ObservationUAV(
-                    self.drone_id, self.connection_string, log_dir="logs"
+                    self.drone_id, self.connection_string, log_dir="logs", baud=self.baud
                 )
             elif _GenericUAV is not None:
                 self._drone = _GenericUAV(
-                    self.drone_id, self.connection_string, log_dir="logs"
+                    self.drone_id, self.connection_string, log_dir="logs", baud=self.baud
                 )
             elif _DroneSDK is not None:
                 self._drone = _DroneSDK(
-                    self.connection_string, drone_id=self.drone_id, log_dir="logs"
+                    self.connection_string, drone_id=self.drone_id, log_dir="logs", baud=self.baud
                 )
             else:
                 self._safe_emit(
@@ -409,9 +411,10 @@ class SwarmBackend(QObject):
         drone_id: str,
         connection_string: str,
         drone_type: str = DRONE_TYPE_GENERIC,
+        baud: Optional[int] = None,
     ) -> DroneBackend:
         backend = DroneBackend(
-            drone_id, connection_string, drone_type=drone_type, parent=self
+            drone_id, connection_string, drone_type=drone_type, baud=baud, parent=self
         )
         backend.log_message.connect(self.log_message)
         backend.fsm_state_changed.connect(self.fsm_state_changed)

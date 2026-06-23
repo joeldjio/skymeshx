@@ -40,8 +40,10 @@ def main():
     # ── Shared connection args helper ────────────────────────────────────
     def _add_conn_args(p):
         p.add_argument("--port", default=None,
-                       help="Connection string (e.g. tcp:127.0.0.1:5762). "
+                       help="Connection string (e.g. tcp:127.0.0.1:5762, COM5). "
                             "Falls back to $DRONE_PORT then tcp:127.0.0.1:5762.")
+        p.add_argument("--baud", type=int, default=None,
+                       help="Baud rate for serial connections (e.g. 57600, 115200)")
         p.add_argument("--id", default="drone", help="Drone ID for logs")
         p.add_argument("--timeout", type=float, default=15.0,
                        help="Connect timeout in seconds")
@@ -137,10 +139,14 @@ def _run_command(args):
     from skymeshx import Drone
 
     port     = _resolve_port(args)
+    baud     = getattr(args, "baud", None)
     drone_id = getattr(args, "id", "drone")
-    drone    = Drone(port, drone_id=drone_id, auto_log=False)
+    drone    = Drone(port, drone_id=drone_id, auto_log=False, baud=baud)
 
-    print(f"Connecting to {port} ...")
+    if baud:
+        print(f"Connecting to {port} at {baud} baud ...")
+    else:
+        print(f"Connecting to {port} ...")
     if not drone.connect(timeout=getattr(args, "timeout", 15.0)):
         print("ERROR: Could not connect.", file=sys.stderr)
         sys.exit(1)
@@ -192,8 +198,12 @@ def _run_script(args):
     from skymeshx.control.script_runner import ScriptRunner
 
     port  = _resolve_port(args)
-    drone = Drone(port, auto_log=True)
-    print(f"Connecting to {port} ...")
+    baud  = getattr(args, "baud", None)
+    drone = Drone(port, auto_log=True, baud=baud)
+    if baud:
+        print(f"Connecting to {port} at {baud} baud ...")
+    else:
+        print(f"Connecting to {port} ...")
     if not drone.connect():
         print("ERROR: Could not connect.", file=sys.stderr)
         sys.exit(1)

@@ -39,6 +39,8 @@ class MissionContext(QObject):
     solarPanelRowsChanged = Signal()
     solarStatsChanged = Signal()
     solarRowDrawingModeChanged = Signal(bool, arguments=["active"])
+    missionWaypointModeChanged = Signal(bool, arguments=["active"])
+    missionWaypointsChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -98,6 +100,11 @@ class MissionContext(QObject):
         # Solar inspection configuration
         self._solar_panel_rows: List[dict] = []  # List of {start_lat, start_lon, end_lat, end_lon, length}
         self._solar_altitude = 15.0
+        
+        # Mission mode waypoint adding (similar to boundary drawing)
+        self._mission_waypoint_mode = False
+        self._mission_waypoints: List[Tuple[float, float, float]] = []  # (lat, lon, alt)
+        self._mission_waypoint_altitude = 20.0
         self._solar_gimbal_pitch = -90.0
         self._solar_trigger_distance = 5.0
         self._solar_overlap = 0.3
@@ -225,12 +232,31 @@ class MissionContext(QObject):
     def sequentialDelay(self, value):
         self._sequential_delay = value
         self.fieldBoundaryChanged.emit()
-        return len(self._coverage_waypoints) > 0
 
     @Property(bool, notify=missionLockChanged)
     def missionLocked(self):
         """True if any drone is currently executing a mission (prevents editing)."""
         return self._mission_locked
+    
+    @Property(bool, notify=missionWaypointModeChanged)
+    def missionWaypointMode(self):
+        """True when in mission waypoint adding mode."""
+        return self._mission_waypoint_mode
+    
+    @Property(int, notify=missionWaypointsChanged)
+    def missionWaypointCount(self):
+        """Number of mission waypoints added."""
+        return len(self._mission_waypoints)
+    
+    @Property(float, notify=missionWaypointsChanged)
+    def missionWaypointAltitude(self):
+        """Altitude for mission waypoints."""
+        return self._mission_waypoint_altitude
+    
+    @missionWaypointAltitude.setter
+    def missionWaypointAltitude(self, value):
+        self._mission_waypoint_altitude = value
+        self.missionWaypointsChanged.emit()
 
     # ── Methods ───────────────────────────────────────────────────────────
     
@@ -362,14 +388,17 @@ class MissionContext(QObject):
 
     @Slot()
     def cancelDrawingBoundary(self):
-        """Cancel boundary drawing and clear points."""
-        with self._lock:
+        """Cancel boundary drawing and clear points. Lock-free for UI responsiveness."""
+        try:
+            # No lock needed - these are simple assignments that Qt handles atomically
             self._drawing_mode = False
             self._boundary_points.clear()
             self._drawing_timeout_timer.stop()
             self.drawingModeChanged.emit(False)
             self.fieldBoundaryChanged.emit()
             self.logMessage.emit("INFO", "[MISSION] ❌ Boundary drawing cancelled")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] cancelDrawingBoundary error: {e}")
 
     @Slot(float, float)
     def addBoundaryPoint(self, lat: float, lon: float):
@@ -411,6 +440,82 @@ class MissionContext(QObject):
         self.fieldBoundaryChanged.emit()
         self.coverageCleared.emit()
         self.logMessage.emit("INFO", "[MISSION] Boundary cleared")
+    
+    # ── Mission Waypoint Mode Methods ────────────────────────────────────
+    
+    @Slot()
+    def startMissionWaypointMode(self):
+        """Start mission waypoint adding mode."""
+        with self._lock:
+            self._mission_waypoint_mode = True
+            # Also activate drawing mode so map accepts clicks
+            self._drawing_mode = True
+            self.missionWaypointModeChanged.emit(True)
+            self.drawingModeChanged.emit(True)
+            self.logMessage.emit("INFO", "[MISSION] Click map to add waypoints")
+    
+    @Slot()
+    def finishMissionWaypointMode(self):
+        """Finish mission waypoint adding mode."""
+        with self._lock:
+            self._mission_waypoint_mode = False
+            # Also deactivate drawing mode
+            self._drawing_mode = False
+            self.missionWaypointModeChanged.emit(False)
+            self.drawingModeChanged.emit(False)
+            if len(self._mission_waypoints) > 0:
+                self.logMessage.emit("INFO", f"[MISSION] ✅ Added {len(self._mission_waypoints)} waypoints")
+            else:
+                self.logMessage.emit("WARNING", "[MISSION] No waypoints added")
+    
+    @Slot()
+    def cancelMissionWaypointMode(self):
+        """Cancel mission waypoint adding mode and clear waypoints."""
+        try:
+            self._mission_waypoint_mode = False
+            self._drawing_mode = False
+            self._mission_waypoints.clear()
+            self.missionWaypointModeChanged.emit(False)
+            self.drawingModeChanged.emit(False)
+            self.missionWaypointsChanged.emit()
+            self.logMessage.emit("INFO", "[MISSION] ❌ Waypoint mode cancelled")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] cancelMissionWaypointMode error: {e}")
+    
+    @Slot(float, float)
+    def addMissionWaypoint(self, lat: float, lon: float):
+        """Add a mission waypoint during waypoint mode."""
+        try:
+            with self._lock:
+                self._mission_waypoints.append((lat, lon, self._mission_waypoint_altitude))
+                # Set home position from first waypoint
+                if len(self._mission_waypoints) == 1 and not self._home_set:
+                    self._planner.set_home_position(lat, lon)
+                    self._seeding_planner.set_home_position(lat, lon)
+                    self._home_set = True
+                    self._home_lat = lat
+                    self._home_lon = lon
+            # Emit signal AFTER releasing lock
+            self.missionWaypointsChanged.emit()
+            self.logMessage.emit("INFO", f"[MISSION] Waypoint {len(self._mission_waypoints)} added: {lat:.6f}, {lon:.6f}")
+            if len(self._mission_waypoints) == 1:
+                self.logMessage.emit("INFO", "[MISSION] Home set to first waypoint")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] Failed to add waypoint: {e}")
+    
+    @Slot()
+    def clearMissionWaypoints(self):
+        """Clear all mission waypoints."""
+        with self._lock:
+            self._mission_waypoints.clear()
+        self.missionWaypointsChanged.emit()
+        self.logMessage.emit("INFO", "[MISSION] Waypoints cleared")
+    
+    @Slot(result="QVariantList")
+    def getMissionWaypoints(self):
+        """Get mission waypoints for map display."""
+        with self._lock:
+            return [{"lat": lat, "lon": lon, "alt": alt} for lat, lon, alt in self._mission_waypoints]
 
     @Slot()
     def generateMission(self):
@@ -722,21 +827,22 @@ class MissionContext(QObject):
 
     @Slot(result="QVariantList")
     def getCoverageWaypoints(self):
-        """Return coverage waypoints as list of dicts for QML/JavaScript."""
+        """Return coverage waypoints as list of dicts for QML/JavaScript. Lock-free for UI responsiveness."""
         try:
-            with self._lock:
-                return [{"lat": float(lat), "lon": float(lon), "alt": float(alt)}
-                        for lat, lon, alt in self._coverage_waypoints]
+            # No lock - reading a list is atomic in CPython (GIL)
+            return [{"lat": float(lat), "lon": float(lon), "alt": float(alt)}
+                    for lat, lon, alt in self._coverage_waypoints]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getCoverageWaypoints failed: {e}")
             return []
 
     @Slot(result="QVariantList")
     def getBoundaryPoints(self):
-        """Return boundary points as list of dicts for QML/JavaScript."""
+        """Return boundary points as list of dicts for QML/JavaScript. Lock-free for UI responsiveness."""
         try:
-            with self._lock:
-                return [{"lat": float(lat), "lon": float(lon)} for lat, lon in self._boundary_points]
+            # No lock - reading a list is atomic in CPython (GIL)
+            # Worst case: we get a slightly stale snapshot
+            return [{"lat": float(lat), "lon": float(lon)} for lat, lon in self._boundary_points]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getBoundaryPoints failed: {e}")
             return []
@@ -1244,12 +1350,16 @@ class MissionContext(QObject):
     
     @Slot()
     def cancelSolarRowDrawing(self):
-        """Cancel solar row drawing mode."""
-        self._adding_solar_row = False
-        self._solar_row_start_lat = 0.0
-        self._solar_row_start_lon = 0.0
-        self.solarRowDrawingModeChanged.emit(False)
-        self.logMessage.emit("INFO", "[SOLAR] ❌ Solar row drawing cancelled")
+        """Cancel solar row drawing mode. Lock-free for UI responsiveness."""
+        try:
+            # No lock needed - these are simple assignments that Qt handles atomically
+            self._adding_solar_row = False
+            self._solar_row_start_lat = 0.0
+            self._solar_row_start_lon = 0.0
+            self.solarRowDrawingModeChanged.emit(False)
+            self.logMessage.emit("INFO", "[SOLAR] ❌ Solar row drawing cancelled")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] cancelSolarRowDrawing error: {e}")
     
     @Property(bool, notify=solarRowDrawingModeChanged)
     def addingSolarRow(self):

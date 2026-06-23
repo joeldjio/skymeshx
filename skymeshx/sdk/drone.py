@@ -45,11 +45,12 @@ class Drone:
         drone_id: str = "drone",
         log_dir: str = "logs",
         auto_log: bool = True,
+        baud: Optional[int] = None,
     ):
         self.id = drone_id
         # Accept either a connection string or a connection object (for testing)
         if isinstance(connection_string, str):
-            self._conn = MAVLinkConnection(connection_string)
+            self._conn = MAVLinkConnection(connection_string, baud=baud)
         else:
             self._conn = connection_string  # Assume it's a connection object
         self._logger = TelemetryLogger(log_dir) if auto_log else None
