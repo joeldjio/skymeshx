@@ -139,6 +139,17 @@ Window {
         selectTab(0)  // jump to Map tab so user can click
     }
 
+    // ── Check if any map mode is active ────────────────────────────────────────
+    function isAnyMapModeActive() {
+        if (mapWaypointMode || mapPickMode) return true
+        if (typeof mission !== "undefined" && mission) {
+            if (mission.drawingMode || mission.missionWaypointMode || mission.addingSolarRow) {
+                return true
+            }
+        }
+        return false
+    }
+    
     // ── Cancel all active map interaction modes ────────────────────────────────
     function cancelAllMapModes() {
         try {
@@ -155,19 +166,28 @@ Window {
                 _mapPickTarget = null
             }
             
-            // Cancel boundary drawing (async to avoid blocking)
+            // Finish boundary drawing without clearing points (async to avoid blocking)
             if (typeof mission !== "undefined" && mission) {
                 try {
-                    if (mission.drawingMode && typeof mission.cancelDrawingBoundary === "function") {
-                        Qt.callLater(mission.cancelDrawingBoundary)
+                    if (mission.drawingMode && typeof mission.finishDrawingBoundary === "function") {
+                        Qt.callLater(mission.finishDrawingBoundary)
                     }
                 } catch (e) {
-                    console.error("[MAIN] cancelDrawingBoundary error:", e)
+                    console.error("[MAIN] finishDrawingBoundary error:", e)
+                }
+                
+                // Cancel mission waypoint mode (async to avoid blocking)
+                try {
+                    if (mission.missionWaypointMode && typeof mission.finishMissionWaypointMode === "function") {
+                        Qt.callLater(mission.finishMissionWaypointMode)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] finishMissionWaypointMode error:", e)
                 }
                 
                 // Cancel solar row drawing (async to avoid blocking)
                 try {
-                    if (mission.addingSolarRow && typeof mission.cancelSolarRowDrawing === "function") {
+                    if (typeof mission.cancelSolarRowDrawing === "function") {
                         Qt.callLater(mission.cancelSolarRowDrawing)
                     }
                 } catch (e) {
@@ -205,6 +225,18 @@ Window {
             })
             // No need to call syncWaypointsToMap() - the map already updated visually
             console.log("Waypoint", index + 1, "moved to", lat.toFixed(6), lon.toFixed(6))
+        }
+    }
+    
+    function handleBoundaryPointMoved(index, lat, lon) {
+        // Update boundary point position when dragged on map
+        try {
+            if (typeof mission !== "undefined" && mission) {
+                mission.updateBoundaryPoint(index, lat, lon)
+                console.log("Boundary point", index + 1, "moved to", lat.toFixed(6), lon.toFixed(6))
+            }
+        } catch (e) {
+            console.error("[MAIN] handleBoundaryPointMoved error:", e)
         }
     }
 
@@ -301,11 +333,16 @@ Window {
     function syncSolarPanelRowsToMap() {
         try {
             if (!mapLoader.item || typeof mission === "undefined" || !mission) return
-            if (mission.missionMode !== 2) return // Only for solar inspection mode
             
             var rows = mission.solarPanelRows
-            if (rows && mapLoader.item.updateSolarPanelRows) {
-                mapLoader.item.updateSolarPanelRows(rows)
+            if (rows && rows.length === 0) {
+                // Clear solar inspection visualization when no rows
+                if (mapLoader.item.clearSolarInspection) {
+                    mapLoader.item.clearSolarInspection()
+                }
+            } else if (mapLoader.item.updateSolarPanelRows) {
+                // Update with rows
+                mapLoader.item.updateSolarPanelRows(rows || [])
             }
         } catch (e) {
             console.error("[MAIN] syncSolarPanelRowsToMap error:", e)
@@ -636,6 +673,7 @@ Window {
                             item.mapPickSelected.connect(root.deliverMapPick)
                             item.waypointMoved.connect(root.handleWaypointMoved)
                             item.boundaryPointSelected.connect(root.handleBoundaryPoint)
+                            item.boundaryPointMoved.connect(root.handleBoundaryPointMoved)
                             item.solarRowPointSelected.connect(root.handleSolarRowPoint)
 
                             // Connect collision prediction visualization
@@ -749,11 +787,12 @@ Window {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     onClicked: {
-                                        // Clear everything: waypoints, boundary, coverage
+                                        // Clear everything: waypoints, boundary, coverage, solar rows
                                         globalMissionWaypoints.clear()
                                         root.syncWaypointsToMap()
                                         if (typeof mission !== "undefined" && mission) {
                                             mission.clearFieldBoundary()
+                                            mission.clearSolarPanelRows()
                                         }
                                         if (mapLoader.item && mapLoader.item.clearFieldCoverage) {
                                             mapLoader.item.clearFieldCoverage()

@@ -137,6 +137,19 @@ Item {
                 if (index >= 0) {
                     root.waypointMoved(index, lat, lon)
                 }
+            } else if (url.startsWith("qrc://boundary-moved?")) {
+                req.reject()
+                var params = url.substring("qrc://boundary-moved?".length).split("&")
+                var index = -1, lat = 0, lon = 0
+                for (var i = 0; i < params.length; i++) {
+                    var kv = params[i].split("=")
+                    if (kv[0] === "index") index = parseInt(kv[1])
+                    if (kv[0] === "lat") lat = parseFloat(kv[1])
+                    if (kv[0] === "lon") lon = parseFloat(kv[1])
+                }
+                if (index >= 0) {
+                    root.boundaryPointMoved(index, lat, lon)
+                }
             } else {
                 req.accept()
             }
@@ -203,6 +216,30 @@ Item {
         focus: visible
     }
 
+    // Boundary Drawing mode overlay (for Coverage/Seeding field boundary)
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        visible: root.boundaryDrawMode
+        border.color: "#22c55e"; border.width: 2
+        Rectangle {
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            height: 32; color: "#cc22c55e"
+            Text {
+                anchors.centerIn: parent
+                text: "FIELD BOUNDARY  —  Click to add points  —  ESC to finish"
+                color: "white"; font.pixelSize: 12; font.weight: Font.Bold
+            }
+            MouseArea { anchors.fill: parent }
+        }
+        Keys.onEscapePressed: {
+            if (typeof mission !== "undefined" && mission) {
+                mission.finishDrawingBoundary()
+            }
+        }
+        focus: visible
+    }
+
     // Solar Row Drawing mode overlay
     Rectangle {
         anchors.fill: parent
@@ -219,8 +256,20 @@ Item {
             }
             MouseArea { anchors.fill: parent }
         }
-        Keys.onEscapePressed: root.setSolarRowDrawMode(false)
+        MouseArea {
+            anchors.fill: parent
+            z: -1
+            cursorShape: Qt.CrossCursor
+            acceptedButtons: Qt.NoButton
+            hoverEnabled: true
+        }
+        Keys.onEscapePressed: {
+            if (typeof mission !== "undefined" && mission) {
+                mission.cancelSolarRowDrawing()
+            }
+        }
         focus: visible
+    }
 
     // ── ESCAPE 3D Visualization Overlays ──────────────────────────────────
     
@@ -319,8 +368,6 @@ Item {
         }
     }
 
-    }
-
     // Called from main.qml on telemetry
     function updateDrones(jsonStr)      { webView.runJavaScript("updateDrones(" + jsonStr + ")") }
     function updateWaypoints(jsonStr)   { webView.runJavaScript("updateWaypoints(" + jsonStr + ")") }
@@ -359,6 +406,7 @@ Item {
     signal mapPickSelected(real lat, real lon)
     signal waypointMoved(int index, real lat, real lon)
     signal boundaryPointSelected(real lat, real lon)
+    signal boundaryPointMoved(int index, real lat, real lon)
     signal solarRowPointSelected(real lat, real lon)
 
     // Drone-color palette (mirrors Python DRONE_COLORS)

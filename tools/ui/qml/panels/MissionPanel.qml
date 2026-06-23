@@ -95,6 +95,11 @@ Rectangle {
                                     enabled: !(mission && mission.missionLocked)
                                     onClicked: {
                                         if (mission && root.Window.window) {
+                                            // Check if any mode is active before switching
+                                            if (root.Window.window.isAnyMapModeActive()) {
+                                                mission.logMessage("WARN", "[MISSION] Please exit current mode (ESC) before switching")
+                                                return
+                                            }
                                             Qt.callLater(function() {
                                                 root.Window.window.cancelAllMapModes()
                                             })
@@ -124,6 +129,11 @@ Rectangle {
                                     enabled: !(mission && mission.missionLocked)
                                     onClicked: {
                                         if (mission && root.Window.window) {
+                                            // Check if any mode is active before switching
+                                            if (root.Window.window.isAnyMapModeActive()) {
+                                                mission.logMessage("WARN", "[MISSION] Please exit current mode (ESC) before switching")
+                                                return
+                                            }
                                             Qt.callLater(function() {
                                                 root.Window.window.cancelAllMapModes()
                                             })
@@ -153,6 +163,11 @@ Rectangle {
                                     enabled: !(mission && mission.missionLocked)
                                     onClicked: {
                                         if (mission && root.Window.window) {
+                                            // Check if any mode is active before switching
+                                            if (root.Window.window.isAnyMapModeActive()) {
+                                                mission.logMessage("WARN", "[MISSION] Please exit current mode (ESC) before switching")
+                                                return
+                                            }
                                             Qt.callLater(function() {
                                                 root.Window.window.cancelAllMapModes()
                                             })
@@ -1068,187 +1083,6 @@ Rectangle {
                                     visible: !(mission && mission.drawingMode)
                                     enabled: mission && mission.fieldBoundaryPoints > 0
                                     onClicked: if (mission) mission.clearBoundary()
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-                    
-                    // Mission Waypoint Adding
-                    Column {
-                        width: parent.width
-                        spacing: 6
-                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
-
-                        Row {
-                            width: parent.width
-                            spacing: 8
-
-                            Rectangle {
-                                width: 4
-                                height: 16
-                                color: "#3b82f6"
-                                radius: 2
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Text {
-                                text: "Mission Waypoints"
-                                color: "#3b82f6"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            
-                            Item { width: parent.width - 200; height: 1 }
-                            
-                            Text {
-                                text: mission ? mission.missionWaypointCount + " WPs" : "0 WPs"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-
-                        Text {
-                            text: "Click map to add waypoints for mission execution"
-                            color: "#64748b"
-                            font.pixelSize: 8
-                            font.italic: true
-                            wrapMode: Text.WordWrap
-                            width: parent.width
-                        }
-
-                        Row {
-                            width: parent.width
-                            spacing: 6
-
-                            Rectangle {
-                                width: (parent.width - 12) / 3
-                                height: 32
-                                radius: 6
-                                color: mission && mission.missionWaypointMode
-                                    ? (addWpM.containsMouse ? "#1e40af" : "#1e3a8a")
-                                    : (addWpM.containsMouse ? "#1e3a8a" : "#0f172a")
-                                border.color: mission && mission.missionWaypointMode ? "#3b82f6" : "#334155"
-                                border.width: mission && mission.missionWaypointMode ? 2 : 1
-
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    Cmp.Icon {
-                                        name: mission && mission.missionWaypointMode ? "check-circle" : "map-pin"
-                                        size: 12
-                                        color: mission && mission.missionWaypointMode ? "#60a5fa" : "#93c5fd"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: mission && mission.missionWaypointMode ? "ADDING..." : "ADD WPs"
-                                        color: mission && mission.missionWaypointMode ? "#60a5fa" : "#93c5fd"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        font.letterSpacing: 0.5
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: addWpM
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: !(mission && mission.missionLocked)
-                                    onClicked: {
-                                        if (mission) {
-                                            if (mission.missionWaypointMode) {
-                                                mission.finishMissionWaypointMode()
-                                            } else {
-                                                mission.startMissionWaypointMode()
-                                                root.Window.window.selectTabById("map")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                width: (parent.width - 12) / 3
-                                height: 32
-                                radius: 6
-                                color: cancelWpM.containsMouse ? "#991b1b" : "#7f1d1d"
-                                border.color: "#ef4444"
-                                border.width: 1
-                                opacity: mission && mission.missionWaypointMode ? 1 : 0.5
-
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    Cmp.Icon {
-                                        name: "x"
-                                        size: 12
-                                        color: "#fecaca"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: "CANCEL"
-                                        color: "#fecaca"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        font.letterSpacing: 0.5
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: cancelWpM
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    visible: mission && mission.missionWaypointMode
-                                    onClicked: if (mission) mission.cancelMissionWaypointMode()
-                                }
-                            }
-
-                            Rectangle {
-                                width: (parent.width - 12) / 3
-                                height: 32
-                                radius: 6
-                                color: clearWpM.containsMouse ? "#991b1b" : "#7f1d1d"
-                                border.color: "#ef4444"
-                                border.width: 1
-                                opacity: mission && mission.missionWaypointCount > 0 ? 1 : 0.5
-
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    Cmp.Icon {
-                                        name: "trash-2"
-                                        size: 12
-                                        color: "#fecaca"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: "CLEAR"
-                                        color: "#fecaca"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        font.letterSpacing: 0.5
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: clearWpM
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    enabled: mission && mission.missionWaypointCount > 0 && !(mission && mission.missionWaypointMode)
-                                    onClicked: if (mission) mission.clearMissionWaypoints()
                                 }
                             }
                         }

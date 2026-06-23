@@ -428,6 +428,19 @@ class MissionContext(QObject):
                 self.logMessage.emit("INFO", f"[MISSION] ✅ Boundary: {len(self._boundary_points)} points")
             else:
                 self.logMessage.emit("WARNING", "[MISSION] Need ≥3 points")
+    
+    @Slot(int, float, float)
+    def updateBoundaryPoint(self, index: int, lat: float, lon: float):
+        """Update a boundary point position when dragged on map."""
+        try:
+            with self._lock:
+                if 0 <= index < len(self._boundary_points):
+                    self._boundary_points[index] = (lat, lon)
+                    # Emit signal AFTER releasing lock
+            self.fieldBoundaryChanged.emit()
+            self.logMessage.emit("INFO", f"[MISSION] Boundary point {index + 1} updated")
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] Failed to update boundary point: {e}")
 
     @Slot()
     def clearFieldBoundary(self):
@@ -1409,6 +1422,7 @@ class MissionContext(QObject):
                 self._solar_waypoint_count = 0
                 self._solar_photo_count = 0
             
+            # Emit signals to update UI and map
             self.solarPanelRowsChanged.emit()
             self.solarStatsChanged.emit()
             self.logMessage.emit("INFO", "[SOLAR] Cleared all panel rows")
