@@ -295,6 +295,45 @@ def test_complex_field_boundary(planner):
     assert len(waypoints) > 0
 
 
+def test_parallel_lines_are_clipped_to_polygon(planner):
+    """Parallel coverage lines should stay inside a non-rectangular boundary."""
+    boundary = FieldBoundary(corners=[
+        (47.3977, 8.5456),
+        (47.3988, 8.5456),
+        (47.3977, 8.5466),
+    ])
+    config = CoverageConfig(
+        pattern=CoveragePattern.PARALLEL_LINES,
+        altitude=20.0,
+        line_spacing=20.0,
+        heading=0.0,
+    )
+
+    waypoints = planner.generate_coverage_waypoints(boundary, config, add_rtl=False)
+    polygon = [planner._gps_to_local(lat, lon) for lat, lon in boundary.corners]
+
+    for lat, lon, _alt in waypoints:
+        north, east = planner._gps_to_local(lat, lon)
+        assert _point_in_polygon_or_on_edge((north, east), polygon)
+
+
+def _point_in_polygon_or_on_edge(point, polygon):
+    north, east = point
+    inside = False
+    count = len(polygon)
+    for idx in range(count):
+        n1, e1 = polygon[idx]
+        n2, e2 = polygon[(idx + 1) % count]
+        cross = (east - e1) * (n2 - n1) - (north - n1) * (e2 - e1)
+        if abs(cross) < 1e-5 and min(n1, n2) - 1e-5 <= north <= max(n1, n2) + 1e-5 and min(e1, e2) - 1e-5 <= east <= max(e1, e2) + 1e-5:
+            return True
+        if (e1 > east) != (e2 > east):
+            intersect_n = (n2 - n1) * (east - e1) / (e2 - e1) + n1
+            if north <= intersect_n + 1e-5:
+                inside = not inside
+    return inside
+
+
 def test_heading_rotation(planner, simple_field):
     """Test that heading parameter is accepted and processed."""
     config_0 = CoverageConfig(heading=0.0)

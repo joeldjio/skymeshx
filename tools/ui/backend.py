@@ -267,6 +267,56 @@ class DroneBackend(QObject):
             return self._drone.gimbal_state
         return {"pitch": 0.0, "roll": 0.0, "yaw": 0.0}
 
+    # ── Camera control (ObservationUAVModel only) ─────────────────────────
+
+    def camera_start_stream(self, source: str) -> bool:
+        if not self._drone:
+            return False
+        if hasattr(self._drone, "start_camera_stream"):
+            return bool(self._drone.start_camera_stream(source))
+        if hasattr(self._drone, "start_stream"):
+            self._drone.start_stream()
+            return True
+        return False
+
+    def camera_stop_stream(self) -> bool:
+        if not self._drone:
+            return False
+        if hasattr(self._drone, "stop_camera_stream"):
+            return bool(self._drone.stop_camera_stream())
+        if hasattr(self._drone, "stop_stream"):
+            self._drone.stop_stream()
+            return True
+        return False
+
+    def camera_snapshot(self):
+        if not self._drone:
+            return False
+        if hasattr(self._drone, "capture_snapshot"):
+            return self._drone.capture_snapshot()
+        return False
+
+    def camera_start_recording(self, path: str) -> bool:
+        if not self._drone or not hasattr(self._drone, "start_recording"):
+            return False
+        result = self._drone.start_recording(path)
+        return True if result is None else bool(result)
+
+    def camera_stop_recording(self) -> bool:
+        if not self._drone or not hasattr(self._drone, "stop_recording"):
+            return False
+        result = self._drone.stop_recording()
+        return True if result is None else bool(result)
+
+    def get_camera_status(self) -> dict:
+        if self._drone and hasattr(self._drone, "get_camera_status"):
+            return self._drone.get_camera_status()
+        return {
+            "streamActive": False,
+            "recordingActive": False,
+            "backendAvailable": self._drone is not None,
+        }
+
     def set_swarm_role(self, role: str, leader_id: str = "") -> None:
         self.swarm_role = role
         self.leader_id = leader_id
@@ -388,6 +438,7 @@ class SwarmBackend(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._backends: Dict[str, DroneBackend] = {}
+        self._camera_context = None
         self._agg_timer = QTimer(self)
         self._agg_timer.setInterval(self._AGG_INTERVAL_MS)
         self._agg_timer.timeout.connect(self._aggregate)
@@ -403,6 +454,12 @@ class SwarmBackend(QObject):
             self._agg_timer.start()
         elif not self._backends and self._agg_timer.isActive():
             self._agg_timer.stop()
+
+    def set_camera_context(self, camera_context) -> None:
+        self._camera_context = camera_context
+
+    def get_camera_context(self):
+        return self._camera_context
 
     # ── Fleet management ──────────────────────────────────────────────────
 
@@ -450,6 +507,30 @@ class SwarmBackend(QObject):
     def get_gimbal_state(self, drone_id: str) -> dict:
         b = self._backends.get(drone_id)
         return b.get_gimbal_state() if b else {}
+
+    def camera_start_stream(self, drone_id: str, source: str) -> bool:
+        b = self._backends.get(drone_id)
+        return b.camera_start_stream(source) if b else False
+
+    def camera_stop_stream(self, drone_id: str) -> bool:
+        b = self._backends.get(drone_id)
+        return b.camera_stop_stream() if b else False
+
+    def camera_snapshot(self, drone_id: str):
+        b = self._backends.get(drone_id)
+        return b.camera_snapshot() if b else False
+
+    def camera_start_recording(self, drone_id: str, path: str) -> bool:
+        b = self._backends.get(drone_id)
+        return b.camera_start_recording(path) if b else False
+
+    def camera_stop_recording(self, drone_id: str) -> bool:
+        b = self._backends.get(drone_id)
+        return b.camera_stop_recording() if b else False
+
+    def get_camera_status(self, drone_id: str) -> dict:
+        b = self._backends.get(drone_id)
+        return b.get_camera_status() if b else {}
     
     def get_fsm_history(self, drone_id: str) -> list:
         b = self._backends.get(drone_id)

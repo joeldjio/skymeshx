@@ -21,61 +21,99 @@ Item {
         if (s === "no_px4_msgs") return "ROS2 OK — px4_msgs missing"
         return "rclpy not installed"
     }
+    function worldProfileWarnings(model, worldProfile) {
+        if (typeof ros2 === "undefined" || !ros2 || !ros2.getWorldProfileWarnings)
+            return []
+        return ros2.getWorldProfileWarnings(model, worldProfile)
+    }
 
-    // Refresh node status every 2s
     Timer { interval: 2000; running: true; repeat: true
         onTriggered: root._nodeStatus = (typeof ros2 !== "undefined" && ros2) ? ros2.nodeStatus() : "no_ros2"
     }
 
-    // ── Three-column horizontal layout (anchor-based, scroll-safe) ────────────────
-    // ════════════════ LEFT COLUMN ════════════════
-    ScrollView {
-        id: leftSv
-        anchors { top: parent.top; left: parent.left; bottom: parent.bottom; topMargin: 12; leftMargin: 12; bottomMargin: 12 }
-        width: (parent.width - 44) * 0.30
-        clip: true
-        contentWidth: availableWidth
-        contentHeight: leftCol.implicitHeight
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+    // ── Tab bar ──────────────────────────────────────────────────────────────
+    Rectangle {
+        id: tabBar
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: 34
+        color: "#0d1117"
+        border.color: "#1e2535"; border.width: 1
 
-        Column {
-            id: leftCol
-            width: leftSv.availableWidth
-            spacing: 8
+        Row {
+            anchors { fill: parent; leftMargin: 8 }
+            spacing: 2
 
-            // ── ROS2 Node Status ─────────────────────────────────────
-            Text { text: "ROS2 / uXRCE-DDS"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
-                Rectangle {
-                    width: parent.width; height: 40; radius: 8
-                    color: "#0d1117"; border.color: statusColor(root._nodeStatus); border.width: 1
-                    Row {
-                        anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                        spacing: 8
-                        Rectangle {
-                            width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter
-                            color: statusColor(root._nodeStatus)
-                            SequentialAnimation on opacity {
-                                running: root._nodeStatus === "ok"; loops: Animation.Infinite
-                                NumberAnimation { to: 0.3; duration: 800 }
-                                NumberAnimation { to: 1.0; duration: 800 }
-                            }
-                        }
-                        Text {
-                            text: statusLabel(root._nodeStatus)
-                            color: statusColor(root._nodeStatus)
-                            font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter
-                        }
+            Repeater {
+                model: ["Connection", "Topics", "Bag", "Video", "Debug"]
+                delegate: Rectangle {
+                    width: 90; height: parent.height
+                    color: tabView.currentIndex === index ? "#1a2035" : "transparent"
+                    border.color: tabView.currentIndex === index ? "#3b82f6" : "transparent"
+                    border.width: tabView.currentIndex === index ? 0 : 0
+                    // bottom indicator line
+                    Rectangle {
+                        anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+                        height: 2
+                        color: tabView.currentIndex === index ? "#3b82f6" : "transparent"
                     }
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: tabView.currentIndex === index ? "#93c5fd" : "#64748b"
+                        font.pixelSize: 10; font.weight: tabView.currentIndex === index ? Font.Bold : Font.Normal
+                    }
+                    MouseArea { anchors.fill: parent; onClicked: tabView.currentIndex = index }
                 }
+            }
 
-                // ── Info box when not available ───────────────────────────
+            // Node status dot (right-aligned)
+            Item { width: 1; height: 1 }
+        }
+
+        // Status dot (right side)
+        Row {
+            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+            spacing: 5
+            Rectangle {
+                width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter
+                color: statusColor(root._nodeStatus)
+                SequentialAnimation on opacity {
+                    running: root._nodeStatus === "ok"; loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 800 }
+                    NumberAnimation { to: 1.0; duration: 800 }
+                }
+            }
+            Text {
+                text: statusLabel(root._nodeStatus)
+                color: statusColor(root._nodeStatus)
+                font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+
+    // ── Tab content ──────────────────────────────────────────────────────────
+    StackLayout {
+        id: tabView
+        anchors { top: tabBar.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
+        currentIndex: 0
+
+        // ══════════════════════════════════════════════════════════
+        // TAB 0 — CONNECTION
+        // ══════════════════════════════════════════════════════════
+        ScrollView {
+            clip: true; contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            Column {
+                width: parent.width
+                padding: 12; spacing: 10
+
+                // ── ROS2 node info (only when not OK) ──────────────
                 Rectangle {
-                    width: parent.width; height: infoCol.implicitHeight + 16; radius: 8
+                    width: parent.width - 24; radius: 8
+                    height: infoCol.implicitHeight + 16
                     color: "#1a1500"; border.color: "#78350f"; border.width: 1
                     visible: root._nodeStatus !== "ok"
-
                     Column {
                         id: infoCol
                         anchors { fill: parent; margins: 10 }
@@ -85,27 +123,20 @@ Item {
                             text: root._nodeStatus === "no_ros2"
                                 ? "sudo apt install ros-humble-desktop\nsource /opt/ros/humble/setup.bash\npip install rclpy"
                                 : "cd ~/ros2_ws/src\ngit clone https://github.com/PX4/px4_msgs\ncd ~/ros2_ws && colcon build\nsource install/setup.bash"
-                            color: "#94a3b8"; font.pixelSize: 9; font.family: "Consolas"
-                            wrapMode: Text.WordWrap; width: parent.width
+                            color: "#94a3b8"; font.pixelSize: 9; font.family: "Consolas"; wrapMode: Text.WordWrap; width: parent.width
                         }
                         Text { text: "uXRCE-DDS Agent:"; color: "#fcd34d"; font.pixelSize: 10; font.weight: Font.Bold; visible: root._nodeStatus === "no_px4_msgs" }
-                        Text {
-                            visible: root._nodeStatus === "no_px4_msgs"
-                            text: "MicroXRCEAgent udp4 -p 8888"
-                            color: "#94a3b8"; font.pixelSize: 9; font.family: "Consolas"
-                        }
+                        Text { visible: root._nodeStatus === "no_px4_msgs"; text: "MicroXRCEAgent udp4 -p 8888"; color: "#94a3b8"; font.pixelSize: 9; font.family: "Consolas" }
                     }
                 }
 
-                // ── PX4 Connection ──────────────────────────────────
-                Text { text: "PX4 CONNECTION"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
+                // ── Bridge Connect ──────────────────────────────────
+                Text { text: "PX4 BRIDGE"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1; leftPadding: 0 }
                 Rectangle {
-                    width: parent.width; height: cfgCol.implicitHeight + 20; radius: 8
+                    width: parent.width - 24; height: connCol.implicitHeight + 20; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
                     Column {
-                        id: cfgCol
+                        id: connCol
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
                         spacing: 8
 
@@ -122,12 +153,11 @@ Item {
                             Text { text: "NS:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 22 }
                             TextField {
                                 id: nsField; width: parent.width - 28; height: 26
-                                placeholderText: "uav_1  (leer = /fmu/*)"
+                                placeholderText: "uav_1  (empty = /fmu/*)"
                                 background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
                                 color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
                             }
                         }
-
                         Text {
                             width: parent.width
                             text: nsField.text.trim() === "" ? "/fmu/out/*  /fmu/in/*" : "/" + nsField.text.trim() + "/fmu/out|in/*"
@@ -136,57 +166,39 @@ Item {
 
                         property bool _bridgeActive: (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ? ros2.isBridgeActive(root.selectedDroneId) : false
                         Timer { interval: 500; running: true; repeat: true
-                            onTriggered: cfgCol._bridgeActive = (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ? ros2.isBridgeActive(root.selectedDroneId) : false
+                            onTriggered: connCol._bridgeActive = (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ? ros2.isBridgeActive(root.selectedDroneId) : false
                         }
 
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
-                            // Show button even if ROS2 not available, but with different color
                             color: {
-                                if (root._nodeStatus !== "ok") return "#1e293b"  // Disabled gray
-                                return bridgeTogM.containsMouse ? (cfgCol._bridgeActive ? "#7f1d1d" : "#166534") : (cfgCol._bridgeActive ? "#450a0a" : "#14532d")
+                                if (root._nodeStatus !== "ok") return "#1e293b"
+                                return bridgeTogM.containsMouse ? (connCol._bridgeActive ? "#7f1d1d" : "#166534") : (connCol._bridgeActive ? "#450a0a" : "#14532d")
                             }
-                            border.color: {
-                                if (root._nodeStatus !== "ok") return "#475569"  // Disabled gray
-                                return cfgCol._bridgeActive ? "#ef4444" : "#22c55e"
-                            }
-                            border.width: 1
+                            border.color: root._nodeStatus !== "ok" ? "#475569" : (connCol._bridgeActive ? "#ef4444" : "#22c55e"); border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
                             Row {
                                 anchors.centerIn: parent; spacing: 6
-                                Text {
-                                    text: cfgCol._bridgeActive ? "■" : "▶"
-                                    color: root._nodeStatus !== "ok" ? "#64748b" : (cfgCol._bridgeActive ? "#fca5a5" : "#86efac")
-                                    font.pixelSize: 12
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                Text {
-                                    text: root._nodeStatus !== "ok" ? "Connect to PX4 (ROS2 required)" : (cfgCol._bridgeActive ? "Disconnect" : "Connect to PX4")
-                                    color: root._nodeStatus !== "ok" ? "#64748b" : (cfgCol._bridgeActive ? "#fca5a5" : "#86efac")
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
+                                Text { text: connCol._bridgeActive ? "■" : "▶"; color: root._nodeStatus !== "ok" ? "#64748b" : (connCol._bridgeActive ? "#fca5a5" : "#86efac"); font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: root._nodeStatus !== "ok" ? "Connect (ROS2 required)" : (connCol._bridgeActive ? "Disconnect" : "Connect to PX4"); color: root._nodeStatus !== "ok" ? "#64748b" : (connCol._bridgeActive ? "#fca5a5" : "#86efac"); font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                             }
                             MouseArea {
                                 id: bridgeTogM; anchors.fill: parent; hoverEnabled: true
                                 enabled: root._nodeStatus === "ok" && root.selectedDroneId !== ""
                                 onClicked: {
                                     if (typeof ros2 === "undefined" || !ros2) return
-                                    cfgCol._bridgeActive ? ros2.stopBridge(root.selectedDroneId) : ros2.startBridge(root.selectedDroneId, nsField.text.trim())
+                                    connCol._bridgeActive ? ros2.stopBridge(root.selectedDroneId) : ros2.startBridge(root.selectedDroneId, nsField.text.trim())
                                 }
                             }
                         }
                     }
                 }
 
-                // ── PX4 SITL Control ──────────────────────────────────────
-                Text { text: "PX4 SITL STEUERUNG"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
+                // ── PX4 SITL ───────────────────────────────────────
+                Text { text: "PX4 SITL"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
                 Rectangle {
-                    width: parent.width; height: sitlCol.implicitHeight + 20; radius: 8
+                    width: parent.width - 24; height: sitlCol.implicitHeight + 20; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
                     Column {
                         id: sitlCol
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
@@ -197,7 +209,6 @@ Item {
                             onTriggered: sitlCol._sitlRunning = (typeof ros2 !== "undefined" && ros2) ? ros2.isSitlRunning() : false
                         }
 
-                        // PX4 Directory
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "PX4:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 30 }
@@ -211,18 +222,16 @@ Item {
                             }
                         }
 
-                        // Model
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "Model:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
                             ComboBox {
                                 id: modelCombo; width: parent.width - 46; height: 26
-                                model: ["x500", "iris", "plane", "standard_vtol"]
+                                model: ["gz_x500", "gz_x500_gimbal", "gz_x500_mono_cam", "gz_x500_lidar_down",
+                                        "gz_standard_vtol", "gz_rc_cessna", "iris", "sih_quadx"]
                                 currentIndex: {
                                     if (typeof ros2 === "undefined" || !ros2) return 0
-                                    var m = ros2.getSitlModel()
-                                    var idx = model.indexOf(m)
-                                    return idx >= 0 ? idx : 0
+                                    var m = ros2.getSitlModel(); var idx = model.indexOf(m); return idx >= 0 ? idx : 0
                                 }
                                 background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
                                 contentItem: Text { text: modelCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
@@ -230,21 +239,65 @@ Item {
                             }
                         }
 
-                        // Namespace
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "World:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
+                            ComboBox {
+                                id: worldCombo; width: parent.width - 46; height: 26
+                                model: ["empty_default", "aruco_precision_landing", "baylands_water",
+                                        "ridge_terrain", "walls_collision", "windy_disturbance",
+                                        "moving_platform", "rover_grid"]
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                contentItem: Text { text: worldCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+                            }
+                        }
+
+                        // World/model compatibility warning
+                        Rectangle {
+                            width: parent.width; height: worldWarnTxt.implicitHeight + 10; radius: 5
+                            color: "#78350f22"; border.color: "#f59e0b"; border.width: 1
+                            visible: root.worldProfileWarnings(modelCombo.currentText, worldCombo.currentText).length > 0
+                            Text {
+                                id: worldWarnTxt; anchors { fill: parent; margins: 5 }
+                                text: {
+                                    var w = worldCombo.currentText; var m = modelCombo.currentText
+                                    if (w === "moving_platform") return "⚠ Set PX4_GZ_MODEL_POSE=0,0,2.2"
+                                    if (w === "ridge_terrain" && !m.includes("lidar")) return "⚠ ridge works best with x500_lidar_down"
+                                    if (w === "aruco_precision_landing" && !m.includes("mono_cam")) return "⚠ aruco needs x500_mono_cam"
+                                    return ""
+                                }
+                                color: "#fcd34d"; font.pixelSize: 8; wrapMode: Text.WordWrap
+                            }
+                        }
+
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "NS:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 30 }
                             TextField {
                                 id: sitlNsField; width: parent.width - 36; height: 26
                                 text: (typeof ros2 !== "undefined" && ros2) ? ros2.getSitlNamespace() : "uav_1"
-                                placeholderText: "uav_1"
                                 background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
                                 color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
                                 onEditingFinished: { if (typeof ros2 !== "undefined" && ros2) ros2.setSitlNamespace(text) }
                             }
                         }
 
-                        // Start/Stop Button
+                        Row {
+                            width: parent.width; spacing: 8
+                            visible: modelCombo.currentText.includes("gimbal") || modelCombo.currentText.includes("cam")
+                            CheckBox {
+                                id: cameraToggle; checked: true
+                                contentItem: Text { text: "Camera"; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: cameraToggle.indicator.width + 4; verticalAlignment: Text.AlignVCenter }
+                            }
+                            CheckBox {
+                                id: gimbalToggle; checked: modelCombo.currentText.includes("gimbal")
+                                contentItem: Text { text: "Gimbal"; color: "#e2e8f0"; font.pixelSize: 10; leftPadding: gimbalToggle.indicator.width + 4; verticalAlignment: Text.AlignVCenter }
+                            }
+                        }
+
+                        Text { visible: modelCombo.currentText.includes("sih"); text: "SIH: headless — no Gazebo"; color: "#60a5fa"; font.pixelSize: 8; width: parent.width }
+
+                        // Start / Stop SITL
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
                             color: sitlTogM.containsMouse ? (sitlCol._sitlRunning ? "#7f1d1d" : "#166534") : (sitlCol._sitlRunning ? "#450a0a" : "#14532d")
@@ -253,79 +306,116 @@ Item {
                             Row {
                                 anchors.centerIn: parent; spacing: 6
                                 Text { text: sitlCol._sitlRunning ? "■" : "▶"; color: sitlCol._sitlRunning ? "#fca5a5" : "#86efac"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: sitlCol._sitlRunning ? qsTr("Stop SITL") : qsTr("Start SITL"); color: sitlCol._sitlRunning ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: sitlCol._sitlRunning ? "Stop SITL" : "Start SITL"; color: sitlCol._sitlRunning ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                             }
                             MouseArea {
                                 id: sitlTogM; anchors.fill: parent; hoverEnabled: true
                                 onClicked: {
                                     if (typeof ros2 === "undefined" || !ros2) return
-                                    sitlCol._sitlRunning ? ros2.stopSitl() : ros2.startSitl()
+                                    if (sitlCol._sitlRunning) {
+                                        ros2.stopSitl()
+                                    } else {
+                                        ros2.startSitl({ model: modelCombo.currentText, worldProfile: worldCombo.currentText,
+                                                         namespace: sitlNsField.text, cameraEnabled: cameraToggle.checked,
+                                                         gimbalEnabled: gimbalToggle.checked })
+                                    }
                                 }
                             }
                         }
 
-                        // Info text
+                        // SITL Status box
+                        Rectangle {
+                            width: parent.width; height: sitlStatusCol.implicitHeight + 10; radius: 5
+                            color: "#0d1117"; border.color: sitlCol._sitlRunning ? "#22c55e33" : "#2d3748"; border.width: 1
+                            visible: sitlCol._sitlRunning
+                            Column {
+                                id: sitlStatusCol
+                                anchors { fill: parent; margins: 5 }
+                                spacing: 2
+                                property var _st: ({})
+                                Timer { interval: 2000; running: sitlCol._sitlRunning; repeat: true
+                                    onTriggered: sitlStatusCol._st = (typeof ros2 !== "undefined" && ros2 && ros2.getSitlStatus) ? ros2.getSitlStatus() : {}
+                                }
+                                Repeater {
+                                    model: [{ key:"model",label:"Model"},{key:"namespace",label:"NS"},{key:"pid",label:"PID"},{key:"uptime_s",label:"Up"},{key:"gazebo_running",label:"Gazebo"}]
+                                    delegate: Row {
+                                        spacing: 4; width: sitlStatusCol.width
+                                        Text { text: modelData.label + ":"; color: "#475569"; font.pixelSize: 8; width: 44 }
+                                        Text {
+                                            text: { var v = sitlStatusCol._st[modelData.key]; if (v === undefined) return "—"; if (modelData.key === "uptime_s") return v.toFixed(0)+"s"; if (modelData.key === "gazebo_running") return v ? "✓" : "✗"; return v.toString() }
+                                            color: { var v = sitlStatusCol._st[modelData.key]; if (modelData.key === "gazebo_running") return v ? "#22c55e" : "#ef4444"; return "#e2e8f0" }
+                                            font.pixelSize: 8; font.family: "Consolas"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Multi-Vehicle SITL ──────────────────────────────
+                Text { text: "MULTI-VEHICLE SITL"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: multiCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                    Column {
+                        id: multiCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                        spacing: 8
+
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Count:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 50 }
+                            SpinBox {
+                                id: multiCountSpin; from: 1; to: 5; value: 1; width: parent.width - 56; height: 26
+                                contentItem: Text { text: multiCountSpin.textFromValue(multiCountSpin.value); color: "#e2e8f0"; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                            }
+                        }
+
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Base port:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                            TextField {
+                                id: basePortField; width: parent.width - 66; height: 26; text: "5762"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
+                            }
+                        }
+
                         Text {
                             width: parent.width
-                            text: sitlCol._sitlRunning
-                                ? "✓ Running"
-                                : "Agent + PX4 + Gazebo"
-                            color: sitlCol._sitlRunning ? "#22c55e" : "#64748b"
-                            font.pixelSize: 8
-                            wrapMode: Text.WordWrap
+                            text: "Ports: " + Array.from({length: multiCountSpin.value}, function(_, i) { return parseInt(basePortField.text || 5762) + i }).join(", ")
+                            color: "#475569"; font.pixelSize: 8; font.family: "Consolas"
                         }
-                    }
-                }
 
-                // Spacer
-                Item { width: 1; height: 16 }
-
-                // ── uORB Topics ───────────────────────────────────────────
-                Text { text: "uORB TOPICS"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
-                Rectangle {
-                    width: parent.width; height: topicsCol.implicitHeight + 16; radius: 8
-                    color: "#0d1117"; border.color: "#2d3748"; border.width: 1
-
-                    Column {
-                        id: topicsCol
-                        anchors { fill: parent; margins: 8 }
-                        spacing: 3
-
-                        property var topics: root.selectedDroneId !== "" && typeof ros2 !== "undefined" && ros2
-                            ? ros2.getBridgeTopics(root.selectedDroneId) : []
-
-                        Repeater {
-                            model: topicsCol.topics
-                            delegate: Row {
-                                width: topicsCol.width; spacing: 4
-                                Rectangle { width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter; color: modelData.includes("/out/") ? "#22c55e" : "#2563eb" }
-                                Text {
-                                    text: modelData;
-                                    color: "#64748b";
-                                    font.pixelSize: 8;
-                                    font.family: "Consolas";
-                                    anchors.verticalCenter: parent.verticalCenter;
-                                    elide: Text.ElideMiddle;
-                                    width: topicsCol.width - 40
+                        Row {
+                            width: parent.width; spacing: 6
+                            Rectangle {
+                                width: (parent.width - 6) / 2; height: 30; radius: 5
+                                color: startAllM.containsMouse ? "#166534" : "#14532d"; border.color: "#22c55e"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "▶ Start All"; color: "#86efac"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea { id: startAllM; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.startMultiSitl(multiCountSpin.value, parseInt(basePortField.text) || 5762) }
+                                }
+                            }
+                            Rectangle {
+                                width: (parent.width - 6) / 2; height: 30; radius: 5
+                                color: stopAllM.containsMouse ? "#7f1d1d" : "#450a0a"; border.color: "#ef4444"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "■ Stop All"; color: "#fca5a5"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea { id: stopAllM; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.stopAllSitl() }
                                 }
                             }
                         }
-
-                        Text { visible: topicsCol.topics.length === 0; text: "Kein Drone ausgewählt"; color: "#374151"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
                     }
                 }
 
-                // Spacer
-                Item { width: 1; height: 16 }
-
-                // ── Formation Control ─────────────────────────────────────
+                // ── Formation Control ───────────────────────────────
                 Text { text: "FORMATION CONTROL"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
                 Rectangle {
-                    width: parent.width; height: formCol.implicitHeight + 20; radius: 8
+                    width: parent.width - 24; height: formCol.implicitHeight + 20; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
                     Column {
                         id: formCol
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
@@ -336,7 +426,6 @@ Item {
                             onTriggered: formCol._formActive = (typeof ros2 !== "undefined" && ros2) ? ros2.isFormationActive() : false
                         }
 
-                        // Leader selection
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "Leader:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 50 }
@@ -347,478 +436,626 @@ Item {
                                 contentItem: Text { text: leaderCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
                             }
                         }
-
-                        // Followers (multi-select would be complex, so just show count)
-                        Text {
-                            width: parent.width
-                            text: "Followers: All other drones"
-                            color: "#64748b"
-                            font.pixelSize: 9
-                        }
-
-                        // Formation shape
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "Shape:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 50 }
                             ComboBox {
-                                id: shapeCombo; width: parent.width - 56; height: 26
+                                id: shapeCombo; width: parent.width - 56; height: 26; currentIndex: 1
                                 model: ["line", "v", "grid", "circle", "wedge"]
-                                currentIndex: 1  // Default to V
                                 background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
                                 contentItem: Text { text: shapeCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
                             }
                         }
-
-                        // Spacing slider
                         Row {
                             width: parent.width; spacing: 6
                             Text { text: "Spacing:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 50 }
                             Slider {
-                                id: spacingSlider
-                                width: parent.width - 100
-                                from: 2.0; to: 20.0; value: 5.0; stepSize: 0.5
-                                background: Rectangle {
-                                    x: spacingSlider.leftPadding
-                                    y: spacingSlider.topPadding + spacingSlider.availableHeight / 2 - height / 2
-                                    width: spacingSlider.availableWidth; height: 4; radius: 2
-                                    color: "#2d3748"
-                                    Rectangle {
-                                        width: spacingSlider.visualPosition * parent.width; height: parent.height; radius: 2
-                                        color: "#3b82f6"
-                                    }
+                                id: spacingSlider; width: parent.width - 100; from: 2.0; to: 20.0; value: 5.0; stepSize: 0.5
+                                background: Rectangle { x: spacingSlider.leftPadding; y: spacingSlider.topPadding + spacingSlider.availableHeight/2 - height/2; width: spacingSlider.availableWidth; height: 4; radius: 2; color: "#2d3748"
+                                    Rectangle { width: spacingSlider.visualPosition * parent.width; height: parent.height; radius: 2; color: "#3b82f6" }
                                 }
-                                handle: Rectangle {
-                                    x: spacingSlider.leftPadding + spacingSlider.visualPosition * (spacingSlider.availableWidth - width)
-                                    y: spacingSlider.topPadding + spacingSlider.availableHeight / 2 - height / 2
-                                    width: 16; height: 16; radius: 8
-                                    color: spacingSlider.pressed ? "#60a5fa" : "#3b82f6"
-                                    border.color: "#1e293b"; border.width: 1
-                                }
+                                handle: Rectangle { x: spacingSlider.leftPadding + spacingSlider.visualPosition*(spacingSlider.availableWidth-width); y: spacingSlider.topPadding + spacingSlider.availableHeight/2 - height/2; width: 16; height: 16; radius: 8; color: spacingSlider.pressed ? "#60a5fa" : "#3b82f6"; border.color: "#1e293b"; border.width: 1 }
                             }
-                            Text { text: spacingSlider.value.toFixed(1) + "m"; color: "#e2e8f0"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
+                            Text { text: spacingSlider.value.toFixed(1)+"m"; color: "#e2e8f0"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
                         }
-
-                        // Start/Stop button
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
                             color: formTogM.containsMouse ? (formCol._formActive ? "#7f1d1d" : "#166534") : (formCol._formActive ? "#450a0a" : "#14532d")
                             border.color: formCol._formActive ? "#ef4444" : "#22c55e"; border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
-                            Row {
-                                anchors.centerIn: parent; spacing: 6
+                            Row { anchors.centerIn: parent; spacing: 6
                                 Text { text: formCol._formActive ? "■" : "▶"; color: formCol._formActive ? "#fca5a5" : "#86efac"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                                 Text { text: formCol._formActive ? "Stop Formation" : "Start Formation"; color: formCol._formActive ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                             }
-                            MouseArea {
-                                id: formTogM; anchors.fill: parent; hoverEnabled: true
+                            MouseArea { id: formTogM; anchors.fill: parent; hoverEnabled: true
                                 onClicked: {
                                     if (typeof ros2 === "undefined" || !ros2) return
-                                    if (typeof swarm === "undefined" || !swarm) return
-                                    
-                                    if (formCol._formActive) {
-                                        ros2.stopFormation()
-                                    } else {
-                                        var allDrones = swarm.droneIds()
-                                        if (allDrones.length < 2) {
-                                            console.log("Need at least 2 drones for formation")
-                                            return
-                                        }
+                                    if (formCol._formActive) { ros2.stopFormation() } else {
+                                        var all = (typeof swarm !== "undefined" && swarm) ? swarm.droneIds() : []
+                                        if (all.length < 2) return
                                         var leader = leaderCombo.currentText
-                                        var followers = allDrones.filter(function(id) { return id !== leader })
-                                        ros2.startFormation(leader, followers, shapeCombo.currentText, spacingSlider.value)
+                                        ros2.startFormation(leader, all.filter(function(id){return id!==leader}), shapeCombo.currentText, spacingSlider.value)
                                     }
                                 }
                             }
                         }
-
-                        // Control buttons (only when active)
                         Row {
-                            width: parent.width; spacing: 4
-                            visible: formCol._formActive
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: armM.containsMouse ? "#166534" : "#14532d"
-                                border.color: "#22c55e"; border.width: 1
-                                Text { text: "ARM ALL"; color: "#86efac"; font.pixelSize: 9; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea {
-                                    id: armM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.armFormation() }
-                                }
+                            width: parent.width; spacing: 4; visible: formCol._formActive
+                            Rectangle { width:(parent.width-8)/3;height:28;radius:5; color:armM.containsMouse?"#166534":"#14532d"; border.color:"#22c55e";border.width:1
+                                Text{anchors.centerIn:parent;text:"ARM ALL";color:"#86efac";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:armM;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2)ros2.armFormation()}}
                             }
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: offbM.containsMouse ? "#1e40af" : "#1e3a8a"
-                                border.color: "#3b82f6"; border.width: 1
-                                Text { text: "OFFBOARD"; color: "#93c5fd"; font.pixelSize: 9; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea {
-                                    id: offbM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.enableOffboardFormation() }
-                                }
+                            Rectangle { width:(parent.width-8)/3;height:28;radius:5; color:offbM.containsMouse?"#1e40af":"#1e3a8a"; border.color:"#3b82f6";border.width:1
+                                Text{anchors.centerIn:parent;text:"OFFBOARD";color:"#93c5fd";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:offbM;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2)ros2.enableOffboardFormation()}}
                             }
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: disarmM.containsMouse ? "#7f1d1d" : "#450a0a"
-                                border.color: "#ef4444"; border.width: 1
-                                Text { text: "DISARM"; color: "#fca5a5"; font.pixelSize: 9; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea {
-                                    id: disarmM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.disarmFormation() }
-                                }
-                            }
-                        }
-
-                        // Position controls (only when active)
-                        Column {
-                            width: parent.width; spacing: 4
-                            visible: formCol._formActive
-
-                            Text { text: "Leader Position:"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold }
-
-                            Row {
-                                width: parent.width; spacing: 4
-                                Text { text: "N:"; color: "#64748b"; font.pixelSize: 9; width: 15 }
-                                TextField {
-                                    id: formNorthField; width: (parent.width - 80) / 3; height: 24
-                                    text: "0"; placeholderText: "0"
-                                    background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
-                                    color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
-                                }
-                                Text { text: "E:"; color: "#64748b"; font.pixelSize: 9; width: 15 }
-                                TextField {
-                                    id: formEastField; width: (parent.width - 80) / 3; height: 24
-                                    text: "0"; placeholderText: "0"
-                                    background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
-                                    color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
-                                }
-                                Text { text: "Alt:"; color: "#64748b"; font.pixelSize: 9; width: 20 }
-                                TextField {
-                                    id: formAltField; width: (parent.width - 80) / 3; height: 24
-                                    text: "10"; placeholderText: "10"
-                                    background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748"; border.width: 1 }
-                                    color: "#e2e8f0"; font.pixelSize: 9; leftPadding: 4
-                                }
-                            }
-
-                            Rectangle {
-                                width: parent.width; height: 26; radius: 5
-                                color: setPosM.containsMouse ? "#1e40af" : "#1e3a8a"
-                                border.color: "#3b82f6"; border.width: 1
-                                Text { text: "Set Position"; color: "#93c5fd"; font.pixelSize: 9; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea {
-                                    id: setPosM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 !== "undefined" && ros2) {
-                                            ros2.setFormationLeaderPosition(
-                                                parseFloat(formNorthField.text),
-                                                parseFloat(formEastField.text),
-                                                parseFloat(formAltField.text),
-                                                0.0  // yaw
-                                            )
-                                        }
-                                    }
-                                }
+                            Rectangle { width:(parent.width-8)/3;height:28;radius:5; color:disarmM.containsMouse?"#7f1d1d":"#450a0a"; border.color:"#ef4444";border.width:1
+                                Text{anchors.centerIn:parent;text:"DISARM";color:"#fca5a5";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:disarmM;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2)ros2.disarmFormation()}}
                             }
                         }
                     }
                 }
+                Item { width: 1; height: 8 }
+            }
+        }
 
-                // Spacer
-                Item { width: 1; height: 16 }
+        // ══════════════════════════════════════════════════════════
+        // TAB 1 — TOPICS
+        // ══════════════════════════════════════════════════════════
+        ScrollView {
+            clip: true; contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                // ── Bag Recording ─────────────────────────────────────
-                Text { text: "BAG RECORDING"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+            Column {
+                width: parent.width
+                padding: 12; spacing: 10
 
+                // ── Topic Browser ───────────────────────────────────
+                Text { text: "TOPIC BROWSER"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
                 Rectangle {
-                    width: parent.width; height: bagCol.implicitHeight + 20; radius: 8
+                    width: parent.width - 24; height: topicBrowserCol.implicitHeight + 20; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                    Column {
+                        id: topicBrowserCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                        spacing: 8
+                        property var discoveredTopics: []
 
+                        TextField {
+                            id: topicFilterField; width: parent.width; height: 26
+                            placeholderText: "Filter topics (e.g. /fmu/out)"
+                            background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                            color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6
+                        }
+
+                        Rectangle {
+                            width: parent.width; height: 28; radius: 5
+                            color: discoverM.containsMouse ? "#1e40af" : "#1e3a8a"; border.color: "#3b82f6"; border.width: 1
+                            Text { anchors.centerIn: parent; text: "Discover Topics"; color: "#93c5fd"; font.pixelSize: 9; font.weight: Font.Bold }
+                            MouseArea { id: discoverM; anchors.fill: parent; hoverEnabled: true
+                                onClicked: {
+                                    if (typeof ros2 === "undefined" || !ros2 || !root.selectedDroneId) return
+                                    topicBrowserCol.discoveredTopics = ros2.discoverTopics ? ros2.discoverTopics(root.selectedDroneId) : ros2.getBridgeTopics(root.selectedDroneId)
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width; height: Math.min(topicRepeater.count * 22 + 8, 240); radius: 5
+                            color: "#0d1117"; border.color: "#2d3748"; border.width: 1
+                            visible: topicBrowserCol.discoveredTopics.length > 0
+                            ScrollView { anchors.fill: parent; clip: true; contentWidth: availableWidth; ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                Column { width: parent.width; spacing: 1; topPadding: 4; bottomPadding: 4
+                                    Repeater {
+                                        id: topicRepeater
+                                        model: topicBrowserCol.discoveredTopics.filter(function(t){ var f=topicFilterField.text.trim(); return f===""||t.indexOf(f)>=0 })
+                                        delegate: Rectangle {
+                                            width: parent.width; height: 22
+                                            color: topicItemM.containsMouse ? "#1e2535" : "transparent"
+                                            Row {
+                                                anchors { fill: parent; leftMargin: 6 }
+                                                spacing: 4
+                                                Rectangle { width:5;height:5;radius:2.5;anchors.verticalCenter:parent.verticalCenter; color:modelData.includes("/out/")?"#22c55e":"#3b82f6" }
+                                                Text { text:modelData; color:"#94a3b8";font.pixelSize:8;font.family:"Consolas";anchors.verticalCenter:parent.verticalCenter;elide:Text.ElideMiddle;width:parent.width-50 }
+                                            }
+                                            MouseArea { id:topicItemM;anchors.fill:parent;hoverEnabled:true
+                                                onClicked:{ if(typeof ros2!=="undefined"&&ros2&&ros2.subscribeToTopic) ros2.subscribeToTopic(modelData,root.selectedDroneId) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Text { visible: topicBrowserCol.discoveredTopics.length === 0; text: "Click 'Discover Topics' to list topics"; color: "#374151"; font.pixelSize: 9 }
+                    }
+                }
+
+                // ── uORB Active Topics ──────────────────────────────
+                Text { text: "uORB ACTIVE TOPICS"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: topicsCol.implicitHeight + 16; radius: 8
+                    color: "#0d1117"; border.color: "#2d3748"; border.width: 1
+                    Column {
+                        id: topicsCol
+                        anchors { fill: parent; margins: 8 }
+                        spacing: 3
+                        property var topics: root.selectedDroneId !== "" && typeof ros2 !== "undefined" && ros2 ? ros2.getBridgeTopics(root.selectedDroneId) : []
+                        Repeater {
+                            model: topicsCol.topics
+                            delegate: Row { width: topicsCol.width; spacing: 4
+                                Rectangle { width:6;height:6;radius:3;anchors.verticalCenter:parent.verticalCenter;color:modelData.includes("/out/")?"#22c55e":"#2563eb" }
+                                Text { text:modelData;color:"#64748b";font.pixelSize:8;font.family:"Consolas";anchors.verticalCenter:parent.verticalCenter;elide:Text.ElideMiddle;width:topicsCol.width-40 }
+                            }
+                        }
+                        Text { visible: topicsCol.topics.length === 0; text: "No drone selected"; color: "#374151"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                    }
+                }
+
+                // ── Live uORB Snapshot ──────────────────────────────
+                Text { text: "LIVE uORB SNAPSHOT"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: snapCol.implicitHeight + 16; radius: 8
+                    color: "#0d1117"; border.color: "#2d3748"; border.width: 1
+                    property var snap: ({})
+                    Timer { interval: 200; running: true; repeat: true
+                        onTriggered: { if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return; parent.snap = ros2.bridgeSnapshot(root.selectedDroneId) }
+                    }
+                    Column {
+                        id: snapCol
+                        anchors { fill: parent; margins: 8 }
+                        spacing: 2
+                        property var snap: parent.snap
+                        Repeater {
+                            model: [
+                                { key:"armed",       label:"Armed",     fmt:function(v){return v?"ARMED":"DISARMED"},   color:function(v){return v?"#22c55e":"#ef4444"} },
+                                { key:"flight_mode", label:"Nav State", fmt:function(v){return v!==undefined?v.toString():"—"},  color:function(v){return"#8be9fd"} },
+                                { key:"lat",         label:"Lat",       fmt:function(v){return v?v.toFixed(6):"—"},     color:function(v){return"#8be9fd"} },
+                                { key:"lon",         label:"Lon",       fmt:function(v){return v?v.toFixed(6):"—"},     color:function(v){return"#8be9fd"} },
+                                { key:"alt_rel",     label:"Alt(rel)",  fmt:function(v){return v!==undefined?v.toFixed(2)+"m":"—"},  color:function(v){return"#8be9fd"} },
+                                { key:"roll",        label:"Roll",      fmt:function(v){return v!==undefined?v.toFixed(1)+"°":"—"},  color:function(v){return"#8be9fd"} },
+                                { key:"pitch",       label:"Pitch",     fmt:function(v){return v!==undefined?v.toFixed(1)+"°":"—"},  color:function(v){return"#8be9fd"} },
+                                { key:"yaw",         label:"Yaw",       fmt:function(v){return v!==undefined?v.toFixed(1)+"°":"—"},  color:function(v){return"#8be9fd"} },
+                                { key:"battery_pct", label:"Battery",   fmt:function(v){return v!==undefined&&v>=0?v.toFixed(0)+"%":"—"}, color:function(v){return v>20?"#22c55e":"#ef4444"} },
+                                { key:"battery_v",   label:"Voltage",   fmt:function(v){return v?v.toFixed(2)+"V":"—"}, color:function(v){return"#8be9fd"} },
+                                { key:"gps_fix",     label:"GPS Fix",   fmt:function(v){return["NoFix","NoFix","2D","3D","RTK"][Math.min(v||0,4)]}, color:function(v){return v>=3?"#22c55e":"#f59e0b"} },
+                                { key:"satellites",  label:"Sats",      fmt:function(v){return v!==undefined?v.toString():"—"}, color:function(v){return"#8be9fd"} },
+                            ]
+                            delegate: Row { width:snapCol.width;height:17;spacing:4
+                                Text{text:modelData.label+":";color:"#475569";font.pixelSize:9;width:68}
+                                Text{
+                                    text:{var s=snapCol.snap;var v=(s&&s[modelData.key]!==undefined)?s[modelData.key]:undefined;return v!==undefined?modelData.fmt(v):"—"}
+                                    color:{var s=snapCol.snap;var v=(s&&s[modelData.key]!==undefined)?s[modelData.key]:undefined;return v!==undefined?modelData.color(v):"#374151"}
+                                    font.pixelSize:9;font.family:"Consolas";font.weight:Font.Bold
+                                }
+                            }
+                        }
+                        Text { visible: Object.keys(snapCol.snap).length === 0; text: "Bridge not active"; color: "#374151"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                    }
+                }
+                Item { width: 1; height: 8 }
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // TAB 2 — BAG
+        // ══════════════════════════════════════════════════════════
+        ScrollView {
+            clip: true; contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            Column {
+                width: parent.width
+                padding: 12; spacing: 10
+
+                Text { text: "BAG RECORDER"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: bagCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
                     Column {
                         id: bagCol
                         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
                         spacing: 8
 
                         property bool _recording: (typeof ros2 !== "undefined" && ros2) ? ros2.isBagRecording() : false
-                        property var _status: (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
-                        
+                        property var  _status:    (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
                         Timer { interval: 500; running: true; repeat: true
                             onTriggered: {
                                 bagCol._recording = (typeof ros2 !== "undefined" && ros2) ? ros2.isBagRecording() : false
-                                bagCol._status = (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
+                                bagCol._status    = (typeof ros2 !== "undefined" && ros2) ? ros2.getBagRecordingStatus() : ({})
                             }
                         }
 
-                        // Topic selection
-                        Text { text: "Topics to record:"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold }
-                        
+                        // Preset selector
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Preset:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 46 }
+                            ComboBox {
+                                id: bagPresetCombo; width: parent.width - 52; height: 26
+                                model: ["minimal_mission", "full_px4_out", "camera_gimbal", "swarm_multi_vehicle", "custom"]
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                contentItem: Text { text: bagPresetCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+                            }
+                        }
+
+                        // Custom topics (only for "custom" preset)
                         Column {
                             width: parent.width; spacing: 2
-                            
-                            CheckBox {
-                                id: topicOdom
-                                text: "/fmu/out/vehicle_odometry"
-                                checked: true
-                                contentItem: Text { 
-                                    text: topicOdom.text
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    leftPadding: topicOdom.indicator.width + 4
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                            
-                            CheckBox {
-                                id: topicStatus
-                                text: "/fmu/out/vehicle_status"
-                                checked: true
-                                contentItem: Text { 
-                                    text: topicStatus.text
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    leftPadding: topicStatus.indicator.width + 4
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                            
-                            CheckBox {
-                                id: topicBattery
-                                text: "/fmu/out/battery_status"
-                                checked: false
-                                contentItem: Text { 
-                                    text: topicBattery.text
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    leftPadding: topicBattery.indicator.width + 4
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                            
-                            CheckBox {
-                                id: topicGPS
-                                text: "/fmu/out/vehicle_gps_position"
-                                checked: false
-                                contentItem: Text { 
-                                    text: topicGPS.text
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    leftPadding: topicGPS.indicator.width + 4
-                                    verticalAlignment: Text.AlignVCenter
-                                }
+                            visible: bagPresetCombo.currentText === "custom"
+                            Text { text: "Topics (one per line):"; color: "#64748b"; font.pixelSize: 9 }
+                            TextArea {
+                                id: bagCustomTopics; width: parent.width; height: 80
+                                placeholderText: "/fmu/out/vehicle_odometry\n/fmu/out/vehicle_status"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6; topPadding: 6; wrapMode: TextArea.NoWrap
                             }
                         }
 
-                        // Start/Stop button
+                        // Output dir
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Out:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 28 }
+                            TextField {
+                                id: bagOutDir; width: parent.width - 34; height: 26
+                                placeholderText: "./bags  (empty = default)"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6
+                            }
+                        }
+
+                        // Recording indicator + Start/Stop
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
                             color: bagTogM.containsMouse ? (bagCol._recording ? "#7f1d1d" : "#166534") : (bagCol._recording ? "#450a0a" : "#14532d")
                             border.color: bagCol._recording ? "#ef4444" : "#22c55e"; border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
-                            Row {
-                                anchors.centerIn: parent; spacing: 6
-                                Text { text: bagCol._recording ? "⏹" : "⏺"; color: bagCol._recording ? "#fca5a5" : "#86efac"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: bagCol._recording ? "Stop Recording" : "Start Recording"; color: bagCol._recording ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            Row { anchors.centerIn: parent; spacing: 6
+                                // blinking dot when recording
+                                Rectangle {
+                                    width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter
+                                    color: "#ef4444"; visible: bagCol._recording
+                                    SequentialAnimation on opacity { running: bagCol._recording; loops: Animation.Infinite
+                                        NumberAnimation { to: 0.2; duration: 500 }
+                                        NumberAnimation { to: 1.0; duration: 500 }
+                                    }
+                                }
+                                Text { text: bagCol._recording ? "Stop Recording" : "⏺ Start Recording"; color: bagCol._recording ? "#fca5a5" : "#86efac"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                             }
-                            MouseArea {
-                                id: bagTogM; anchors.fill: parent; hoverEnabled: true
+                            MouseArea { id: bagTogM; anchors.fill: parent; hoverEnabled: true
                                 onClicked: {
                                     if (typeof ros2 === "undefined" || !ros2) return
-                                    
                                     if (bagCol._recording) {
-                                        ros2.stopBagRecording()
+                                        ros2.stopBagRecord()
                                     } else {
-                                        // Collect selected topics
                                         var topics = []
-                                        if (topicOdom.checked) topics.push(topicOdom.text)
-                                        if (topicStatus.checked) topics.push(topicStatus.text)
-                                        if (topicBattery.checked) topics.push(topicBattery.text)
-                                        if (topicGPS.checked) topics.push(topicGPS.text)
-                                        
-                                        if (topics.length === 0) {
-                                            console.log("[BAG] No topics selected")
-                                            return
+                                        if (bagPresetCombo.currentText === "custom") {
+                                            topics = bagCustomTopics.text.split("\n").filter(function(t){ return t.trim() !== "" })
                                         }
-                                        
-                                        ros2.startBagRecording(topics, "", "zstd")
+                                        ros2.startBagRecord(topics, bagOutDir.text.trim(), bagPresetCombo.currentText === "custom" ? "" : bagPresetCombo.currentText)
                                     }
                                 }
                             }
                         }
 
-                        // Recording status (only when active)
+                        // Recording status
                         Column {
-                            width: parent.width; spacing: 4
-                            visible: bagCol._recording
-
-                            Text { 
-                                text: "Recording Status:"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-                                Text { text: "Duration:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
-                                Text { 
-                                    text: bagCol._status.duration_sec ? bagCol._status.duration_sec.toFixed(1) + "s" : "0.0s"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                }
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-                                Text { text: "Size:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
-                                Text {
-                                    text: bagCol._status.size_mb ? bagCol._status.size_mb.toFixed(2) + " MB" : "0.00 MB"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                }
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-                                Text { text: "Path:"; color: "#64748b"; font.pixelSize: 9; width: 60 }
-                                Text {
-                                    text: bagCol._status.bag_path ? bagCol._status.bag_path : "./bags/"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 8
-                                    elide: Text.ElideMiddle
-                                    width: parent.width - 64
+                            width: parent.width; spacing: 4; visible: bagCol._recording
+                            Repeater {
+                                model: [{key:"duration_sec",label:"Duration",fmt:function(v){return v?v.toFixed(1)+"s":"0.0s"}},
+                                        {key:"size_mb",label:"Size",fmt:function(v){return v?v.toFixed(2)+" MB":"0.00 MB"}},
+                                        {key:"bag_path",label:"Path",fmt:function(v){return v||"./bags/"}}]
+                                delegate: Row { width: parent.width; spacing: 4
+                                    Text { text: modelData.label+":"; color: "#64748b"; font.pixelSize: 9; width: 60 }
+                                    Text { text: modelData.fmt(bagCol._status[modelData.key]); color: "#e2e8f0"; font.pixelSize: modelData.key==="bag_path"?8:9; elide: modelData.key==="bag_path"?Text.ElideMiddle:Text.ElideNone; width: parent.width - 64 }
                                 }
                             }
                         }
 
-                        // Info text
-                        Text {
-                            width: parent.width
-                            text: "◉ Bags saved to: <project_root>/bags/"
-                            color: "#64748b"
-                            font.pixelSize: 8
-                            wrapMode: Text.WordWrap
-                        }
+                        Text { text: "Bags saved to: <project_root>/bags/"; color: "#374151"; font.pixelSize: 8 }
                     }
                 }
+                Item { width: 1; height: 8 }
             }
         }
 
-        // ════════════════ CENTER COLUMN ════════════════
+        // ══════════════════════════════════════════════════════════
+        // TAB 3 — VIDEO
+        // ══════════════════════════════════════════════════════════
         ScrollView {
-            id: centerSv
-            anchors { top: parent.top; left: leftSv.right; bottom: parent.bottom; topMargin: 12; leftMargin: 10; bottomMargin: 12 }
-            width: (parent.width - 44) * 0.38
-            clip: true
-            contentWidth: availableWidth
-            contentHeight: centerCol.implicitHeight
+            clip: true; contentWidth: availableWidth
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             Column {
-                id: centerCol
-                width: centerSv.availableWidth
-                spacing: 8
+                width: parent.width
+                padding: 12; spacing: 10
 
-                // ── Live uORB Snapshot ────────────────────────────────────
-                Text { text: "LIVE uORB SNAPSHOT"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
+                Text { text: "VIDEO STREAM"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
                 Rectangle {
-                    width: parent.width; height: snapCol.implicitHeight + 16; radius: 8
-                    color: "#0d1117"; border.color: "#2d3748"; border.width: 1
-
-                    property var snap: ({})
-                    Timer {
-                        interval: 200; running: true; repeat: true
-                        onTriggered: { if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return; parent.snap = ros2.bridgeSnapshot(root.selectedDroneId) }
-                    }
-
+                    width: parent.width - 24; height: videoStreamCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
                     Column {
-                        id: snapCol
-                        anchors { fill: parent; margins: 8 }
-                        spacing: 2
-                        property var snap: parent.snap
+                        id: videoStreamCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                        spacing: 8
 
-                        Repeater {
-                            model: [
-                                { key: "armed",       label: "Armed",      fmt: function(v) { return v ? "ARMED" : "DISARMED" },                   color: function(v) { return v ? "#22c55e" : "#ef4444" } },
-                                { key: "flight_mode", label: "Nav State",  fmt: function(v) { return v !== undefined ? v.toString() : "—" },        color: function(v) { return "#8be9fd" } },
-                                { key: "lat",         label: "Lat",        fmt: function(v) { return v ? v.toFixed(6) : "—" },                      color: function(v) { return "#8be9fd" } },
-                                { key: "lon",         label: "Lon",        fmt: function(v) { return v ? v.toFixed(6) : "—" },                      color: function(v) { return "#8be9fd" } },
-                                { key: "alt_rel",     label: "Alt (rel)",  fmt: function(v) { return v !== undefined ? v.toFixed(2)+"m" : "—" },    color: function(v) { return "#8be9fd" } },
-                                { key: "roll",        label: "Roll",       fmt: function(v) { return v !== undefined ? v.toFixed(1)+"°" : "—" },    color: function(v) { return "#8be9fd" } },
-                                { key: "pitch",       label: "Pitch",      fmt: function(v) { return v !== undefined ? v.toFixed(1)+"°" : "—" },    color: function(v) { return "#8be9fd" } },
-                                { key: "yaw",         label: "Yaw",        fmt: function(v) { return v !== undefined ? v.toFixed(1)+"°" : "—" },    color: function(v) { return "#8be9fd" } },
-                                { key: "battery_pct", label: "Battery",    fmt: function(v) { return v !== undefined && v >= 0 ? v.toFixed(0)+"%" : "—" }, color: function(v) { return v > 20 ? "#22c55e" : "#ef4444" } },
-                                { key: "battery_v",   label: "Voltage",    fmt: function(v) { return v ? v.toFixed(2)+"V" : "—" },                  color: function(v) { return "#8be9fd" } },
-                                { key: "gps_fix",     label: "GPS Fix",    fmt: function(v) { return ["NoFix","NoFix","2D","3D","RTK"][Math.min(v||0,4)] }, color: function(v) { return v >= 3 ? "#22c55e" : "#f59e0b" } },
-                                { key: "satellites",  label: "Sats",       fmt: function(v) { return v !== undefined ? v.toString() : "—" },        color: function(v) { return "#8be9fd" } },
-                            ]
-                            delegate: Row {
-                                width: snapCol.width; height: 17; spacing: 4
-                                Text { text: modelData.label + ":"; color: "#475569"; font.pixelSize: 9; width: 68 }
+                        property string _vsStatus: {
+                            if (typeof videoStream === "undefined" || !videoStream || !root.selectedDroneId) return "unconfigured"
+                            var s = videoStream.getVideoStatus(root.selectedDroneId)
+                            return s ? (s.status || "unconfigured") : "unconfigured"
+                        }
+                        Timer { interval: 1000; running: true; repeat: true
+                            onTriggered: {
+                                if (typeof videoStream === "undefined" || !videoStream || !root.selectedDroneId) return
+                                var s = videoStream.getVideoStatus(root.selectedDroneId)
+                                videoStreamCol._vsStatus = s ? (s.status || "unconfigured") : "unconfigured"
+                            }
+                        }
+                        function vsColor(s) {
+                            if (s === "receiving") return "#22c55e"
+                            if (s === "waiting")   return "#f59e0b"
+                            if (s === "stalled")   return "#f97316"
+                            if (s === "error")     return "#ef4444"
+                            return "#475569"
+                        }
+
+                        // Status badge
+                        Rectangle {
+                            width: parent.width; height: 32; radius: 5
+                            color: "#0d1117"; border.color: videoStreamCol.vsColor(videoStreamCol._vsStatus); border.width: 1
+                            Row {
+                                anchors { fill: parent; leftMargin: 10 }
+                                spacing: 8
+                                Rectangle {
+                                    width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter
+                                    color: videoStreamCol.vsColor(videoStreamCol._vsStatus)
+                                    SequentialAnimation on opacity { running: videoStreamCol._vsStatus === "receiving"; loops: Animation.Infinite
+                                        NumberAnimation { to: 0.3; duration: 700 }
+                                        NumberAnimation { to: 1.0; duration: 700 }
+                                    }
+                                }
                                 Text {
-                                    text: { var s = snapCol.snap; var v = (s && s[modelData.key] !== undefined) ? s[modelData.key] : undefined; return v !== undefined ? modelData.fmt(v) : "—" }
-                                    color: { var s = snapCol.snap; var v = (s && s[modelData.key] !== undefined) ? s[modelData.key] : undefined; return v !== undefined ? modelData.color(v) : "#374151" }
-                                    font.pixelSize: 9; font.family: "Consolas"; font.weight: Font.Bold
+                                    text: {
+                                        var s = videoStreamCol._vsStatus
+                                        if (s === "receiving") return "Stream receiving"
+                                        if (s === "waiting")   return "Waiting for stream …"
+                                        if (s === "stalled")   return "Stream stalled"
+                                        if (s === "error")     return "Stream error"
+                                        return "Not configured"
+                                    }
+                                    color: videoStreamCol.vsColor(videoStreamCol._vsStatus)
+                                    font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter
                                 }
                             }
                         }
 
-                        Text { visible: Object.keys(snapCol.snap).length === 0; text: "Bridge nicht aktiv"; color: "#374151"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                        // Drone selector
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Drone:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 40 }
+                            ComboBox {
+                                id: vsDroneCombo; width: parent.width - 46; height: 26
+                                model: (typeof swarm !== "undefined" && swarm) ? swarm.droneIds() : []
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                contentItem: Text { text: vsDroneCombo.displayText; color: "#e2e8f0"; font.pixelSize: 10; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+                                onCurrentTextChanged: { if (currentText && typeof videoStream !== "undefined" && videoStream) videoStream.selectDrone(currentText) }
+                            }
+                        }
+
+                        // ── Port + Host (primary config) ───────────────
+                        Text { text: "STREAM PORT"; color: "#475569"; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 1 }
+
+                        // Port input — the main thing the user needs
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "Port:"; color: "#e2e8f0"; font.pixelSize: 11; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter; width: 36 }
+                            TextField {
+                                id: vsPortField; width: 80; height: 32
+                                text: "5600"
+                                placeholderText: "5600"
+                                inputMethodHints: Qt.ImhDigitsOnly
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#3b82f6"; border.width: 2 }
+                                color: "#93c5fd"; font.pixelSize: 13; font.family: "Consolas"; font.weight: Font.Bold; leftPadding: 8
+                                onTextChanged: {
+                                    var p = parseInt(text)
+                                    if (!isNaN(p) && p > 0)
+                                        videoUrlField.text = "udp://0.0.0.0:" + p
+                                }
+                            }
+                            Text { text: "Host:"; color: "#94a3b8"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 36 }
+                            TextField {
+                                id: vsHostField; width: parent.width - 80 - 36 - 36 - 18; height: 32
+                                text: "0.0.0.0"
+                                placeholderText: "0.0.0.0"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
+                                onTextChanged: {
+                                    var p = parseInt(vsPortField.text)
+                                    if (!isNaN(p) && p > 0)
+                                        videoUrlField.text = "udp://" + (text || "0.0.0.0") + ":" + p
+                                }
+                            }
+                        }
+
+                        // PX4 Quick-Port Buttons
+                        Text { text: "PX4 Gazebo Defaults — klicken zum Übernehmen:"; color: "#475569"; font.pixelSize: 8 }
+                        Row {
+                            width: parent.width; spacing: 6
+                            Repeater {
+                                model: [
+                                    { label: "px4_1", port: 5600, color: "#166534", border: "#22c55e", text: "#86efac" },
+                                    { label: "px4_2", port: 5601, color: "#1e3a8a", border: "#3b82f6", text: "#93c5fd" },
+                                    { label: "px4_3", port: 5602, color: "#78350f", border: "#f59e0b", text: "#fcd34d" },
+                                    { label: "px4_4", port: 5603, color: "#312e81", border: "#8b5cf6", text: "#c4b5fd" },
+                                    { label: "px4_5", port: 5604, color: "#1e3a4a", border: "#67e8f9", text: "#a5f3fc" },
+                                ]
+                                delegate: Rectangle {
+                                    width: (parent.width - 24) / 5; height: 38; radius: 5
+                                    color: px4PortM.containsMouse ? Qt.lighter(modelData.color, 1.3) : modelData.color
+                                    border.color: modelData.border; border.width: 1
+                                    Column {
+                                        anchors.centerIn: parent; spacing: 1
+                                        Text { text: modelData.label; color: modelData.text; font.pixelSize: 8; font.weight: Font.Bold; anchors.horizontalCenter: parent.horizontalCenter }
+                                        Text { text: ":" + modelData.port; color: modelData.border; font.pixelSize: 11; font.weight: Font.Bold; font.family: "Consolas"; anchors.horizontalCenter: parent.horizontalCenter }
+                                    }
+                                    MouseArea {
+                                        id: px4PortM; anchors.fill: parent; hoverEnabled: true
+                                        onClicked: {
+                                            vsPortField.text = modelData.port
+                                            vsHostField.text = "0.0.0.0"
+                                            videoUrlField.text = "udp://0.0.0.0:" + modelData.port
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Full URL (auto-built, also editable manually)
+                        Text { text: "FULL URL (auto)"; color: "#475569"; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 1 }
+                        Row {
+                            width: parent.width; spacing: 6
+                            Text { text: "URL:"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter; width: 28 }
+                            TextField {
+                                id: videoUrlField; width: parent.width - 34; height: 26
+                                text: {
+                                    if (typeof videoStream === "undefined" || !videoStream || !root.selectedDroneId) return "udp://0.0.0.0:5600"
+                                    var s = videoStream.getVideoStatus(root.selectedDroneId)
+                                    return s && s.url ? s.url : "udp://0.0.0.0:5600"
+                                }
+                                placeholderText: "udp://0.0.0.0:5600"
+                                background: Rectangle { color: "#1e2535"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                                color: "#94a3b8"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6
+                            }
+                        }
+
+                        // Protocol hint
+                        Text {
+                            width: parent.width
+                            text: {
+                                var u = videoUrlField.text
+                                if (u.startsWith("udp://"))  return "UDP RTP/H.264 (PX4 Gazebo default)"
+                                if (u.startsWith("rtsp://")) return "RTSP stream"
+                                if (u.startsWith("http://")) return "MJPEG over HTTP"
+                                return "Unknown protocol"
+                            }
+                            color: "#475569"; font.pixelSize: 8; font.family: "Consolas"
+                        }
+
+                        // Start / Stop
+                        Row {
+                            width: parent.width; spacing: 6
+                            Rectangle {
+                                width: (parent.width - 6) / 2; height: 34; radius: 5
+                                color: vsStartM.containsMouse ? "#166534" : "#14532d"; border.color: "#22c55e"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "Start Map Stream"; color: "#86efac"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea { id: vsStartM; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        if (typeof videoStream === "undefined" || !videoStream || !root.selectedDroneId) return
+                                        videoStream.startStream(videoUrlField.text, root.selectedDroneId, "map")
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                width: (parent.width - 6) / 2; height: 34; radius: 5
+                                color: vsStopM.containsMouse ? "#7f1d1d" : "#450a0a"; border.color: "#ef4444"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "■ Stop"; color: "#fca5a5"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea { id: vsStopM; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: { if (typeof videoStream !== "undefined" && videoStream && root.selectedDroneId) videoStream.stopStream(root.selectedDroneId) }
+                                }
+                            }
+                        }
+                    }
+                }
+                Item { width: 1; height: 8 }
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // TAB 4 — DEBUG
+        // ══════════════════════════════════════════════════════════
+        ScrollView {
+            clip: true; contentWidth: availableWidth
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            Column {
+                width: parent.width
+                padding: 12; spacing: 10
+
+                // ── Vehicle Commands ────────────────────────────────
+                Text { text: "VEHICLE COMMANDS (uXRCE-DDS)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: cmdCol.implicitHeight + 20; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                    Column {
+                        id: cmdCol
+                        anchors { fill: parent; margins: 10 }
+                        spacing: 6
+                        Repeater {
+                            model: [{label:"ARM",color:"#22c55e",fn:"armBridge"},{label:"DISARM",color:"#ef4444",fn:"disarmBridge"},{label:"LAND",color:"#f59e0b",fn:"landBridge"},{label:"RTL",color:"#f97316",fn:"rtlBridge"}]
+                            delegate: Rectangle {
+                                width: parent.width - 20; height: 32; radius: 5
+                                color: cMa.containsMouse ? Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, 0.2) : "#1e2535"
+                                border.color: cMa.containsMouse ? modelData.color : "#334155"; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 80 } }
+                                Text { anchors.centerIn: parent; text: modelData.label; color: modelData.color; font.pixelSize: 11; font.weight: Font.Bold }
+                                MouseArea { id: cMa; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
+                                        if      (modelData.fn === "armBridge")    ros2.armBridge(root.selectedDroneId)
+                                        else if (modelData.fn === "disarmBridge") ros2.disarmBridge(root.selectedDroneId)
+                                        else if (modelData.fn === "landBridge")   ros2.landBridge(root.selectedDroneId)
+                                        else if (modelData.fn === "rtlBridge")    ros2.rtlBridge(root.selectedDroneId)
+                                    }
+                                }
+                            }
+                        }
+                        Row { spacing: 4
+                            Rectangle {
+                                width: parent.parent.width - 84 - 20 - 8; height: 32; radius: 5
+                                color: toMa.containsMouse ? "#1e3a5f" : "#1e2535"; border.color: toMa.containsMouse ? "#2563eb" : "#334155"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "TAKEOFF"; color: "#2563eb"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea { id: toMa; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ros2.takeoffBridge(root.selectedDroneId, parseFloat(toAlt.text) || 10) } }
+                            }
+                            TextField {
+                                id: toAlt; width: 52; height: 32; text: "10"
+                                color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
+                                background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" }
+                            }
+                            Text { text: "m"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                        }
                     }
                 }
 
-                // ── Offboard Control ──────────────────────────────────────
+                // ── Offboard Control ────────────────────────────────
                 Text { text: "OFFBOARD (TrajectorySetpoint)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
                 Rectangle {
-                    width: parent.width; height: offboardCol.implicitHeight + 16; radius: 8
+                    width: parent.width - 24; height: offboardCol.implicitHeight + 16; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
                     Column {
                         id: offboardCol
                         anchors { fill: parent; margins: 10 }
                         spacing: 6
-
-                        // Mode tabs
                         Row {
-                            id: offboardModeRow
-                            spacing: 5
-                            property int mode: 0
-
-                            Rectangle {
-                                width: 84; height: 24; radius: 5
-                                color: offboardModeRow.mode === 0 ? "#1e3a5f" : "#1e2535"
-                                border.color: offboardModeRow.mode === 0 ? "#2563eb" : "#334155"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Position"; color: offboardModeRow.mode === 0 ? "#93c5fd" : "#64748b"; font.pixelSize: 9 }
-                                MouseArea { anchors.fill: parent; onClicked: offboardModeRow.mode = 0 }
+                            id: offboardModeRow; spacing: 5; property int mode: 0
+                            Rectangle { width:84;height:24;radius:5; color:offboardModeRow.mode===0?"#1e3a5f":"#1e2535"; border.color:offboardModeRow.mode===0?"#2563eb":"#334155";border.width:1
+                                Text{anchors.centerIn:parent;text:"Position";color:offboardModeRow.mode===0?"#93c5fd":"#64748b";font.pixelSize:9}
+                                MouseArea{anchors.fill:parent;onClicked:offboardModeRow.mode=0}
                             }
-                            Rectangle {
-                                width: 84; height: 24; radius: 5
-                                color: offboardModeRow.mode === 1 ? "#1e3a5f" : "#1e2535"
-                                border.color: offboardModeRow.mode === 1 ? "#f97316" : "#334155"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Velocity"; color: offboardModeRow.mode === 1 ? "#fb923c" : "#64748b"; font.pixelSize: 9 }
-                                MouseArea { anchors.fill: parent; onClicked: offboardModeRow.mode = 1 }
+                            Rectangle { width:84;height:24;radius:5; color:offboardModeRow.mode===1?"#1e3a5f":"#1e2535"; border.color:offboardModeRow.mode===1?"#f97316":"#334155";border.width:1
+                                Text{anchors.centerIn:parent;text:"Velocity";color:offboardModeRow.mode===1?"#fb923c":"#64748b";font.pixelSize:9}
+                                MouseArea{anchors.fill:parent;onClicked:offboardModeRow.mode=1}
                             }
                         }
-
-                        // Position inputs
-                        Row {
-                            width: parent.width; spacing: 4; visible: offboardModeRow.mode === 0
+                        Row { width: parent.width; spacing: 4; visible: offboardModeRow.mode === 0
                             Column { width: (parent.width-8)/4; spacing: 1
-                                Text { text: "N (m)"; color: "#64748b"; font.pixelSize: 8 }
+                                Text { text: "N(m)"; color: "#64748b"; font.pixelSize: 8 }
                                 TextField { id: northField; width: parent.width; height: 24; text: "0.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
                             }
                             Column { width: (parent.width-8)/4; spacing: 1
-                                Text { text: "E (m)"; color: "#64748b"; font.pixelSize: 8 }
+                                Text { text: "E(m)"; color: "#64748b"; font.pixelSize: 8 }
                                 TextField { id: eastField; width: parent.width; height: 24; text: "0.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
                             }
                             Column { width: (parent.width-8)/4; spacing: 1
-                                Text { text: "D (m)"; color: "#64748b"; font.pixelSize: 8 }
+                                Text { text: "D(m)"; color: "#64748b"; font.pixelSize: 8 }
                                 TextField { id: downField; width: parent.width; height: 24; text: "-5.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
                             }
                             Column { width: (parent.width-8)/4; spacing: 1
@@ -826,10 +1063,7 @@ Item {
                                 TextField { id: yawPosField; width: parent.width; height: 24; text: "0.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
                             }
                         }
-
-                        // Velocity inputs
-                        Row {
-                            width: parent.width; spacing: 4; visible: offboardModeRow.mode === 1
+                        Row { width: parent.width; spacing: 4; visible: offboardModeRow.mode === 1
                             Column { width: (parent.width-8)/4; spacing: 1
                                 Text { text: "vN"; color: "#64748b"; font.pixelSize: 8 }
                                 TextField { id: vnField; width: parent.width; height: 24; text: "0.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
@@ -847,372 +1081,53 @@ Item {
                                 TextField { id: yawRateField; width: parent.width; height: 24; text: "0.0"; color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 4; background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" } }
                             }
                         }
-
-                        // Action buttons — proportional widths so they
-                        // never overflow when the panel is narrow.
-                        Row {
-                            id: offboardActionsRow
-                            width: parent.width; spacing: 5
-                            readonly property real _w: (width - 10) / 4   // 4 slots, 2 spacings of 5
-
-                            Rectangle {
-                                width: offboardActionsRow._w * 2; height: 28; radius: 5
-                                color: activateM.containsMouse ? "#c2410c" : "#9a3412"; border.color: "#f97316"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "OFFBOARD"; color: "#fed7aa"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1; elide: Text.ElideRight }
-                                MouseArea { id: activateM; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ros2.activateOffboardMode(root.selectedDroneId) } }
+                        Row { id: offboardActionsRow; width: parent.width; spacing: 5
+                            readonly property real _w: (width - 10) / 4
+                            Rectangle { width:offboardActionsRow._w*2;height:28;radius:5;color:activateM.containsMouse?"#c2410c":"#9a3412";border.color:"#f97316";border.width:1
+                                Text{anchors.centerIn:parent;text:"OFFBOARD";color:"#fed7aa";font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
+                                MouseArea{id:activateM;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2&&root.selectedDroneId!=="")ros2.activateOffboardMode(root.selectedDroneId)}}
                             }
-                            Rectangle {
-                                width: offboardActionsRow._w; height: 28; radius: 5
-                                color: sendM.containsMouse ? "#1d4ed8" : "#1e3a5f"; border.color: "#2563eb"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "▶ SEND"; color: "#93c5fd"; font.pixelSize: 9; font.weight: Font.Bold; elide: Text.ElideRight }
-                                MouseArea {
-                                    id: sendM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
-                                        if (offboardModeRow.mode === 0)
-                                            ros2.setOffboardPosition(root.selectedDroneId, parseFloat(northField.text)||0, parseFloat(eastField.text)||0, parseFloat(downField.text)||-5, parseFloat(yawPosField.text)||0)
+                            Rectangle { width:offboardActionsRow._w;height:28;radius:5;color:sendM.containsMouse?"#1d4ed8":"#1e3a5f";border.color:"#2563eb";border.width:1
+                                Text{anchors.centerIn:parent;text:"▶ SEND";color:"#93c5fd";font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
+                                MouseArea{id:sendM;anchors.fill:parent;hoverEnabled:true
+                                    onClicked:{
+                                        if(typeof ros2==="undefined"||!ros2||root.selectedDroneId==="")return
+                                        if(offboardModeRow.mode===0)
+                                            ros2.setOffboardPosition(root.selectedDroneId,parseFloat(northField.text)||0,parseFloat(eastField.text)||0,parseFloat(downField.text)||-5,parseFloat(yawPosField.text)||0)
                                         else
-                                            ros2.setOffboardVelocity(root.selectedDroneId, parseFloat(vnField.text)||0, parseFloat(veField.text)||0, parseFloat(vdField.text)||0, parseFloat(yawRateField.text)||0)
+                                            ros2.setOffboardVelocity(root.selectedDroneId,parseFloat(vnField.text)||0,parseFloat(veField.text)||0,parseFloat(vdField.text)||0,parseFloat(yawRateField.text)||0)
                                     }
                                 }
                             }
-                            Rectangle {
-                                width: offboardActionsRow._w; height: 28; radius: 5
-                                color: stopOffM.containsMouse ? "#7f1d1d" : "#1e2535"; border.color: "#ef4444"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "■ STOP"; color: "#fca5a5"; font.pixelSize: 9; font.weight: Font.Bold; elide: Text.ElideRight }
-                                MouseArea { id: stopOffM; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ros2.stopOffboard(root.selectedDroneId) } }
+                            Rectangle { width:offboardActionsRow._w;height:28;radius:5;color:stopOffM.containsMouse?"#7f1d1d":"#1e2535";border.color:"#ef4444";border.width:1
+                                Text{anchors.centerIn:parent;text:"■ STOP";color:"#fca5a5";font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
+                                MouseArea{id:stopOffM;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2&&root.selectedDroneId!=="")ros2.stopOffboard(root.selectedDroneId)}}
                             }
                         }
                     }
                 }
 
-                // ── Frame Conversion Debug ────────────────────────────────
-                Text { text: "FRAME CONVERSION (NED ↔ ENU)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
-                Rectangle {
-                    width: parent.width; height: frameCol.implicitHeight + 16; radius: 8
-                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
-                    property var frameData: ({})
-                    Timer {
-                        interval: 200; running: true; repeat: true
-                        onTriggered: {
-                            if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
-                            parent.frameData = ros2.getFrameData(root.selectedDroneId)
-                        }
-                    }
-
-                    Column {
-                        id: frameCol
-                        anchors { fill: parent; margins: 10 }
-                        spacing: 8
-
-                        // Info text
-                        Text {
-                            width: parent.width
-                            text: "PX4 uses NED (North-East-Down), ROS2 uses ENU (East-North-Up). Conversion: [E,N,U] = [E,N,-D]"
-                            color: "#64748b"; font.pixelSize: 8
-                            wrapMode: Text.WordWrap
-                        }
-
-                        // Side-by-side comparison
-                        Row {
-                            width: parent.width; spacing: 10
-
-                            // NED (PX4)
-                            Column {
-                                width: (parent.width - 10) / 2
-                                spacing: 4
-
-                                Rectangle {
-                                    width: parent.width; height: 24; radius: 4
-                                    color: "#7f1d1d"; border.color: "#ef4444"; border.width: 1
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "NED (PX4 Native)"
-                                        color: "#fca5a5"; font.pixelSize: 10; font.weight: Font.Bold
-                                    }
-                                }
-
-                                Column {
-                                    width: parent.width; spacing: 2
-                                    Repeater {
-                                        model: [
-                                            { key: "ned_north", label: "North", unit: "m", color: "#ef4444" },
-                                            { key: "ned_east",  label: "East",  unit: "m", color: "#ef4444" },
-                                            { key: "ned_down",  label: "Down",  unit: "m", color: "#ef4444" },
-                                        ]
-                                        delegate: Row {
-                                            width: parent.width; height: 20; spacing: 4
-                                            Text {
-                                                text: modelData.label + ":"
-                                                color: "#94a3b8"; font.pixelSize: 9; width: 50
-                                            }
-                                            Text {
-                                                text: {
-                                                    var val = frameCol.parent.frameData[modelData.key]
-                                                    return val !== undefined ? val.toFixed(2) + modelData.unit : "—"
-                                                }
-                                                color: modelData.color
-                                                font.pixelSize: 10; font.family: "Consolas"; font.weight: Font.Bold
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // ENU (ROS2)
-                            Column {
-                                width: (parent.width - 10) / 2
-                                spacing: 4
-
-                                Rectangle {
-                                    width: parent.width; height: 24; radius: 4
-                                    color: "#14532d"; border.color: "#22c55e"; border.width: 1
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "ENU (ROS2 Standard)"
-                                        color: "#86efac"; font.pixelSize: 10; font.weight: Font.Bold
-                                    }
-                                }
-
-                                Column {
-                                    width: parent.width; spacing: 2
-                                    Repeater {
-                                        model: [
-                                            { key: "enu_east",  label: "East",  unit: "m", color: "#22c55e" },
-                                            { key: "enu_north", label: "North", unit: "m", color: "#22c55e" },
-                                            { key: "enu_up",    label: "Up",    unit: "m", color: "#22c55e" },
-                                        ]
-                                        delegate: Row {
-                                            width: parent.width; height: 20; spacing: 4
-                                            Text {
-                                                text: modelData.label + ":"
-                                                color: "#94a3b8"; font.pixelSize: 9; width: 50
-                                            }
-                                            Text {
-                                                text: {
-                                                    var val = frameCol.parent.frameData[modelData.key]
-                                                    return val !== undefined ? val.toFixed(2) + modelData.unit : "—"
-                                                }
-                                                color: modelData.color
-                                                font.pixelSize: 10; font.family: "Consolas"; font.weight: Font.Bold
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // 2D Visualization (Top-down view)
-                        Rectangle {
-                            width: parent.width; height: 180; radius: 6
-                            color: "#0d1117"; border.color: "#2d3748"; border.width: 1
-
-                            Canvas {
-                                id: frameCanvas
-                                anchors.fill: parent
-                                anchors.margins: 5
-
-                                property var frameData: frameCol.parent.frameData
-
-                                onFrameDataChanged: requestPaint()
-
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
-
-                                    var centerX = width / 2
-                                    var centerY = height / 2
-                                    var scale = 15  // pixels per meter
-
-                                    // Draw grid
-                                    ctx.strokeStyle = "#1e293b"
-                                    ctx.lineWidth = 1
-                                    for (var i = -10; i <= 10; i++) {
-                                        if (i === 0) continue
-                                        // Vertical lines
-                                        ctx.beginPath()
-                                        ctx.moveTo(centerX + i * scale, 0)
-                                        ctx.lineTo(centerX + i * scale, height)
-                                        ctx.stroke()
-                                        // Horizontal lines
-                                        ctx.beginPath()
-                                        ctx.moveTo(0, centerY + i * scale)
-                                        ctx.lineTo(width, centerY + i * scale)
-                                        ctx.stroke()
-                                    }
-
-                                    // Draw axes
-                                    // North (red, up)
-                                    ctx.strokeStyle = "#ef4444"
-                                    ctx.lineWidth = 2
-                                    ctx.beginPath()
-                                    ctx.moveTo(centerX, centerY)
-                                    ctx.lineTo(centerX, centerY - 40)
-                                    ctx.stroke()
-                                    ctx.fillStyle = "#ef4444"
-                                    ctx.font = "bold 10px sans-serif"
-                                    ctx.fillText("N", centerX + 5, centerY - 35)
-
-                                    // East (red, right)
-                                    ctx.strokeStyle = "#ef4444"
-                                    ctx.beginPath()
-                                    ctx.moveTo(centerX, centerY)
-                                    ctx.lineTo(centerX + 40, centerY)
-                                    ctx.stroke()
-                                    ctx.fillStyle = "#ef4444"
-                                    ctx.fillText("E", centerX + 35, centerY - 5)
-
-                                    // Draw drone position
-                                    var ned_n = frameData.ned_north || 0
-                                    var ned_e = frameData.ned_east || 0
-                                    var droneX = centerX + ned_e * scale
-                                    var droneY = centerY - ned_n * scale  // Invert Y for screen coords
-
-                                    // Drone circle
-                                    ctx.fillStyle = "#2563eb"
-                                    ctx.beginPath()
-                                    ctx.arc(droneX, droneY, 6, 0, 2 * Math.PI)
-                                    ctx.fill()
-
-                                    // Line from origin to drone
-                                    ctx.strokeStyle = "#3b82f6"
-                                    ctx.lineWidth = 1
-                                    ctx.setLineDash([3, 3])
-                                    ctx.beginPath()
-                                    ctx.moveTo(centerX, centerY)
-                                    ctx.lineTo(droneX, droneY)
-                                    ctx.stroke()
-                                    ctx.setLineDash([])
-
-                                    // Position label
-                                    ctx.fillStyle = "#93c5fd"
-                                    ctx.font = "9px Consolas"
-                                    ctx.fillText("(" + ned_n.toFixed(1) + ", " + ned_e.toFixed(1) + ")", droneX + 10, droneY)
-                                }
-                            }
-
-                            Text {
-                                anchors { bottom: parent.bottom; left: parent.left; margins: 5 }
-                                text: "Top-down view (NED frame)"
-                                color: "#475569"; font.pixelSize: 8
-                            }
-                        }
-                    }
-                }
-
-            }
-        }
-
-        // ════════════════ RIGHT COLUMN — Vehicle Commands ════════════════
-        ScrollView {
-            id: rightSv
-            anchors { top: parent.top; left: centerSv.right; right: parent.right; bottom: parent.bottom; topMargin: 12; leftMargin: 10; rightMargin: 12; bottomMargin: 12 }
-            clip: true
-            contentWidth: availableWidth
-            contentHeight: rightCol.implicitHeight
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
-            Column {
-                id: rightCol
-                width: rightSv.availableWidth
-                spacing: 8
-
-                Text { text: "VEHICLE COMMANDS (uXRCE-DDS)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
-                Rectangle {
-                    width: parent.width; height: cmdCol.implicitHeight + 20; radius: 8
-                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
-                    Column {
-                        id: cmdCol
-                        anchors { fill: parent; margins: 10 }
-                        spacing: 6
-
-                        Repeater {
-                            model: [
-                                { label: "ARM",    color: "#22c55e", fn: "armBridge"    },
-                                { label: "DISARM", color: "#ef4444", fn: "disarmBridge" },
-                                { label: "LAND",   color: "#f59e0b", fn: "landBridge"   },
-                                { label: "RTL",    color: "#f97316", fn: "rtlBridge"    },
-                            ]
-                            delegate: Rectangle {
-                                width: rightCol.width - 20; height: 32; radius: 5
-                                color: cMa.containsMouse ? Qt.rgba(Qt.color(modelData.color).r, Qt.color(modelData.color).g, Qt.color(modelData.color).b, 0.2) : "#1e2535"
-                                border.color: cMa.containsMouse ? modelData.color : "#334155"; border.width: 1
-                                Behavior on color { ColorAnimation { duration: 80 } }
-                                Text { anchors.centerIn: parent; text: modelData.label; color: modelData.color; font.pixelSize: 11; font.weight: Font.Bold }
-                                MouseArea {
-                                    id: cMa; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
-                                        if      (modelData.fn === "armBridge")    ros2.armBridge(root.selectedDroneId)
-                                        else if (modelData.fn === "disarmBridge") ros2.disarmBridge(root.selectedDroneId)
-                                        else if (modelData.fn === "landBridge")   ros2.landBridge(root.selectedDroneId)
-                                        else if (modelData.fn === "rtlBridge")    ros2.rtlBridge(root.selectedDroneId)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Takeoff row
-                        Row {
-                            spacing: 4
-                            Rectangle {
-                                width: rightCol.width - 64 - 20 - 8; height: 32; radius: 5
-                                color: toMa.containsMouse ? "#1e3a5f" : "#1e2535"
-                                border.color: toMa.containsMouse ? "#2563eb" : "#334155"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "TAKEOFF"; color: "#2563eb"; font.pixelSize: 10; font.weight: Font.Bold }
-                                MouseArea { id: toMa; anchors.fill: parent; hoverEnabled: true; onClicked: { if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ros2.takeoffBridge(root.selectedDroneId, parseFloat(toAlt.text) || 10) } }
-                            }
-                            TextField {
-                                id: toAlt; width: 52; height: 32; text: "10"
-                                background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" }
-                                color: "#e2e8f0"; font.pixelSize: 10; font.family: "Consolas"; leftPadding: 6
-                            }
-                            Text { text: "m"; color: "#64748b"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
-                        }
-                    }
-                }
-
-                // ── Mission Management ────────────────────────────────────
+                // ── Mission Management ──────────────────────────────
                 Text { text: "MISSION MANAGEMENT"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
-
                 Rectangle {
-                    width: parent.width; height: missionCol.implicitHeight + 20; radius: 8
+                    width: parent.width - 24; height: missionCol.implicitHeight + 20; radius: 8
                     color: "#1a2035"; border.color: "#2d3748"; border.width: 1
-
                     Column {
                         id: missionCol
                         anchors { fill: parent; margins: 10 }
                         spacing: 8
-
-                        // Mission Status Display
                         property var missionStatus: ({})
-                        Timer {
-                            interval: 500; running: true; repeat: true
-                            onTriggered: {
-                                if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return
-                                missionCol.missionStatus = ros2.getMissionStatus(root.selectedDroneId)
-                            }
+                        Timer { interval: 500; running: true; repeat: true
+                            onTriggered: { if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return; missionCol.missionStatus = ros2.getMissionStatus(root.selectedDroneId) }
                         }
-
-                        // Status indicator
                         Rectangle {
-                            width: parent.width; height: 50; radius: 6
+                            width: parent.width; height: 52; radius: 6
                             color: "#0d1117"; border.color: missionCol.missionStatus.active ? "#22c55e" : "#374151"; border.width: 1
-
                             Column {
                                 anchors { fill: parent; margins: 8 }
                                 spacing: 4
-
-                                Row {
-                                    spacing: 6
-                                    Rectangle {
-                                        width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter
-                                        color: (missionCol.missionStatus.active || false) ? "#22c55e" : "#6b7280"
+                                Row { spacing: 6
+                                    Rectangle { width:8;height:8;radius:4;anchors.verticalCenter:parent.verticalCenter;color:(missionCol.missionStatus.active||false)?"#22c55e":"#6b7280"
                                         SequentialAnimation on opacity {
                                             running: missionCol.missionStatus.active || false
                                             loops: Animation.Infinite
@@ -1221,323 +1136,192 @@ Item {
                                         }
                                     }
                                     Text {
-                                        text: missionCol.missionStatus.finished ? "Mission Complete" :
-                                              missionCol.missionStatus.failure ? "Mission Failed" :
-                                              missionCol.missionStatus.active ? "Mission Active" : "No Mission"
-                                        color: missionCol.missionStatus.finished ? "#22c55e" :
-                                               missionCol.missionStatus.failure ? "#ef4444" :
-                                               missionCol.missionStatus.active ? "#22c55e" : "#6b7280"
+                                        text: missionCol.missionStatus.finished?"Mission Complete":missionCol.missionStatus.failure?"Mission Failed":missionCol.missionStatus.active?"Mission Active":"No Mission"
+                                        color: missionCol.missionStatus.finished?"#22c55e":missionCol.missionStatus.failure?"#ef4444":missionCol.missionStatus.active?"#22c55e":"#6b7280"
                                         font.pixelSize: 10; font.weight: Font.Bold
                                     }
                                 }
-
-                                // Progress bar
                                 Rectangle {
                                     width: parent.width; height: 20; radius: 4
                                     color: "#1e2535"; border.color: "#2d3748"; border.width: 1
                                     visible: missionCol.missionStatus.total_count > 0
-
                                     Rectangle {
-                                        width: missionCol.missionStatus.total_count > 0 ?
-                                               (parent.width - 2) * (missionCol.missionStatus.current_seq / missionCol.missionStatus.total_count) : 0
-                                        height: parent.height - 2; radius: 3
+                                        width: missionCol.missionStatus.total_count>0?(parent.width-2)*(missionCol.missionStatus.current_seq/missionCol.missionStatus.total_count):0
+                                        height: parent.height-2; radius: 3; color: "#22c55e"
                                         anchors { left: parent.left; top: parent.top; margins: 1 }
-                                        color: "#22c55e"
                                         Behavior on width { NumberAnimation { duration: 200 } }
                                     }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "WP " + (missionCol.missionStatus.current_seq + 1) + " / " + missionCol.missionStatus.total_count
-                                        color: "#e2e8f0"; font.pixelSize: 9; font.weight: Font.Bold
-                                    }
+                                    Text { anchors.centerIn: parent; text: "WP "+(missionCol.missionStatus.current_seq+1)+" / "+missionCol.missionStatus.total_count; color: "#e2e8f0"; font.pixelSize: 9; font.weight: Font.Bold }
                                 }
                             }
                         }
+                        Row { width: parent.width; spacing: 4
+                            Rectangle{width:(parent.width-8)/3;height:28;radius:5;color:startMa.containsMouse?"#166534":"#14532d";border.color:"#22c55e";border.width:1
+                                Text{anchors.centerIn:parent;text:"▶ START";color:"#86efac";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:startMa;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2&&root.selectedDroneId!=="")ros2.startMission(root.selectedDroneId)}}
+                            }
+                            Rectangle{width:(parent.width-8)/3;height:28;radius:5;color:pauseMa.containsMouse?"#c2410c":"#9a3412";border.color:"#f97316";border.width:1
+                                Text{anchors.centerIn:parent;text:"⏸ PAUSE";color:"#fed7aa";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:pauseMa;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2&&root.selectedDroneId!=="")ros2.pauseMission(root.selectedDroneId)}}
+                            }
+                            Rectangle{width:(parent.width-8)/3;height:28;radius:5;color:clearMa.containsMouse?"#7f1d1d":"#450a0a";border.color:"#ef4444";border.width:1
+                                Text{anchors.centerIn:parent;text:"✕ CLEAR";color:"#fca5a5";font.pixelSize:9;font.weight:Font.Bold}
+                                MouseArea{id:clearMa;anchors.fill:parent;hoverEnabled:true;onClicked:{if(typeof ros2!=="undefined"&&ros2&&root.selectedDroneId!=="")ros2.clearMission(root.selectedDroneId)}}
+                            }
+                        }
+                        Rectangle { width:parent.width;height:32;radius:5;color:uploadMa.containsMouse?"#1e3a5f":"#1e2535";border.color:"#2563eb";border.width:1
+                            Text{anchors.centerIn:parent;text:"⬆ UPLOAD MISSION";color:"#93c5fd";font.pixelSize:10;font.weight:Font.Bold}
+                            MouseArea{id:uploadMa;anchors.fill:parent;hoverEnabled:true;onClicked:missionDialog.open()}
+                        }
+                        Text { width: parent.width; text: "ARM + TAKEOFF before starting mission"; color: "#64748b"; font.pixelSize: 8; wrapMode: Text.WordWrap }
+                    }
+                }
 
-                        // Mission Control Buttons
+                // ── Frame Conversion Debug ──────────────────────────
+                Text { text: "FRAME CONVERSION (NED ↔ ENU)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                Rectangle {
+                    width: parent.width - 24; height: frameCol.implicitHeight + 16; radius: 8
+                    color: "#1a2035"; border.color: "#2d3748"; border.width: 1
+                    property var frameData: ({})
+                    Timer { interval: 200; running: true; repeat: true
+                        onTriggered: { if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") return; parent.frameData = ros2.getFrameData(root.selectedDroneId) }
+                    }
+                    Column {
+                        id: frameCol
+                        anchors { fill: parent; margins: 10 }
+                        spacing: 8
+                        Text { width: parent.width; text: "PX4: NED (North-East-Down)  ↔  ROS2: ENU (East-North-Up)  [E,N,U]=[E,N,−D]"; color: "#64748b"; font.pixelSize: 8; wrapMode: Text.WordWrap }
                         Row {
-                            width: parent.width; spacing: 4
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: startMa.containsMouse ? "#166534" : "#14532d"
-                                border.color: "#22c55e"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "▶ START"; color: "#86efac"; font.pixelSize: 9; font.weight: Font.Bold }
-                                MouseArea {
-                                    id: startMa; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "")
-                                            ros2.startMission(root.selectedDroneId)
+                            width: parent.width; spacing: 10
+                            Column { width: (parent.width-10)/2; spacing: 4
+                                Rectangle{width:parent.width;height:22;radius:4;color:"#7f1d1d";border.color:"#ef4444";border.width:1;Text{anchors.centerIn:parent;text:"NED (PX4)";color:"#fca5a5";font.pixelSize:10;font.weight:Font.Bold}}
+                                Repeater {
+                                    model:[{key:"ned_north",label:"North",color:"#ef4444"},{key:"ned_east",label:"East",color:"#ef4444"},{key:"ned_down",label:"Down",color:"#ef4444"}]
+                                    delegate:Row{width:parent.width;height:20;spacing:4
+                                        Text{text:modelData.label+":";color:"#94a3b8";font.pixelSize:9;width:50}
+                                        Text {
+                                            text: {
+                                                var v = frameCol.parent.frameData[modelData.key]
+                                                return v !== undefined ? v.toFixed(2) + "m" : "—"
+                                            }
+                                            color: modelData.color
+                                            font.pixelSize: 10
+                                            font.family: "Consolas"
+                                            font.weight: Font.Bold
+                                        }
                                     }
                                 }
                             }
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: pauseMa.containsMouse ? "#c2410c" : "#9a3412"
-                                border.color: "#f97316"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "⏸ PAUSE"; color: "#fed7aa"; font.pixelSize: 9; font.weight: Font.Bold }
-                                MouseArea {
-                                    id: pauseMa; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "")
-                                            ros2.pauseMission(root.selectedDroneId)
+                            Column { width: (parent.width-10)/2; spacing: 4
+                                Rectangle{width:parent.width;height:22;radius:4;color:"#14532d";border.color:"#22c55e";border.width:1;Text{anchors.centerIn:parent;text:"ENU (ROS2)";color:"#86efac";font.pixelSize:10;font.weight:Font.Bold}}
+                                Repeater {
+                                    model:[{key:"enu_east",label:"East",color:"#22c55e"},{key:"enu_north",label:"North",color:"#22c55e"},{key:"enu_up",label:"Up",color:"#22c55e"}]
+                                    delegate:Row{width:parent.width;height:20;spacing:4
+                                        Text{text:modelData.label+":";color:"#94a3b8";font.pixelSize:9;width:50}
+                                        Text {
+                                            text: {
+                                                var v = frameCol.parent.frameData[modelData.key]
+                                                return v !== undefined ? v.toFixed(2) + "m" : "—"
+                                            }
+                                            color: modelData.color
+                                            font.pixelSize: 10
+                                            font.family: "Consolas"
+                                            font.weight: Font.Bold
+                                        }
                                     }
                                 }
                             }
-
-                            Rectangle {
-                                width: (parent.width - 8) / 3; height: 28; radius: 5
-                                color: clearMa.containsMouse ? "#7f1d1d" : "#450a0a"
-                                border.color: "#ef4444"; border.width: 1
-                                Text { anchors.centerIn: parent; text: "✕ CLEAR"; color: "#fca5a5"; font.pixelSize: 9; font.weight: Font.Bold }
-                                MouseArea {
-                                    id: clearMa; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: {
-                                        if (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "")
-                                            ros2.clearMission(root.selectedDroneId)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Upload Mission Button
-                        Rectangle {
-                            width: parent.width; height: 32; radius: 5
-                            color: uploadMa.containsMouse ? "#1e3a5f" : "#1e2535"
-                            border.color: "#2563eb"; border.width: 1
-                            Text { anchors.centerIn: parent; text: "⬆ UPLOAD MISSION"; color: "#93c5fd"; font.pixelSize: 10; font.weight: Font.Bold }
-                            MouseArea {
-                                id: uploadMa; anchors.fill: parent; hoverEnabled: true
-                                onClicked: {
-                                    // Open mission upload dialog
-                                    missionDialog.open()
-                                }
-                            }
-                        }
-
-                        // Info text
-                        Text {
-                            width: parent.width
-                            text: "Upload waypoints, then ARM + TAKEOFF before starting mission"
-                            color: "#64748b"; font.pixelSize: 8
-                            wrapMode: Text.WordWrap
                         }
                     }
+                }
+                Item { width: 1; height: 8 }
+            }
+        }
+    }
+
+    // ── Mission Upload Dialog ─────────────────────────────────────────────
+    Dialog {
+        id: missionDialog
+        title: "Upload Mission"
+        modal: true
+        anchors.centerIn: parent
+        width: 500; height: 600
+
+        background: Rectangle { color: "#1a2035"; radius: 8; border.color: "#2d3748"; border.width: 1 }
+
+        ListModel { id: dialogWaypoints }
+
+        onOpened: {
+            dialogWaypoints.clear()
+            if (root.globalWaypoints && root.globalWaypoints.count > 0) {
+                for (var i = 0; i < root.globalWaypoints.count; i++) {
+                    var wp = root.globalWaypoints.get(i)
+                    dialogWaypoints.append({ lat: wp.lat || 0, lon: wp.lon || 0, alt: wp.alt || 15.0, hold_time: wp.hold_time || 2.0 })
                 }
             }
         }
 
-        // ── Mission Upload Dialog ─────────────────────────────────────────────
-        Dialog {
-            id: missionDialog
-            title: "Upload Mission"
-            modal: true
-            anchors.centerIn: parent
-            width: 500; height: 600
+        contentItem: Column {
+            anchors { fill: parent; margins: 12 }
+            spacing: 8
 
-            background: Rectangle {
-                color: "#1a2035"; radius: 8
-                border.color: "#2d3748"; border.width: 1
-            }
+            Text { text: "Waypoints (" + dialogWaypoints.count + ")"; color: "#e2e8f0"; font.pixelSize: 11; font.weight: Font.Bold }
 
-            // Local waypoint model (copy from global + manual additions)
-            ListModel { id: dialogWaypoints }
-
-            onOpened: {
-                // Load waypoints from map when dialog opens
-                dialogWaypoints.clear()
-                if (root.globalWaypoints && root.globalWaypoints.count > 0) {
-                    for (var i = 0; i < root.globalWaypoints.count; i++) {
-                        var wp = root.globalWaypoints.get(i)
-                        dialogWaypoints.append({
-                            lat: wp.lat,
-                            lon: wp.lon,
-                            alt: wp.alt,
-                            hold_time: 2.0
-                        })
-                    }
-                }
-            }
-
-            Column {
-                anchors.fill: parent
-                spacing: 10
-
-                Text {
-                    text: "Mission Waypoints"
-                    color: "#e2e8f0"; font.pixelSize: 12; font.weight: Font.Bold
-                }
-
-                Text {
-                    text: dialogWaypoints.count > 0 ?
-                          dialogWaypoints.count + " waypoint(s) from map" :
-                          "No waypoints set. Add waypoints on the map first or use test mission."
-                    color: "#94a3b8"; font.pixelSize: 9
-                    wrapMode: Text.WordWrap; width: parent.width
-                }
-
-                // Waypoint list
-                Rectangle {
-                    width: parent.width; height: 300
-                    color: "#0d1117"; radius: 6
-                    border.color: "#2d3748"; border.width: 1
-
-                    ScrollView {
-                        anchors.fill: parent
-                        anchors.margins: 5
-                        clip: true
-
-                        ListView {
-                            id: waypointList
+            Rectangle {
+                width: parent.width; height: 260; radius: 6
+                color: "#0d1117"; border.color: "#2d3748"; border.width: 1
+                ScrollView { anchors.fill: parent; clip: true; contentWidth: availableWidth; ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    Column { width: parent.width; spacing: 1; topPadding: 4
+                        Repeater {
                             model: dialogWaypoints
-                            spacing: 4
-
                             delegate: Rectangle {
-                                width: waypointList.width; height: 60; radius: 4
-                                color: "#1e2535"; border.color: "#334155"; border.width: 1
-
-                                Column {
-                                    anchors { fill: parent; margins: 8 }
-                                    spacing: 2
-
-                                    Row {
-                                        spacing: 10
-                                        Text {
-                                            text: "WP" + (index + 1)
-                                            color: "#2563eb"; font.pixelSize: 10; font.weight: Font.Bold
-                                            width: 30
-                                        }
-                                        Text {
-                                            text: "Lat: " + model.lat.toFixed(6) + "  Lon: " + model.lon.toFixed(6)
-                                            color: "#e2e8f0"; font.pixelSize: 9
-                                        }
-                                    }
-                                    Row {
-                                        spacing: 10
-                                        Text { text: "Alt: " + model.alt.toFixed(1) + "m"; color: "#94a3b8"; font.pixelSize: 8; width: 80 }
-                                        Text { text: "Hold: " + model.hold_time.toFixed(1) + "s"; color: "#94a3b8"; font.pixelSize: 8 }
-                                    }
-                                }
-
-                                // Delete button
-                                Rectangle {
-                                    anchors { right: parent.right; top: parent.top; margins: 4 }
-                                    width: 20; height: 20; radius: 3
-                                    color: delMa.containsMouse ? "#7f1d1d" : "#450a0a"
-                                    border.color: "#ef4444"; border.width: 1
-                                    Text { anchors.centerIn: parent; text: "✕"; color: "#fca5a5"; font.pixelSize: 10 }
-                                    MouseArea {
-                                        id: delMa; anchors.fill: parent; hoverEnabled: true
-                                        onClicked: dialogWaypoints.remove(index)
-                                    }
+                                width: parent.width; height: 30; color: index % 2 === 0 ? "#0d1117" : "#131a2a"
+                                Row {
+                                    anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                                    spacing: 6
+                                    Text { text: (index+1)+"."; color:"#475569"; font.pixelSize:9; width:20; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:"Lat:"; color:"#64748b"; font.pixelSize:9; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:lat.toFixed(6); color:"#8be9fd"; font.pixelSize:9; font.family:"Consolas"; width:80; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:"Lon:"; color:"#64748b"; font.pixelSize:9; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:lon.toFixed(6); color:"#8be9fd"; font.pixelSize:9; font.family:"Consolas"; width:80; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:"Alt:"; color:"#64748b"; font.pixelSize:9; anchors.verticalCenter:parent.verticalCenter }
+                                    Text { text:alt.toFixed(1)+"m"; color:"#86efac"; font.pixelSize:9; font.family:"Consolas"; anchors.verticalCenter:parent.verticalCenter }
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                // Add waypoint manually
-                Row {
-                    spacing: 5
-                    TextField {
-                        id: newLat; width: 100; height: 28
-                        placeholderText: "Latitude"
-                        background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" }
-                        color: "#e2e8f0"; font.pixelSize: 9
-                    }
-                    TextField {
-                        id: newLon; width: 100; height: 28
-                        placeholderText: "Longitude"
-                        background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" }
-                        color: "#e2e8f0"; font.pixelSize: 9
-                    }
-                    TextField {
-                        id: newAlt; width: 60; height: 28
-                        placeholderText: "Alt"
-                        text: "15"
-                        background: Rectangle { color: "#1e2535"; radius: 4; border.color: "#2d3748" }
-                        color: "#e2e8f0"; font.pixelSize: 9
-                    }
-                    Button {
-                        text: "+ Add"
-                        height: 28
+            Text { text: "No waypoints. Add from Map or load test mission."; color: "#374151"; font.pixelSize: 10; visible: dialogWaypoints.count === 0 }
+
+            Row { spacing: 8
+                Rectangle { width: 140; height: 32; radius: 5; color: dlgUpM.containsMouse ? "#1e3a5f" : "#1e2535"; border.color: "#2563eb"; border.width: 1
+                    Text { anchors.centerIn: parent; text: "⬆ Upload"; color: "#93c5fd"; font.pixelSize: 10; font.weight: Font.Bold }
+                    MouseArea { id: dlgUpM; anchors.fill: parent; hoverEnabled: true
                         onClicked: {
-                            var lat = parseFloat(newLat.text)
-                            var lon = parseFloat(newLon.text)
-                            var alt = parseFloat(newAlt.text) || 15.0
-                            if (!isNaN(lat) && !isNaN(lon)) {
-                                dialogWaypoints.append({
-                                    lat: lat, lon: lon, alt: alt, hold_time: 2.0
-                                })
-                                newLat.text = ""
-                                newLon.text = ""
-                            }
+                            if (typeof ros2 === "undefined" || !ros2 || root.selectedDroneId === "") { missionDialog.close(); return }
+                            var wps = []; for (var i = 0; i < dialogWaypoints.count; i++) { var w = dialogWaypoints.get(i); wps.push({lat:w.lat,lon:w.lon,alt:w.alt,hold_time:w.hold_time}) }
+                            if (ros2.uploadMission(root.selectedDroneId, wps)) missionDialog.close()
                         }
                     }
                 }
-
-                // Action buttons
-                Row {
-                    spacing: 10
-                    Button {
-                        text: "Upload Mission (" + dialogWaypoints.count + " WP)"
-                        enabled: dialogWaypoints.count > 0
-                        onClicked: {
-                            console.log("[Mission Upload] Button clicked")
-                            console.log("[Mission Upload] ros2 defined:", typeof ros2 !== "undefined")
-                            console.log("[Mission Upload] selectedDroneId:", root.selectedDroneId)
-                            console.log("[Mission Upload] waypoint count:", dialogWaypoints.count)
-                            
-                            if (typeof ros2 === "undefined" || !ros2) {
-                                console.log("[Mission Upload] ERROR: ros2 not available")
-                                return
-                            }
-                            if (root.selectedDroneId === "") {
-                                console.log("[Mission Upload] ERROR: No drone selected")
-                                return
-                            }
-                            
-                            // Convert to array
-                            var waypoints = []
-                            for (var i = 0; i < dialogWaypoints.count; i++) {
-                                var wp = dialogWaypoints.get(i)
-                                waypoints.push({
-                                    "lat": wp.lat,
-                                    "lon": wp.lon,
-                                    "alt": wp.alt,
-                                    "hold_time": wp.hold_time
-                                })
-                            }
-                            
-                            console.log("[Mission Upload] Calling ros2.uploadMission with", waypoints.length, "waypoints")
-                            var success = ros2.uploadMission(root.selectedDroneId, waypoints)
-                            console.log("[Mission Upload] Upload result:", success)
-                            
-                            if (success) {
-                                console.log("[Mission Upload] Success! Closing dialog")
-                                missionDialog.close()
-                            } else {
-                                console.log("[Mission Upload] Upload failed")
-                            }
-                        }
-                    }
-                    Button {
-                        text: "Load Test Mission"
+                Rectangle { width: 140; height: 32; radius: 5; color: dlgTestM.containsMouse ? "#1e2535" : "#0d1117"; border.color: "#334155"; border.width: 1
+                    Text { anchors.centerIn: parent; text: "Load Test Mission"; color: "#64748b"; font.pixelSize: 10 }
+                    MouseArea { id: dlgTestM; anchors.fill: parent; hoverEnabled: true
                         onClicked: {
                             dialogWaypoints.clear()
-                            // Test mission waypoints (Zurich area)
-                            dialogWaypoints.append({ "lat": 47.397742, "lon": 8.545594, "alt": 15.0, "hold_time": 2.0 })
-                            dialogWaypoints.append({ "lat": 47.397842, "lon": 8.545694, "alt": 20.0, "hold_time": 3.0 })
-                            dialogWaypoints.append({ "lat": 47.397942, "lon": 8.545794, "alt": 15.0, "hold_time": 2.0 })
+                            dialogWaypoints.append({lat:47.397742,lon:8.545594,alt:15.0,hold_time:2.0})
+                            dialogWaypoints.append({lat:47.397842,lon:8.545694,alt:20.0,hold_time:3.0})
+                            dialogWaypoints.append({lat:47.397942,lon:8.545794,alt:15.0,hold_time:2.0})
                         }
                     }
-                    Button {
-                        text: "Cancel"
-                        onClicked: missionDialog.close()
-                    }
+                }
+                Rectangle { width: 80; height: 32; radius: 5; color: dlgCancelM.containsMouse ? "#450a0a" : "#1e2535"; border.color: "#ef4444"; border.width: 1
+                    Text { anchors.centerIn: parent; text: "Cancel"; color: "#fca5a5"; font.pixelSize: 10 }
+                    MouseArea { id: dlgCancelM; anchors.fill: parent; hoverEnabled: true; onClicked: missionDialog.close() }
                 }
             }
         }
+    }
 }

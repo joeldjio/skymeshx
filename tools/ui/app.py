@@ -237,8 +237,20 @@ def run() -> int:
     
     app.aboutToQuit.connect(cleanup_battery_history)
 
+    def cleanup_contexts():
+        for obj in contexts.values():
+            shutdown = getattr(obj, "shutdown", None)
+            if callable(shutdown):
+                shutdown()
+
+    app.aboutToQuit.connect(cleanup_contexts)
+
     # ── QML engine ────────────────────────────────────────────────────────
     engine = QQmlApplicationEngine()
+    video_stream = contexts.get("videoStream")
+    image_provider = getattr(video_stream, "image_provider", None)
+    if callable(image_provider):
+        engine.addImageProvider("videoStream", image_provider())
     ctx = engine.rootContext()
     for name, obj in contexts.items():
         ctx.setContextProperty(name, obj)

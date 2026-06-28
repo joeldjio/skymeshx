@@ -83,6 +83,83 @@ class SeedingConfig:
             raise ValueError("Drop duration must be positive")
 
 
+@dataclass
+class DispenserCalibration:
+    """Dispenser calibration and capacity data used for preview validation."""
+    seed_capacity: int = 500
+    seed_weight_g: float = 0.05
+    tank_capacity_kg: float = 1.0
+    seeds_per_drop: int = 1
+    max_drop_rate: float = 2.0
+
+    def __post_init__(self):
+        if self.seed_capacity <= 0:
+            raise ValueError("Seed capacity must be positive")
+        if self.seed_weight_g <= 0:
+            raise ValueError("Seed weight must be positive")
+        if self.tank_capacity_kg <= 0:
+            raise ValueError("Tank capacity must be positive")
+        if self.seeds_per_drop <= 0:
+            raise ValueError("Seeds per drop must be positive")
+        if self.max_drop_rate <= 0:
+            raise ValueError("Max drop rate must be positive")
+
+
+@dataclass
+class SeedingDropPoint:
+    """Seed drop point metadata for mission preview."""
+    lat: float
+    lon: float
+    alt: float
+    seed_count: int
+    expected_drop_id: str
+
+
+@dataclass
+class SeedingMissionPreview:
+    """Complete seeding preview data for UI and validation."""
+    waypoints: List[Waypoint]
+    waypoint_list: List[dict]
+    flight_path: List[dict]
+    flight_rows: List[dict]
+    drop_points: List[SeedingDropPoint]
+    exclusion_zones: List[dict]
+    estimated_seed_usage: int
+    estimated_seed_weight_kg: float
+    estimated_duration: float
+    estimated_battery_usage: float
+    estimated_distance: float
+    field_area: float
+    estimated_waypoint_count: int
+    warnings: List[str]
+
+    def to_dict(self) -> dict:
+        return {
+            "waypoints": self.waypoint_list,
+            "flightPath": self.flight_path,
+            "flightRows": self.flight_rows,
+            "dropPoints": [
+                {
+                    "lat": point.lat,
+                    "lon": point.lon,
+                    "alt": point.alt,
+                    "seedCount": point.seed_count,
+                    "expectedDropId": point.expected_drop_id,
+                }
+                for point in self.drop_points
+            ],
+            "exclusionZones": list(self.exclusion_zones),
+            "estimatedSeedUsage": self.estimated_seed_usage,
+            "estimatedSeedWeightKg": self.estimated_seed_weight_kg,
+            "estimatedDuration": self.estimated_duration,
+            "estimatedBatteryUsage": self.estimated_battery_usage,
+            "estimatedDistance": self.estimated_distance,
+            "fieldArea": self.field_area,
+            "estimatedWaypointCount": self.estimated_waypoint_count,
+            "warnings": list(self.warnings),
+        }
+
+
 class SeedingMissionPlanner:
     """
     Generate seeding missions with precise drop points.
@@ -174,17 +251,11 @@ class SeedingMissionPlanner:
         # Estimate total waypoints before generation
         total_distance = self._estimate_total_distance(base_waypoints)
         estimated_seeds = int(total_distance / seed_spacing)
-        estimated_waypoints = len(base_waypoints) + (estimated_seeds * 3)  # 3 WP per seed
+        estimated_waypoints = len(base_waypoints) + (estimated_seeds * 4)  # NAV + open + delay + close
         
-        # Warn if too many waypoints (ArduPilot limit is ~700)
-        MAX_WAYPOINTS = 700
-        if estimated_waypoints > MAX_WAYPOINTS:
-            raise ValueError(
-                f"Mission would generate {estimated_waypoints} waypoints "
-                f"(limit: {MAX_WAYPOINTS}). "
-                f"Increase seed_spacing (current: {seed_spacing}m) or reduce field size. "
-                f"Recommended seed_spacing: {(total_distance / (MAX_WAYPOINTS / 3)):.1f}m"
-            )
+        # Do not reject large fields here. Some autopilots have practical
+        # upload limits, but field definition and preview generation must not
+        # be blocked by a fixed vehicle-specific waypoint threshold.
         
         # Convert to Waypoint objects and insert seed drop commands
         mission_waypoints = self._insert_seed_drops(
@@ -204,6 +275,138 @@ class SeedingMissionPlanner:
             ))
         
         return mission_waypoints
+
+    def generate_seeding_mission_with_preview(
+        self,
+        boundary: FieldBoundary,
+        config: SeedingConfig,
+        calibration: Optional[DispenserCalibration] = None,
+        exclusion_zones: Optional[List[dict]] = None,
+        add_rtl: bool = True,
+    ) -> SeedingMissionPreview:
+        """
+        Generate seeding waypoints plus UI-ready preview metadata.
+
+        The preview is hardware-free and does not upload or execute a mission.
+        """
+        calibration = calibration or DispenserCalibration()
+        exclusion_zones = list(exclusion_zones or [])
+        waypoints = self.plan_seeding_mission(
+            boundary=boundary,
+            seed_spacing=config.seed_spacing,
+            row_spacing=config.row_spacing,
+            altitude=config.altitude,
+            speed=config.speed,
+            servo_channel=config.servo_channel,
+            servo_open_pwm=config.servo_open_pwm,
+            servo_close_pwm=config.servo_close_pwm,
+            drop_duration=config.drop_duration,
+            add_rtl=add_rtl,
+        )
+        stats = self.estimate_mission_stats(boundary, config)
+        drop_points = self._build_drop_points(waypoints, calibration)
+        validation = self.validate_seeding_mission(
+            boundary,
+            config,
+            calibration=calibration,
+            exclusion_zones=exclusion_zones,
+        )
+
+        return SeedingMissionPreview(
+            waypoints=waypoints,
+            waypoint_list=[
+                {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt, "cmd": wp.cmd}
+                for wp in waypoints
+            ],
+            flight_path=[
+                {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt}
+                for wp in waypoints
+                if wp.cmd == MAV_CMD_NAV_WAYPOINT
+            ],
+            flight_rows=self._build_flight_rows(boundary, config),
+            drop_points=drop_points,
+            exclusion_zones=exclusion_zones,
+            estimated_seed_usage=sum(point.seed_count for point in drop_points),
+            estimated_seed_weight_kg=self._estimate_seed_weight_kg(drop_points, calibration),
+            estimated_duration=stats["estimated_time"],
+            estimated_battery_usage=self._estimate_battery_usage(
+                stats["estimated_time"], stats["total_distance"]
+            ),
+            estimated_distance=stats["total_distance"],
+            field_area=stats["field_area"],
+            estimated_waypoint_count=validation["estimatedWaypointCount"],
+            warnings=validation["warnings"],
+        )
+
+    def validate_seeding_mission(
+        self,
+        boundary: FieldBoundary,
+        config: SeedingConfig,
+        calibration: Optional[DispenserCalibration] = None,
+        exclusion_zones: Optional[List[dict]] = None,
+        battery_available_percent: float = 100.0,
+    ) -> dict:
+        """Validate seeding mission parameters and return actionable warnings."""
+        calibration = calibration or DispenserCalibration()
+        exclusion_zones = list(exclusion_zones or [])
+        warnings: List[str] = []
+        errors: List[str] = []
+
+        if self._home_position is None:
+            errors.append("Home position must be set before planning mission")
+            return {"valid": False, "warnings": warnings, "errors": errors}
+
+        stats = self.estimate_mission_stats(boundary, config)
+        estimated_waypoints = self._estimate_waypoint_count(stats["total_distance"], config)
+        estimated_seed_usage = stats["seed_count"] * calibration.seeds_per_drop
+        estimated_seed_weight_kg = (
+            estimated_seed_usage * calibration.seed_weight_g / 1000.0
+        )
+        drop_rate = config.speed / config.seed_spacing
+        battery_required = self._estimate_battery_usage(
+            stats["estimated_time"], stats["total_distance"]
+        )
+
+        if estimated_waypoints > 700:
+            warnings.append(
+                f"Mission would generate about {estimated_waypoints} waypoints "
+                "(above the common 700-waypoint vehicle limit). Upload may need "
+                "mission splitting, but preview remains valid."
+            )
+
+        if estimated_seed_usage > calibration.seed_capacity:
+            warnings.append("Estimated seed usage exceeds dispenser seed capacity")
+        elif estimated_seed_usage > calibration.seed_capacity * 0.8:
+            warnings.append("Estimated seed usage is near dispenser seed capacity")
+
+        if estimated_seed_weight_kg > calibration.tank_capacity_kg:
+            warnings.append("Estimated seed weight exceeds tank capacity")
+
+        if drop_rate > calibration.max_drop_rate:
+            warnings.append("Flight speed is too high for calibrated dispenser drop rate")
+
+        if config.drop_duration > config.seed_spacing / config.speed:
+            warnings.append("Drop duration may overlap before the next seed point")
+
+        if exclusion_zones:
+            warnings.append("Exclusion zones are included in preview but not carved from path")
+
+        if battery_required > battery_available_percent:
+            warnings.append("Estimated battery requirement exceeds available battery")
+        elif battery_required > 80.0:
+            warnings.append("Mission may require high battery usage - consider splitting field")
+
+        return {
+            "valid": not errors,
+            "warnings": warnings,
+            "errors": errors,
+            "estimatedSeedUsage": estimated_seed_usage,
+            "estimatedSeedWeightKg": estimated_seed_weight_kg,
+            "estimatedBatteryUsage": battery_required,
+            "estimatedWaypointCount": estimated_waypoints,
+            "dropRate": drop_rate,
+            "fieldArea": stats["field_area"],
+        }
     
     def _insert_seed_drops(
         self,
@@ -266,6 +469,13 @@ class SeedingMissionPlanner:
                     radius=float(config.servo_open_pwm)
                 ))
                 mission_waypoints.append(Waypoint(
+                    lat=mid_lat,
+                    lon=mid_lon,
+                    alt=mid_alt,
+                    cmd=MAV_CMD_NAV_DELAY,
+                    hold=config.drop_duration
+                ))
+                mission_waypoints.append(Waypoint(
                     lat=mid_lat, lon=mid_lon, alt=mid_alt,
                     cmd=MAV_CMD_DO_SET_SERVO,
                     hold=float(config.servo_channel),
@@ -303,6 +513,15 @@ class SeedingMissionPlanner:
                     radius=float(config.servo_open_pwm)
                 ))
                 
+                # Hold dispenser open for calibrated drop duration
+                mission_waypoints.append(Waypoint(
+                    lat=seed_lat,
+                    lon=seed_lon,
+                    alt=seed_alt,
+                    cmd=MAV_CMD_NAV_DELAY,
+                    hold=config.drop_duration
+                ))
+                
                 # Add servo close command
                 mission_waypoints.append(Waypoint(
                     lat=seed_lat,
@@ -314,6 +533,72 @@ class SeedingMissionPlanner:
                 ))
         
         return mission_waypoints
+
+    def _build_drop_points(
+        self,
+        waypoints: List[Waypoint],
+        calibration: DispenserCalibration,
+    ) -> List[SeedingDropPoint]:
+        points: List[SeedingDropPoint] = []
+        for index, waypoint in enumerate(waypoints, start=1):
+            if waypoint.cmd == MAV_CMD_NAV_WAYPOINT and waypoint.hold > 0:
+                points.append(
+                    SeedingDropPoint(
+                        lat=waypoint.lat,
+                        lon=waypoint.lon,
+                        alt=waypoint.alt,
+                        seed_count=calibration.seeds_per_drop,
+                        expected_drop_id=f"seed-{index:04d}",
+                    )
+                )
+        return points
+
+    def _build_flight_rows(
+        self,
+        boundary: FieldBoundary,
+        config: SeedingConfig,
+    ) -> List[dict]:
+        coverage_config = CoverageConfig(
+            pattern=CoveragePattern.PARALLEL_LINES,
+            altitude=config.altitude,
+            line_spacing=config.row_spacing,
+            speed=config.speed,
+            heading=0.0,
+        )
+        base_waypoints = self._coverage_planner.generate_coverage_waypoints(
+            boundary=boundary,
+            config=coverage_config,
+            add_rtl=False,
+        )
+        rows = []
+        for idx in range(len(base_waypoints) - 1):
+            start_lat, start_lon, start_alt = base_waypoints[idx]
+            end_lat, end_lon, end_alt = base_waypoints[idx + 1]
+            if self._calculate_distance((start_lat, start_lon), (end_lat, end_lon)) < 1.0:
+                continue
+            rows.append({
+                "index": len(rows) + 1,
+                "start": {"lat": start_lat, "lon": start_lon, "alt": start_alt},
+                "end": {"lat": end_lat, "lon": end_lon, "alt": end_alt},
+            })
+        return rows
+
+    def _estimate_waypoint_count(self, total_distance: float, config: SeedingConfig) -> int:
+        estimated_seeds = int(total_distance / config.seed_spacing)
+        return estimated_seeds * 4
+
+    def _estimate_seed_weight_kg(
+        self,
+        drop_points: List[SeedingDropPoint],
+        calibration: DispenserCalibration,
+    ) -> float:
+        seed_count = sum(point.seed_count for point in drop_points)
+        return seed_count * calibration.seed_weight_g / 1000.0
+
+    def _estimate_battery_usage(self, mission_time: float, distance: float) -> float:
+        time_component = mission_time / 60.0 * 1.8
+        distance_component = distance / 1000.0 * 4.0
+        return min(100.0, max(0.0, time_component + distance_component))
     
     def _should_drop_seed(
         self,
@@ -448,4 +733,10 @@ class SeedingMissionPlanner:
         }
 
 
-__all__ = ["SeedingMissionPlanner", "SeedingConfig"]
+__all__ = [
+    "SeedingMissionPlanner",
+    "SeedingConfig",
+    "DispenserCalibration",
+    "SeedingDropPoint",
+    "SeedingMissionPreview",
+]

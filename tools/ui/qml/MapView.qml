@@ -54,6 +54,10 @@ Item {
         webView.runJavaScript("updateFieldBoundary(" + JSON.stringify(points) + ")")
     }
 
+    function updateExclusionZones(zones) {
+        webView.runJavaScript("updateExclusionZones(" + JSON.stringify(zones) + ")")
+    }
+
     function updateCoverageWaypoints(waypoints) {
         webView.runJavaScript("updateCoverageWaypoints(" + JSON.stringify(waypoints) + ")")
     }
@@ -82,6 +86,38 @@ Item {
         webView.runJavaScript("clearSolarInspection()")
     }
 
+    function updateSolarTriggerPoints(points) {
+        webView.runJavaScript("updateSolarTriggerPoints(" + JSON.stringify(points) + ")")
+    }
+
+    function updateSolarFootprints(points) {
+        webView.runJavaScript("updateSolarFootprints(" + JSON.stringify(points) + ")")
+    }
+
+    function updateSolarMissionRows(rows) {
+        webView.runJavaScript("updateSolarMissionRows(" + JSON.stringify(rows) + ")")
+    }
+
+    function clearSolarPreviewOverlays() {
+        webView.runJavaScript("clearSolarPreviewOverlays()")
+    }
+
+    function updateSeedingDropPoints(points) {
+        webView.runJavaScript("updateSeedingDropPoints(" + JSON.stringify(points) + ")")
+    }
+
+    function updateSeedingFlightRows(rows) {
+        webView.runJavaScript("updateSeedingFlightRows(" + JSON.stringify(rows) + ")")
+    }
+
+    function updateSeedingExclusionZones(zones) {
+        webView.runJavaScript("updateSeedingExclusionZones(" + JSON.stringify(zones) + ")")
+    }
+
+    function clearSeedingMission() {
+        webView.runJavaScript("clearSeedingMission()")
+    }
+
     // ── Map ──────────────────────────────────────────────────────────────
     WebEngineView {
         id: webView
@@ -90,7 +126,7 @@ Item {
         Component.onCompleted: loadHtml(root.mapHtml, "qrc:/")
         onLoadingChanged: function(info) {
             if (info.status === WebEngineLoadingInfo.LoadSucceededStatus)
-                console.log("[MapView] Leaflet OK")
+                console.log("[MapView] Local map loaded")
         }
         onNavigationRequested: function(req) {
             var url = req.url.toString()
@@ -196,6 +232,95 @@ Item {
         }
     }
 
+    // ── Video PIP Overlay — bottom-right, only visible when stream is receiving ──
+    // R-10: absolutely no blank/broken video before status === "receiving"
+    Rectangle {
+        id: videoPipOverlay
+        anchors { bottom: parent.bottom; right: parent.right; bottomMargin: 12; rightMargin: 12 }
+        width: 240; height: 135   // 16:9
+        radius: 8
+        z: 10
+        color: "#cc0d1117"
+        border.color: "#22c55e"; border.width: 1
+        clip: true
+        property var _videoStatus: ({})
+
+        // Only show when a stream is being received
+        visible: {
+            var s = _videoStatus
+            return !!(s && s.status === "receiving" && s.activeTarget === "map" && s.hasFrame)
+        }
+
+        // Refresh visibility every 1s
+        Timer { interval: 250; running: true; repeat: true
+            onTriggered: {
+                if (typeof videoStream === "undefined" || !videoStream) { videoPipOverlay._videoStatus = {}; return }
+                var did = typeof Cmp !== "undefined" && Cmp.AppState ? Cmp.AppState.selectedDroneId : ""
+                videoPipOverlay._videoStatus = did ? videoStream.getVideoStatus(did) : {}
+                if (did && videoPipOverlay.visible)
+                    mapVideoFrame.source = videoStream.frameUrl(did)
+            }
+        }
+
+        Connections {
+            target: typeof videoStream !== "undefined" ? videoStream : null
+            function onFrameChanged(droneId, frameUrl) {
+                var did = typeof Cmp !== "undefined" && Cmp.AppState ? Cmp.AppState.selectedDroneId : ""
+                if (droneId === did && videoPipOverlay._videoStatus.activeTarget === "map")
+                    mapVideoFrame.source = frameUrl
+            }
+        }
+
+        Image {
+            id: mapVideoFrame
+            anchors.fill: parent
+            anchors.margins: 2
+            cache: false
+            asynchronous: true
+            fillMode: Image.PreserveAspectCrop
+            source: ""
+        }
+
+        // Phase 1: status/info placeholder (Phase 2 replaces with VideoOutput)
+        Column {
+            visible: false
+            anchors.centerIn: parent
+            spacing: 4
+
+            Text {
+                text: "📡  LIVE"
+                color: "#22c55e"; font.pixelSize: 13; font.weight: Font.Bold
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            Text {
+                text: {
+                    if (typeof videoStream === "undefined" || !videoStream) return ""
+                    var did = typeof Cmp !== "undefined" && Cmp.AppState ? Cmp.AppState.selectedDroneId : ""
+                    var s = did ? videoStream.getVideoStatus(did) : null
+                    return s && s.url ? s.url : ""
+                }
+                color: "#475569"; font.pixelSize: 8; font.family: "Consolas"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        // Corner badge: "CAMERA"
+        Rectangle {
+            anchors { top: parent.top; left: parent.left; margins: 6 }
+            width: camBadgeTxt.implicitWidth + 10; height: 18; radius: 4
+            color: "#22c55e"
+            Text { id: camBadgeTxt; anchors.centerIn: parent; text: "CAM"; color: "white"; font.pixelSize: 8; font.weight: Font.Bold }
+        }
+
+        // Minimize/close button
+        Rectangle {
+            anchors { top: parent.top; right: parent.right; margins: 4 }
+            width: 18; height: 18; radius: 4; color: "#334155"
+            Text { anchors.centerIn: parent; text: "✕"; color: "#94a3b8"; font.pixelSize: 9 }
+            MouseArea { anchors.fill: parent; onClicked: { if (typeof videoStream !== "undefined" && videoStream) videoStream.stopStream() } }
+        }
+    }
+
     // Pick mode cursor overlay
     Rectangle {
         anchors.fill: parent
@@ -271,104 +396,20 @@ Item {
         focus: visible
     }
 
-    // ── ESCAPE 3D Visualization Overlays ──────────────────────────────────
-    
-    // Obstacle Visualization (red spheres)
-    Repeater {
-        model: escape ? escape.obstacles : []
-        delegate: Rectangle {
-            id: obstacleMarker
-            width: 20; height: 20; radius: 10
-            color: "#ef4444"
-            border.color: "#dc2626"
-            border.width: 2
-            opacity: 0.7
-            z: 5
-            
-            // Position based on obstacle coordinates
-            // Note: This is a simplified 2D projection
-            // Real implementation would need proper lat/lon conversion
-            x: parent.width / 2 + modelData.x * 10
-            y: parent.height / 2 - modelData.y * 10
-            
-            // Tooltip showing coordinates
-            Rectangle {
-                anchors { bottom: parent.top; horizontalCenter: parent.horizontalCenter; bottomMargin: 4 }
-                width: tooltipText.width + 8
-                height: 16
-                radius: 3
-                color: "#1e2535"
-                border.color: "#ef4444"
-                border.width: 1
-                visible: obstacleMouseArea.containsMouse
-                
-                Text {
-                    id: tooltipText
-                    anchors.centerIn: parent
-                    text: "Obstacle (" + modelData.x.toFixed(1) + ", " + 
-                          modelData.y.toFixed(1) + ", " + modelData.z.toFixed(1) + ")"
-                    color: "#e2e8f0"
-                    font.pixelSize: 9
-                    font.family: "Consolas"
-                }
-            }
-            
-            MouseArea {
-                id: obstacleMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-            }
-        }
-    }
-    
-    // Occupancy Map Visualization (red cubes/voxels)
-    Repeater {
-        model: escape ? escape.occupiedVoxels : []
-        delegate: Rectangle {
-            id: voxelMarker
-            width: 12; height: 12
-            color: "#dc2626"
-            border.color: "#991b1b"
-            border.width: 1
-            opacity: 0.5
-            z: 4
-            
-            // Position based on voxel grid coordinates
-            // Note: This is a simplified 2D projection
-            x: parent.width / 2 + modelData.x * 5
-            y: parent.height / 2 - modelData.y * 5
-            
-            // Tooltip showing voxel info
-            Rectangle {
-                anchors { bottom: parent.top; horizontalCenter: parent.horizontalCenter; bottomMargin: 2 }
-                width: voxelTooltipText.width + 6
-                height: 14
-                radius: 2
-                color: "#1e2535"
-                border.color: "#dc2626"
-                border.width: 1
-                visible: voxelMouseArea.containsMouse
-                
-                Text {
-                    id: voxelTooltipText
-                    anchors.centerIn: parent
-                    text: "Voxel (" + modelData.x + ", " + modelData.y + ", " + 
-                          modelData.z + ") - " + modelData.votes + " vote(s)"
-                    color: "#e2e8f0"
-                    font.pixelSize: 8
-                    font.family: "Consolas"
-                }
-            }
-            
-            MouseArea {
-                id: voxelMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-            }
-        }
-    }
+    // ── ESCAPE Visualization ───────────────────────────────────────────────
+    // B-M5: QML Repeater overlays removed — the old implementation used NED
+    // coordinates (metres) as raw pixel offsets, which is geometrically wrong
+    // and caused a hoverEnabled hit-test on every QML item for every mouse move.
+    // TODO: render obstacles/voxels via Leaflet JS (updateEscapeObstacles /
+    //       updateEscapeVoxels) with proper lat/lon projection once ESCAPE
+    //       context exposes GPS-referenced positions.
 
     // Called from main.qml on telemetry
+    // B-M3: single combined call to avoid double IPC round-trip
+    function updateDronesAndSelect(jsonStr, did) {
+        webView.runJavaScript("updateDronesAndSelect(" + jsonStr + ", '" + did + "')")
+    }
+    // Legacy individual calls kept for compatibility (header drone-select, etc.)
     function updateDrones(jsonStr)      { webView.runJavaScript("updateDrones(" + jsonStr + ")") }
     function updateWaypoints(jsonStr)   { webView.runJavaScript("updateWaypoints(" + jsonStr + ")") }
     // Snapshot the current pending waypoints into the "dispatched" layer so
@@ -421,11 +462,11 @@ Item {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
   html,body,#map { margin:0;padding:0;width:100%;height:100%;background:#0f1117; }
-  /* Hide ALL Leaflet tooltips - drone names shown in QML overlay */
+  /* Hide all map tooltips - drone names shown in QML overlay */
   .leaflet-tooltip { display:none !important; visibility:hidden !important; }
   .drone-label { display:none !important; visibility:hidden !important; }
 </style>
@@ -433,12 +474,20 @@ Item {
 <body>
 <div id="map"></div>
 <script>
+if (typeof L !== "undefined") {
+  console.log("[MapView] Leaflet OK");
+} else {
+  console.error("[MapView] Leaflet failed to load");
+}
+
 var map = L.map("map", {
   center: [48.137, 11.575],
   zoom: 15,
   zoomControl: true,
-  attributionControl: false
+  attributionControl: false,
+  preferCanvas: true
 });
+var seedingCanvasRenderer = L.canvas({padding: 0.4});
 
 // Remove all drone tooltips on map load (name shown in QML overlay instead)
 function removeAllDroneTooltips() {
@@ -450,14 +499,38 @@ function removeAllDroneTooltips() {
 }
 
 var mapLayers = {
-  dark: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.85}),
-  street: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.95}),
-  satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, opacity:0.95, attribution:"Esri World Imagery"}),
-  hybrid: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, opacity:0.95}),
-  topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {maxZoom:17, opacity:0.9}),
+  dark: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors",
+    maxZoom: 19,
+    opacity: 0.85
+  }),
+  street: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors",
+    maxZoom: 19,
+    opacity: 0.95
+  }),
+  satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    attribution: "© Esri",
+    maxZoom: 19,
+    opacity: 0.95
+  }),
+  hybrid: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    attribution: "© Esri",
+    maxZoom: 19,
+    opacity: 0.95
+  }),
+  topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenTopoMap contributors",
+    maxZoom: 17,
+    opacity: 0.9
+  }),
 };
 // Road overlay for hybrid mode
-var roadOverlay = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19, opacity:0.35, className:"hybrid-roads"});
+var roadOverlay = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  opacity: 0.35,
+  className: "hybrid-roads"
+});
 var hybridActive = false;
 
 var darkStyle = document.createElement("style");
@@ -501,6 +574,25 @@ function droneColor(id) {
   return droneTypes[id] === "observation" ? "#8b5cf6" : "#2563eb";
 }
 
+function droneIconKey(id, d, selected) {
+  var headingBucket = Math.round(Number(d.heading || 0));
+  return [
+    headingBucket,
+    d.armed ? "armed" : "safe",
+    selected ? "selected" : "normal",
+    droneTypes[id] || "generic"
+  ].join("|");
+}
+
+function setDroneIconIfChanged(id, marker, d, selected, force) {
+  var key = droneIconKey(id, d, selected);
+  if (force || marker._iconKey !== key) {
+    marker.setIcon(makeDroneIcon(id, d, selected));
+    marker._iconKey = key;
+  }
+  marker.setZIndexOffset(selected ? 1000 : 0);
+}
+
 function setSelectedDrone(did) {
   selectedDroneId = did;
   // Remove all tooltips first
@@ -509,7 +601,7 @@ function setSelectedDrone(did) {
   Object.keys(droneMarkers).forEach(function(id) {
     var m = droneMarkers[id];
     if (m && m._lastData) {
-      m.setIcon(makeDroneIcon(id, m._lastData, id === did));
+      setDroneIconIfChanged(id, m, m._lastData, id === did, false);
     }
   });
 }
@@ -554,109 +646,95 @@ function makeDroneIcon(id, d, selected) {
   return L.divIcon({ className:"", html:svg, iconSize:[sz,sz], iconAnchor:[cx,cx] });
 }
 
+// B-M1: max track points kept per drone — older points are trimmed
+var TRACK_MAX_PTS = 300;
+// B-M8: min position delta (degrees) to trigger a marker/track update
+var DRONE_MOVE_THRESHOLD = 0.000001;
+
 function updateDrones(data) {
   var ids = Object.keys(data);
   ids.forEach(function(id) {
     var d = data[id];
     if (!d.lat || !d.lon) return;
-    // Store/update type so droneColor() uses it
     var prevType = droneTypes[id];
     droneTypes[id] = d.droneType || "generic";
     var col = droneColor(id);
     var sel = (id === selectedDroneId);
-    var icon = makeDroneIcon(id, d, sel);
+
     if (!droneMarkers[id]) {
-      // Create marker WITHOUT tooltip (name shown in QML overlay instead)
-      droneMarkers[id] = L.marker([d.lat,d.lon],{icon:icon,zIndexOffset: sel?1000:0}).addTo(map);
+      // First time — create marker and track
+      var icon = makeDroneIcon(id, d, sel);
+      droneMarkers[id] = L.marker([d.lat,d.lon],{icon:icon,zIndexOffset:sel?1000:0}).addTo(map);
+      droneMarkers[id]._iconKey = droneIconKey(id, d, sel);
+      droneMarkers[id]._lastData = d;
       droneTracks[id] = L.polyline([[d.lat,d.lon]],{color:col,weight:2,opacity:0.55}).addTo(map);
     } else {
-      droneMarkers[id].setLatLng([d.lat,d.lon]).setIcon(icon);
-      // Update track color if type changed
-      if (prevType !== droneTypes[id] && droneTracks[id]) {
-        droneTracks[id].setStyle({color: col});
+      var prev = droneMarkers[id]._lastData || {};
+      // B-M8: skip update if position has not changed meaningfully
+      var moved = Math.abs((d.lat - (prev.lat||0))) + Math.abs((d.lon - (prev.lon||0))) > DRONE_MOVE_THRESHOLD;
+      var headingChanged = Math.abs(Math.round(d.heading||0) - Math.round(prev.heading||0)) >= 1;
+      var armedChanged = (d.armed !== prev.armed);
+      var typeChanged = (prevType !== droneTypes[id]);
+
+      if (moved) {
+        droneMarkers[id].setLatLng([d.lat,d.lon]);
+      }
+      if (headingChanged || armedChanged || typeChanged) {
+        setDroneIconIfChanged(id, droneMarkers[id], d, sel, false);
+      }
+      if (typeChanged && droneTracks[id]) droneTracks[id].setStyle({color:col});
+      if (moved || headingChanged || armedChanged || typeChanged) {
+        droneMarkers[id]._lastData = d;
+      }
+
+      // B-M1: add track point only when drone actually moved
+      if (moved) {
+        droneTracks[id].addLatLng([d.lat,d.lon]);
+        // Trim oldest points when track exceeds cap
+        var pts = droneTracks[id].getLatLngs();
+        if (pts.length > TRACK_MAX_PTS) {
+          droneTracks[id].setLatLngs(pts.slice(pts.length - TRACK_MAX_PTS));
+        }
       }
     }
     // ALWAYS remove tooltip after marker update
-    if (droneMarkers[id] && droneMarkers[id].getTooltip()) {
-      droneMarkers[id].unbindTooltip();
-    }
-    droneMarkers[id]._lastData = d;
-    droneTracks[id].addLatLng([d.lat,d.lon]);
+    if (droneMarkers[id] && droneMarkers[id].getTooltip()) droneMarkers[id].unbindTooltip();
   });
-  // Remove stale
+  // Remove stale markers
   Object.keys(droneMarkers).forEach(function(id) {
     if (!data[id]) {
       map.removeLayer(droneMarkers[id]);
       map.removeLayer(droneTracks[id]);
       delete droneMarkers[id]; delete droneTracks[id];
+      delete droneTypes[id];
     }
   });
 }
 
-function updateWaypoints(wps) {
-  waypointMarkers.forEach(function(m){ map.removeLayer(m); });
-  waypointMarkers = [];
-  if (waypointLine) { map.removeLayer(waypointLine); waypointLine = null; }
-  
-  if (!wps || wps.length === 0) return;
-  
-  var latlngs = [];
-  wps.forEach(function(wp, i) {
-    var icon = L.divIcon({ className:"", iconSize:[22,22], iconAnchor:[11,11],
-      html:\'<div style="width:22px;height:22px;border-radius:50%;border:2px solid #f59e0b;background:#78350f;display:flex;align-items:center;justify-content:center;color:#fcd34d;font-size:9px;font-weight:bold;">\' + (i+1) + \'</div>\'});
-    
-    // Create draggable marker
-    var marker = L.marker([wp.lat,wp.lon], {
-      icon: icon,
-      draggable: true,
-      autoPan: true
-    }).bindTooltip("WP"+(i+1)+": "+wp.alt+"m",{direction:"top"}).addTo(map);
-    
-    // Drag start - visual feedback
-    marker.on("dragstart", function(e) {
-      e.target.setOpacity(0.6);
-      if (waypointLine) waypointLine.setStyle({opacity: 0.3});
-    });
-    
-    // Dragging - update line in real-time
-    marker.on("drag", function(e) {
-      if (waypointLine) {
-        var newLatLngs = [];
-        waypointMarkers.forEach(function(m) {
-          newLatLngs.push(m.getLatLng());
-        });
-        waypointLine.setLatLngs(newLatLngs);
-      }
-    });
-    
-    // Drag end - notify QML and restore opacity
-    marker.on("dragend", function(e) {
-      e.target.setOpacity(1.0);
-      if (waypointLine) waypointLine.setStyle({opacity: 0.7});
-      
-      var newPos = e.target.getLatLng();
-      
-      // Find current index of this marker in the array (in case waypoints were added/removed)
-      var idx = -1;
-      for (var j = 0; j < waypointMarkers.length; j++) {
-        if (waypointMarkers[j] === e.target) {
-          idx = j;
-          break;
-        }
-      }
-      
-      if (idx >= 0) {
-        // Notify QML about waypoint position change
-        window.location = "qrc://waypoint-moved?index=" + idx + "&lat=" + newPos.lat + "&lon=" + newPos.lng;
-      }
-    });
-    
-    waypointMarkers.push(marker);
-    latlngs.push([wp.lat, wp.lon]);
-  });
-  
-  // Draw connecting line between waypoints
-  if (latlngs.length > 1) {
+// B-M3: single combined entry point used by main.qml telemetry bridge
+function updateDronesAndSelect(data, did) {
+  updateDrones(data);
+  setSelectedDrone(did);
+}
+
+function waypointIcon(index) {
+  return L.divIcon({ className:"", iconSize:[22,22], iconAnchor:[11,11],
+    html:\'<div style="width:22px;height:22px;border-radius:50%;border:2px solid #f59e0b;background:#78350f;display:flex;align-items:center;justify-content:center;color:#fcd34d;font-size:9px;font-weight:bold;">\' + (index+1) + \'</div>\'});
+}
+
+function waypointTooltip(wp, index) {
+  return "WP" + (index+1) + ": " + wp.alt + "m";
+}
+
+function updateWaypointLineFromMarkers() {
+  if (waypointMarkers.length < 2) {
+    if (waypointLine) { map.removeLayer(waypointLine); waypointLine = null; }
+    return;
+  }
+  var latlngs = waypointMarkers.map(function(m) { return m.getLatLng(); });
+  if (waypointLine) {
+    waypointLine.setLatLngs(latlngs);
+  } else {
     waypointLine = L.polyline(latlngs, {
       color: "#f59e0b",
       weight: 2,
@@ -664,6 +742,92 @@ function updateWaypoints(wps) {
       dashArray: "8,4"
     }).addTo(map);
   }
+}
+
+function createWaypointMarker(wp, i) {
+  var marker = L.marker([wp.lat,wp.lon], {
+    icon: waypointIcon(i),
+    draggable: true,
+    autoPan: true
+  }).bindTooltip(waypointTooltip(wp, i), {direction:"top"}).addTo(map);
+
+  marker._wpIndex = i;
+  marker._wpAlt = wp.alt;
+  marker._wpTooltip = waypointTooltip(wp, i);
+
+  marker.on("dragstart", function(e) {
+    e.target.setOpacity(0.6);
+    if (waypointLine) waypointLine.setStyle({opacity: 0.3});
+  });
+
+  marker.on("drag", function() {
+    updateWaypointLineFromMarkers();
+  });
+
+  marker.on("dragend", function(e) {
+    e.target.setOpacity(1.0);
+    if (waypointLine) waypointLine.setStyle({opacity: 0.7});
+
+    var newPos = e.target.getLatLng();
+    var idx = -1;
+    for (var j = 0; j < waypointMarkers.length; j++) {
+      if (waypointMarkers[j] === e.target) {
+        idx = j;
+        break;
+      }
+    }
+
+    if (idx >= 0) {
+      e.target._wpLat = newPos.lat;
+      e.target._wpLon = newPos.lng;
+      window.location = "qrc://waypoint-moved?index=" + idx + "&lat=" + newPos.lat + "&lon=" + newPos.lng;
+    }
+  });
+
+  marker._wpLat = wp.lat;
+  marker._wpLon = wp.lon;
+  return marker;
+}
+
+function updateWaypointMarker(marker, wp, i) {
+  if (marker._wpIndex !== i) {
+    marker.setIcon(waypointIcon(i));
+    marker._wpIndex = i;
+  }
+  if (Math.abs((marker._wpLat || 0) - wp.lat) + Math.abs((marker._wpLon || 0) - wp.lon) > 0.0000001) {
+    marker.setLatLng([wp.lat, wp.lon]);
+    marker._wpLat = wp.lat;
+    marker._wpLon = wp.lon;
+  }
+  var tooltip = waypointTooltip(wp, i);
+  if (marker._wpTooltip !== tooltip) {
+    marker.setTooltipContent(tooltip);
+    marker._wpTooltip = tooltip;
+  }
+  marker._wpAlt = wp.alt;
+}
+
+function updateWaypoints(wps) {
+  if (!wps || wps.length === 0) {
+    waypointMarkers.forEach(function(m){ map.removeLayer(m); });
+    waypointMarkers = [];
+    if (waypointLine) { map.removeLayer(waypointLine); waypointLine = null; }
+    return;
+  }
+
+  while (waypointMarkers.length > wps.length) {
+    map.removeLayer(waypointMarkers.pop());
+  }
+
+  wps.forEach(function(wp, i) {
+    if (!waypointMarkers[i]) {
+      waypointMarkers[i] = createWaypointMarker(wp, i);
+    } else {
+      updateWaypointMarker(waypointMarkers[i], wp, i);
+    }
+  });
+
+  updateWaypointLineFromMarkers();
 }
 
 function commitDispatchedWaypoints(wps) {
@@ -714,7 +878,7 @@ function setPickMode(enabled) {
 
 // ── Field Coverage Planning ──────────────────────────────────────────────────
 var _boundaryDrawMode = false;
-var boundaryMarkers = [], boundaryLine = null;
+var boundaryMarkers = [], boundaryLine = null, exclusionZoneLayers = [];
 
 var _solarRowDrawMode = false;
 var _solarRowStart = null;
@@ -736,7 +900,7 @@ function setBoundaryDrawMode(enabled) {
 }
 
 function updateFieldBoundary(points) {
-  // Clear existing boundary
+  // Clear existing boundary always — even when points is empty
   boundaryMarkers.forEach(function(m){ map.removeLayer(m); });
   boundaryMarkers = [];
   if (boundaryLine) { map.removeLayer(boundaryLine); boundaryLine = null; }
@@ -770,6 +934,61 @@ function updateFieldBoundary(points) {
       dashArray: "5, 5"
     }).addTo(map);
   }
+}
+
+function updateExclusionZones(zones) {
+  // Always clear existing zones first — even when zones is empty
+  exclusionZoneLayers.forEach(function(layer){ map.removeLayer(layer); });
+  exclusionZoneLayers = [];
+
+  if (!zones || zones.length === 0) return;
+
+  zones.forEach(function(zone, zoneIndex) {
+    if (!zone || zone.length === 0) return;
+
+    var latlngs = [];
+    zone.forEach(function(pt) {
+      if (pt && typeof pt.lat === "number" && typeof pt.lon === "number") {
+        latlngs.push([pt.lat, pt.lon]);
+      }
+    });
+    if (latlngs.length === 0) return;
+
+    var layer = null;
+    if (latlngs.length >= 3 && typeof L.polygon === "function") {
+      layer = L.polygon(latlngs, {
+        color: "#ef4444",
+        weight: 2,
+        opacity: 0.9,
+        fillColor: "#7f1d1d",
+        fillOpacity: 0.22,
+        dashArray: "6, 4"
+      });
+    } else {
+      layer = L.polyline(latlngs, {
+        color: "#ef4444",
+        weight: 2,
+        opacity: 0.9,
+        dashArray: "6, 4"
+      });
+    }
+    layer.bindTooltip("Exclusion Zone " + (zoneIndex + 1), {direction:"top"});
+    layer.addTo(map);
+    exclusionZoneLayers.push(layer);
+
+    latlngs.forEach(function(pos, pointIndex) {
+      var icon = L.divIcon({
+        className:"",
+        iconSize:[16,16],
+        iconAnchor:[8,8],
+        html:\'<div style="width:16px;height:16px;border-radius:50%;border:2px solid #fca5a5;background:#7f1d1d;display:flex;align-items:center;justify-content:center;color:#fee2e2;font-size:7px;font-weight:bold;">\' + (pointIndex+1) + \'</div>\'
+      });
+      var marker = L.marker(pos, {icon: icon})
+        .bindTooltip("Exclusion Point " + (pointIndex+1), {direction:"top"})
+        .addTo(map);
+      exclusionZoneLayers.push(marker);
+    });
+  });
 }
 
 function updateCoverageWaypoints(waypoints) {
@@ -823,6 +1042,8 @@ function clearFieldCoverage() {
   boundaryMarkers.forEach(function(m){ map.removeLayer(m); });
   boundaryMarkers = [];
   if (boundaryLine) { map.removeLayer(boundaryLine); boundaryLine = null; }
+  exclusionZoneLayers.forEach(function(layer){ map.removeLayer(layer); });
+  exclusionZoneLayers = [];
   
   coverageWaypointMarkers.forEach(function(m){ map.removeLayer(m); });
   coverageWaypointMarkers = [];
@@ -1218,6 +1439,157 @@ function updateThermalHotspots(hotspots) {
     marker.bindTooltip(tooltipText, {permanent: false, direction: "top"});
     
     thermalHotspotMarkers.push(marker);
+  });
+}
+
+// ── Seeding Mission Visualization ──────────────────────────────────────
+var seedingDropMarkers = [], seedingFlightLines = [], seedingExclusionPolygons = [];
+var seedingDropPointCount = 0;
+
+function clearSeedingMission() {
+  seedingDropMarkers.forEach(function(marker) { map.removeLayer(marker); });
+  seedingDropMarkers = [];
+  seedingFlightLines.forEach(function(line) { map.removeLayer(line); });
+  seedingFlightLines = [];
+  seedingExclusionPolygons.forEach(function(poly) { map.removeLayer(poly); });
+  seedingExclusionPolygons = [];
+}
+
+function updateSeedingDropPoints(dropPoints) {
+  seedingDropMarkers.forEach(function(marker) { map.removeLayer(marker); });
+  seedingDropMarkers = [];
+  seedingDropPointCount = dropPoints ? dropPoints.length : 0;
+  if (!dropPoints || dropPoints.length === 0) return;
+
+  // > 300 points: use lightweight circleMarker (canvas, no DOM node per point)
+  var large = dropPoints.length > 300;
+  var layers = [];
+  dropPoints.forEach(function(point, index) {
+    // Explicit null/undefined check — lat=0 is valid at equator
+    if (point.lat === undefined || point.lat === null ||
+        point.lon === undefined || point.lon === null) return;
+    var pos = [point.lat, point.lon];
+    var marker;
+    if (large) {
+      marker = L.circleMarker(pos, {
+        radius: 3,
+        color: "#16a34a",
+        fillColor: "#22c55e",
+        fillOpacity: 0.85,
+        weight: 1,
+        interactive: false,
+        renderer: seedingCanvasRenderer
+      });
+    } else {
+      var icon = L.divIcon({
+        className: "",
+        iconSize: [8, 8],
+        iconAnchor: [4, 4],
+        html: \'<div style="width:8px;height:8px;border-radius:50%;background:#22c55e;border:1px solid #16a34a;"></div>\'
+      });
+      marker = L.marker(pos, {icon: icon, zIndexOffset: 50});
+      marker.bindTooltip(
+        "Drop Point " + (index + 1) + "<br>Seeds: " + (point.seedCount || 1) +
+        "<br>Alt: " + (point.alt || 0).toFixed(1) + "m",
+        {permanent: false, direction: "top"}
+      );
+    }
+    layers.push(marker);
+  });
+  // Add all at once via LayerGroup — single DOM operation
+  var group = L.layerGroup(layers).addTo(map);
+  seedingDropMarkers.push(group);
+}
+
+function updateSeedingFlightRows(rows) {
+  seedingFlightLines.forEach(function(line) { map.removeLayer(line); });
+  seedingFlightLines = [];
+  if (!rows || rows.length === 0) return;
+  if (seedingDropPointCount > 3000) return;
+  rows.forEach(function(row, index) {
+    if (!row.start || !row.end) return;
+    var startPos = [row.start.lat, row.start.lon];
+    var endPos = [row.end.lat, row.end.lon];
+    var line = L.polyline([startPos, endPos], {
+      color: "#3b82f6", weight: 2, opacity: 0.6, dashArray: "8,4"
+    }).addTo(map);
+    line.bindTooltip("Flight Row " + (row.index || index + 1), {permanent: false, sticky: true});
+    seedingFlightLines.push(line);
+  });
+}
+
+function updateSeedingExclusionZones(zones) {
+  seedingExclusionPolygons.forEach(function(poly) { map.removeLayer(poly); });
+  seedingExclusionPolygons = [];
+  if (!zones || zones.length === 0) return;
+  zones.forEach(function(zone, index) {
+    if (!zone || zone.length < 3) return;
+    var latlngs = zone.map(function(pt) { return [pt.lat, pt.lon]; });
+    var poly = L.polygon(latlngs, {
+      color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.2, weight: 2, dashArray: "4,4"
+    }).addTo(map);
+    poly.bindTooltip("Exclusion Zone " + (index + 1), {permanent: false, sticky: true});
+    seedingExclusionPolygons.push(poly);
+  });
+}
+
+// ── Solar Mission Preview Overlays ──────────────────────────────────────
+var solarTriggerMarkers = [], solarFootprintPolygons = [], solarMissionRowLines = [];
+
+function clearSolarPreviewOverlays() {
+  solarTriggerMarkers.forEach(function(m) { map.removeLayer(m); });
+  solarTriggerMarkers = [];
+  solarFootprintPolygons.forEach(function(p) { map.removeLayer(p); });
+  solarFootprintPolygons = [];
+  solarMissionRowLines.forEach(function(l) { map.removeLayer(l); });
+  solarMissionRowLines = [];
+}
+
+function updateSolarTriggerPoints(triggerPoints) {
+  solarTriggerMarkers.forEach(function(m) { map.removeLayer(m); });
+  solarTriggerMarkers = [];
+  if (!triggerPoints || triggerPoints.length === 0) return;
+  triggerPoints.forEach(function(tp) {
+    if (!tp.lat || !tp.lon) return;
+    var gimbal = (tp.gimbalAngle || 0).toFixed(1);
+    var icon = L.divIcon({
+      className: "",
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      html: \'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" role="img" aria-label="Solar camera trigger"><title>Gimbal: \' + gimbal + \' deg</title><circle cx="11" cy="11" r="10" fill="#0f172a" stroke="#38bdf8" stroke-width="1.4"/><path d="M6.2 8.1h2l.8-1.3h4l.8 1.3h2c.8 0 1.4.6 1.4 1.4v5.2c0 .8-.6 1.4-1.4 1.4H6.2c-.8 0-1.4-.6-1.4-1.4V9.5c0-.8.6-1.4 1.4-1.4z" fill="#e0f2fe"/><circle cx="11" cy="12.1" r="2.5" fill="#0284c7"/><circle cx="11" cy="12.1" r="1.2" fill="#bae6fd"/></svg>\'
+    });
+    var marker = L.marker([tp.lat, tp.lon], {icon: icon, zIndexOffset: 200}).addTo(map);
+    marker.bindTooltip("Trigger Point<br>Gimbal: " + gimbal + "&deg;", {permanent: false, direction: "top"});
+    solarTriggerMarkers.push(marker);
+  });
+}
+
+function updateSolarFootprints(triggerPoints) {
+  solarFootprintPolygons.forEach(function(p) { map.removeLayer(p); });
+  solarFootprintPolygons = [];
+  if (!triggerPoints || triggerPoints.length === 0) return;
+  triggerPoints.forEach(function(tp) {
+    if (!tp.footprint || tp.footprint.length < 3) return;
+    var latlngs = tp.footprint.map(function(p) { return [p.lat, p.lon]; });
+    var poly = L.polygon(latlngs, {
+      color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.12, weight: 1, opacity: 0.5
+    }).addTo(map);
+    solarFootprintPolygons.push(poly);
+  });
+}
+
+function updateSolarMissionRows(rows) {
+  solarMissionRowLines.forEach(function(l) { map.removeLayer(l); });
+  solarMissionRowLines = [];
+  if (!rows || rows.length === 0) return;
+  rows.forEach(function(row, index) {
+    if (!row.start || !row.end) return;
+    var line = L.polyline([
+      [row.start.lat, row.start.lon],
+      [row.end.lat, row.end.lon]
+    ], {color: "#f59e0b", weight: 3, opacity: 0.75}).addTo(map);
+    line.bindTooltip("Solar Row " + (index + 1), {permanent: false, sticky: true});
+    solarMissionRowLines.push(line);
   });
 }
 </script>

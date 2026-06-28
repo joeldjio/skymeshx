@@ -17,6 +17,10 @@ results/
 # ROS2 bags (directories with .db3 files)
 bags/*/
 !bags/.gitkeep
+# Trace bundles (created by TraceLogger.start_session)
+trace_runs/*/
+!trace_runs/.gitkeep
+
 
 # Environment
 .venv/

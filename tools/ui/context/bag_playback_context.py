@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtCore import QObject, QMetaObject, Qt, Signal, Slot, Property
 
 
 class BagPlaybackContext(QObject):
@@ -243,26 +243,48 @@ class BagPlaybackContext(QObject):
             self.errorOccurred.emit(f"Failed to seek: {e}")
     
     def _monitor_playback(self) -> None:
-        """Monitor playback progress (runs in background thread)"""
+        """Monitor playback progress (runs in background thread).
+
+        Signal emission is marshalled to the main thread via
+        QMetaObject.invokeMethod to avoid data races on Windows.
+        """
         start_time = time.time()
-        
+
         while not self._stop_monitoring and self._process:
             # Check if process is still running
             if self._process.poll() is not None:
-                # Process ended
-                self._state = "stopped"
-                self._progress = 1.0
-                self.stateChanged.emit(self._state)
-                self.progressChanged.emit(self._progress)
+                # Process ended — marshal to main thread
+                QMetaObject.invokeMethod(
+                    self, "_on_playback_ended",
+                    Qt.ConnectionType.QueuedConnection,
+                )
                 break
-            
+
             # Update progress based on elapsed time
             if self._duration > 0:
                 elapsed = (time.time() - start_time) * self._playback_rate
-                self._progress = min(1.0, elapsed / self._duration)
-                self.progressChanged.emit(self._progress)
-            
+                progress = min(1.0, elapsed / self._duration)
+                if abs(progress - self._progress) > 0.001:
+                    self._progress = progress
+                    QMetaObject.invokeMethod(
+                        self, "_emit_progress",
+                        Qt.ConnectionType.QueuedConnection,
+                    )
+
             time.sleep(0.1)  # Update at 10Hz
+
+    @Slot()
+    def _on_playback_ended(self) -> None:
+        """Called on the main thread when the playback process exits."""
+        self._state = "stopped"
+        self._progress = 1.0
+        self.stateChanged.emit(self._state)
+        self.progressChanged.emit(self._progress)
+
+    @Slot()
+    def _emit_progress(self) -> None:
+        """Called on the main thread to emit the latest progress value."""
+        self.progressChanged.emit(self._progress)
     
     def cleanup(self) -> None:
         """Cleanup resources"""

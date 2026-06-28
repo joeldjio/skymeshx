@@ -34,9 +34,9 @@ def main():
         msg = QMessageBox()
         msg.setWindowTitle("Legacy UI — Deprecated")
         msg.setText(
-            "<b>Das Legacy-QWidget-UI ist veraltet.</b><br><br>"
-            "Starte die App ohne <code>--legacy</code> um das moderne QML-UI zu nutzen.<br>"
-            "Das Legacy-UI wird in einer späteren Version entfernt."
+            "<b>The legacy QWidget UI is deprecated.</b><br><br>"
+            "Start the app without <code>--legacy</code> to use the modern QML UI.<br>"
+            "The legacy UI will be removed in a future version."
         )
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.exec()

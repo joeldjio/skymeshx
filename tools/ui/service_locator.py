@@ -123,6 +123,21 @@ def build_default_locator(app=None) -> ServiceLocator:
 
         return MissionContext()
 
+    def _camera():
+        from tools.ui.context.camera_context import CameraContext
+
+        return CameraContext()
+
+    def _capabilities():
+        from tools.ui.context.capability_context import CapabilityContext
+
+        return CapabilityContext()
+
+    def _trace():
+        from tools.ui.context.trace_context import TraceContext
+
+        return TraceContext()
+
     def _escape():
         from tools.ui.context.escape_context import ESCAPEContext
 
@@ -138,16 +153,25 @@ def build_default_locator(app=None) -> ServiceLocator:
 
         return LicenseManager()
 
+    def _video_stream():
+        from tools.ui.context.video_stream_context import VideoStreamContext
+
+        return VideoStreamContext()
+
     loc.register_factory("swarm", _swarm)
     loc.register_factory("telemetryModel", _telemetry)
     loc.register_factory("experiment", _experiment)
     loc.register_factory("safety", _safety)
     loc.register_factory("mission", _mission)
+    loc.register_factory("camera", _camera)
+    loc.register_factory("capabilities", _capabilities)
+    loc.register_factory("trace", _trace)
     loc.register_factory("escape", _escape)
     loc.register_factory("ros2", _ros2)
     loc.register_factory("bagPlayback", _bag_playback)
     loc.register_factory("updater", _updater)
     loc.register_factory("licenseManager", _license)
+    loc.register_factory("videoStream", _video_stream)
     return loc
 
 
@@ -161,12 +185,19 @@ def wire(locator: ServiceLocator) -> None:
     experiment = locator["experiment"]
     safety = locator["safety"]
     mission = locator["mission"]
+    camera = locator["camera"]
+    capabilities = locator["capabilities"]
+    trace = locator["trace"]
+    video_stream = locator["videoStream"]
     ros2 = locator["ros2"]
     bag_playback = locator["bagPlayback"]
     escape = locator["escape"]
     
     # Inject swarm context into mission context for mission upload
     mission.set_swarm_context(swarm)
+    camera.set_swarm_context(swarm)
+    capabilities.set_swarm_context(swarm)
+    swarm.backend.set_camera_context(camera)
     
     # Telemetry → models
     swarm.telemetryUpdated.connect(
@@ -177,6 +208,30 @@ def wire(locator: ServiceLocator) -> None:
     
     # Mission logs → swarm log
     mission.logMessage.connect(swarm.logMessage)
+    camera.logMessage.connect(swarm.logMessage)
+    capabilities.logMessage.connect(swarm.logMessage)
+
+    # Trace context logs only while a trace session is active.
+    from skymeshx.core.trace_logger import TraceLogger
+
+    trace_logger = TraceLogger.get()
+    trace.sessionError.connect(lambda msg: swarm.logMessage.emit("ERROR", f"[TRACE] {msg}"))
+    mission.logMessage.connect(
+        lambda level, text: trace_logger.log_mission_event(
+            "mission_log", {"level": level, "message": text}
+        )
+    )
+    mission.missionUploadStarted.connect(
+        lambda mode: trace_logger.log_mission_event(
+            "mission_upload", {"status": "started", "mode": mode}
+        )
+    )
+    mission.missionUploadFinished.connect(
+        lambda success, message: trace_logger.log_mission_event(
+            "mission_upload",
+            {"status": "finished", "success": bool(success), "message": message},
+        )
+    )
 
     # Drone count change notifications
     swarm.droneAdded.connect(lambda _: swarm.countsChanged.emit())
@@ -190,11 +245,11 @@ def wire(locator: ServiceLocator) -> None:
         if connected > 1 and not safety.apfActive:
             safety.configureAPF({})
             swarm.logMessage.emit(
-                "INFO", "[SAFETY] APF automatisch aktiviert (>1 Drone verbunden)"
+                "INFO", "[SAFETY] APF auto-activated (>1 drone connected)"
             )
         elif connected <= 1 and safety.apfActive:
             safety.disableAPF()
-            swarm.logMessage.emit("INFO", "[SAFETY] APF deaktiviert (nur 1 Drone)")
+            swarm.logMessage.emit("INFO", "[SAFETY] APF deactivated (only 1 drone)")
 
     swarm.connectedChanged.connect(lambda _id, _ok: _check_auto_apf(_id))
 
@@ -286,6 +341,11 @@ def wire(locator: ServiceLocator) -> None:
             f"[{drone_id}] ROS2 Bridge {'🟢 Started' if active else '🔴 Stopped'}"
         )
     )
+    ros2.bridgeStatusChanged.connect(
+        lambda drone_id, active: trace_logger.log_ui_event(
+            "bridge_status", {"droneId": drone_id, "active": bool(active)}
+        )
+    )
     
     # ROS2 connection status → swarm log
     ros2.connectionStatusChanged.connect(
@@ -294,8 +354,16 @@ def wire(locator: ServiceLocator) -> None:
             f"[{drone_id}] ROS2 Connection: {status}"
         )
     )
+    ros2.connectionStatusChanged.connect(
+        lambda drone_id, status: trace_logger.log_ui_event(
+            "bridge_status", {"droneId": drone_id, "status": status}
+        )
+    )
 
     # Bag playback logs → swarm log
     bag_playback.errorOccurred.connect(
         lambda msg: swarm.logMessage.emit("ERROR", f"[BAG] {msg}")
     )
+
+    # VideoStream logs → swarm log
+    video_stream.logMessage.connect(swarm.logMessage)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import threading
-from typing import List, Tuple, Optional, TYPE_CHECKING
+from typing import Any, List, Tuple, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
@@ -20,7 +20,11 @@ from skymeshx.control.field_coverage import (
     MultiDroneStrategy,
 )
 from skymeshx.control.mission import MissionEngine, Waypoint
-from skymeshx.control.seeding_planner import SeedingMissionPlanner, SeedingConfig
+from skymeshx.control.seeding_planner import (
+    DispenserCalibration,
+    SeedingMissionPlanner,
+    SeedingConfig,
+)
 
 if TYPE_CHECKING:
     from tools.ui.context.swarm_context import SwarmContext
@@ -41,6 +45,10 @@ class MissionContext(QObject):
     solarRowDrawingModeChanged = Signal(bool, arguments=["active"])
     missionWaypointModeChanged = Signal(bool, arguments=["active"])
     missionWaypointsChanged = Signal()
+    seedingPreviewChanged = Signal()
+    solarPreviewChanged = Signal()
+    missionUploadStarted = Signal(str, arguments=["mode"])
+    missionUploadFinished = Signal(bool, str, arguments=["success", "message"])
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -62,6 +70,9 @@ class MissionContext(QObject):
         # Field boundary
         self._boundary_points: List[Tuple[float, float]] = []
         self._drawing_mode = False
+        self._exclusion_zone_drawing = False
+        self._current_exclusion_zone: List[Tuple[float, float]] = []
+        self._exclusion_zones: List[List[Tuple[float, float]]] = []
         
         # Coverage configuration
         self._coverage_pattern = CoveragePattern.PARALLEL_LINES.value
@@ -96,6 +107,9 @@ class MissionContext(QObject):
         self._seeding_time = 0.0
         self._seeding_drop_count = 0
         self._seeding_preview_active = False
+        self._last_seeding_preview: dict = {}
+        self._last_solar_preview: dict = {}
+        self._uploaded_missions: dict[str, dict[str, int]] = {}
         
         # Solar inspection configuration
         self._solar_panel_rows: List[dict] = []  # List of {start_lat, start_lon, end_lat, end_lon, length}
@@ -365,26 +379,46 @@ class MissionContext(QObject):
             self._home_lon = lon
             self.logMessage.emit("INFO", f"[MISSION] Home: {lat:.6f}, {lon:.6f}")
 
+    def _commit_current_exclusion_zone_locked(self) -> bool:
+        """Commit the active exclusion zone if enough points were drawn."""
+        if not self._current_exclusion_zone:
+            return False
+
+        point_count = len(self._current_exclusion_zone)
+        if point_count >= 3:
+            self._exclusion_zones.append(list(self._current_exclusion_zone))
+            self.logMessage.emit("INFO", f"[MISSION] Exclusion zone: {point_count} points")
+        else:
+            self.logMessage.emit("WARNING", "[MISSION] Need >=3 exclusion points")
+
+        self._current_exclusion_zone.clear()
+        return True
+
     @Slot()
     def startDrawingBoundary(self):
+        exclusion_changed = False
         with self._lock:
+            exclusion_changed = self._commit_current_exclusion_zone_locked()
             self._drawing_mode = True
+            self._exclusion_zone_drawing = False
             self.logMessage.emit("INFO", f"[MISSION] Drawing mode set to: {self._drawing_mode}")
             self.drawingModeChanged.emit(True)
             self.logMessage.emit("INFO", "[MISSION] Click map to define boundary (5min timeout)")
             # Start 5-minute timeout
             self._drawing_timeout_timer.start(300000)  # 300000ms = 5 minutes
+        if exclusion_changed:
+            self.fieldBoundaryChanged.emit()
 
     def _on_drawing_timeout(self):
-        """Auto-cancel boundary drawing after 5 minutes."""
+        """Auto-cancel boundary drawing after 5 minutes — stops drawing mode but keeps collected points."""
         with self._lock:
             if self._drawing_mode:
                 self._drawing_mode = False
-                self._boundary_points.clear()
+                # Do NOT clear _boundary_points — keep what the user already drew
                 self._drawing_timeout_timer.stop()
                 self.drawingModeChanged.emit(False)
                 self.fieldBoundaryChanged.emit()
-                self.logMessage.emit("WARN", "[MISSION] ⏱ Boundary drawing timed out (5min)")
+                self.logMessage.emit("WARN", "[MISSION] ⏱ Boundary drawing timed out (5min) — points kept")
 
     @Slot()
     def cancelDrawingBoundary(self):
@@ -392,7 +426,9 @@ class MissionContext(QObject):
         try:
             # No lock needed - these are simple assignments that Qt handles atomically
             self._drawing_mode = False
+            self._exclusion_zone_drawing = False
             self._boundary_points.clear()
+            self._current_exclusion_zone.clear()
             self._drawing_timeout_timer.stop()
             self.drawingModeChanged.emit(False)
             self.fieldBoundaryChanged.emit()
@@ -404,14 +440,27 @@ class MissionContext(QObject):
     def addBoundaryPoint(self, lat: float, lon: float):
         """Add a boundary point during drawing mode."""
         try:
+            added_exclusion_point = False
             with self._lock:
-                self._boundary_points.append((lat, lon))
-                # Set home position from first boundary point
-                if len(self._boundary_points) == 1 and not self._home_set:
-                    self._planner.set_home_position(lat, lon)
-                    self._home_set = True
-                # Emit signal AFTER releasing lock to prevent deadlock
+                if self._exclusion_zone_drawing:
+                    self._current_exclusion_zone.append((lat, lon))
+                    point_count = len(self._current_exclusion_zone)
+                    self.logMessage.emit("INFO", f"[MISSION] Exclusion point {point_count} added")
+                    added_exclusion_point = True
+                else:
+                    self._boundary_points.append((lat, lon))
+                    # Set home position from first boundary point
+                    if len(self._boundary_points) == 1 and not self._home_set:
+                        self._planner.set_home_position(lat, lon)
+                        self._seeding_planner.set_home_position(lat, lon)
+                        self._home_set = True
+                        self._home_lat = lat
+                        self._home_lon = lon
+            # Emit signal AFTER releasing lock to prevent deadlock
             self.fieldBoundaryChanged.emit()
+            if added_exclusion_point:
+                return
+
             self.logMessage.emit("INFO", f"[MISSION] Point {len(self._boundary_points)} added")
             if len(self._boundary_points) == 1:
                 self.logMessage.emit("INFO", f"[MISSION] Home set to first boundary point")
@@ -424,6 +473,11 @@ class MissionContext(QObject):
             self._drawing_mode = False
             self._drawing_timeout_timer.stop()  # Stop timeout timer
             self.drawingModeChanged.emit(False)
+            if self._exclusion_zone_drawing:
+                self._exclusion_zone_drawing = False
+                self._commit_current_exclusion_zone_locked()
+                self.fieldBoundaryChanged.emit()
+                return
             if len(self._boundary_points) >= 3:
                 self.logMessage.emit("INFO", f"[MISSION] ✅ Boundary: {len(self._boundary_points)} points")
             else:
@@ -446,6 +500,9 @@ class MissionContext(QObject):
     def clearFieldBoundary(self):
         with self._lock:
             self._boundary_points.clear()
+            self._current_exclusion_zone.clear()
+            self._exclusion_zones.clear()
+            self._exclusion_zone_drawing = False
             self._coverage_waypoints.clear()
             self._coverage_distance = 0.0
             self._coverage_time = 0.0
@@ -456,6 +513,25 @@ class MissionContext(QObject):
     
     # ── Mission Waypoint Mode Methods ────────────────────────────────────
     
+    @Slot()
+    def clearBoundary(self):
+        """QML alias for clearing the drawn field boundary."""
+        self.clearFieldBoundary()
+
+    @Slot()
+    def startDrawingExclusionZone(self):
+        """Activate map drawing for a seeding exclusion zone."""
+        exclusion_changed = False
+        with self._lock:
+            exclusion_changed = self._commit_current_exclusion_zone_locked()
+            self._drawing_mode = True
+            self._exclusion_zone_drawing = True
+            self.drawingModeChanged.emit(True)
+            self.logMessage.emit("INFO", "[MISSION] Click map to define exclusion zone")
+            self._drawing_timeout_timer.start(300000)
+        if exclusion_changed:
+            self.fieldBoundaryChanged.emit()
+
     @Slot()
     def startMissionWaypointMode(self):
         """Start mission waypoint adding mode."""
@@ -580,6 +656,30 @@ class MissionContext(QObject):
         """Inject SwarmContext reference for mission upload."""
         self._swarm_context = swarm_context
 
+    def _mission_mode_name(self, mode: Optional[int] = None) -> str:
+        mode_value = self._mission_mode if mode is None else mode
+        if mode_value == 1:
+            return "seeding"
+        if mode_value == 2:
+            return "solar"
+        return "coverage"
+
+    def _clear_uploaded_missions(self) -> None:
+        with self._lock:
+            self._uploaded_missions.clear()
+
+    def _mark_mission_uploaded(self, drone_id: str, mode: int, waypoint_count: int) -> None:
+        with self._lock:
+            self._uploaded_missions[drone_id] = {
+                "mode": int(mode),
+                "waypoint_count": int(waypoint_count),
+            }
+
+    def _uploaded_mission_for(self, drone_id: str) -> dict[str, int] | None:
+        with self._lock:
+            uploaded = self._uploaded_missions.get(drone_id)
+            return dict(uploaded) if uploaded else None
+
     @Slot()
     def uploadMission(self):
         """Unified upload method - calls coverage, seeding, or solar based on mode."""
@@ -589,6 +689,155 @@ class MissionContext(QObject):
             self.uploadSolarMission()
         else:
             self.uploadCoverageMission()
+
+    @Slot()
+    def startMission(self):
+        """Explicitly start an uploaded mission by switching connected drones to AUTO."""
+        threading.Thread(
+            target=self._mission_control_worker,
+            args=("start",),
+            daemon=True
+        ).start()
+
+    @Slot()
+    def pauseMission(self):
+        """Pause an active mission by switching connected drones to LOITER."""
+        threading.Thread(
+            target=self._mission_control_worker,
+            args=("pause",),
+            daemon=True
+        ).start()
+
+    @Slot()
+    def abortMission(self):
+        """Abort active mission and command RTL on connected drones."""
+        threading.Thread(
+            target=self._mission_control_worker,
+            args=("abort",),
+            daemon=True
+        ).start()
+
+    def _mission_control_worker(self, action: str) -> None:
+        import time
+        try:
+            if not self._swarm_context:
+                self.logMessage.emit("ERROR", "[MISSION] SwarmContext not available")
+                return
+
+            backends = self._swarm_context.backend.all_backends()
+            connected = [
+                (drone_id, backend)
+                for drone_id, backend in backends.items()
+                if backend.is_connected
+            ]
+            if not connected:
+                self.logMessage.emit("ERROR", "[MISSION] No connected drones")
+                return
+
+            success_count = 0
+            for drone_id, backend in connected:
+                try:
+                    if action == "start":
+                        drone = getattr(backend, "_drone", None)
+                        if not drone:
+                            self.logMessage.emit("WARN", f"[{drone_id}] No drone object")
+                            continue
+
+                        uploaded = self._uploaded_mission_for(drone_id)
+                        if not uploaded:
+                            self.logMessage.emit(
+                                "ERROR",
+                                f"[{drone_id}] No uploaded mission. Press Upload Mission before Start Mission."
+                            )
+                            continue
+                        if uploaded.get("mode") != self._mission_mode:
+                            uploaded_mode = self._mission_mode_name(uploaded.get("mode"))
+                            current_mode = self._mission_mode_name()
+                            self.logMessage.emit(
+                                "ERROR",
+                                f"[{drone_id}] Uploaded mission is {uploaded_mode}, current mode is {current_mode}. Upload again before start."
+                            )
+                            continue
+                        if uploaded.get("waypoint_count", 0) <= 0:
+                            self.logMessage.emit(
+                                "ERROR",
+                                f"[{drone_id}] Uploaded mission has no waypoints. Upload a valid mission before start."
+                            )
+                            continue
+
+                        # ArduPilot only allows arming in GUIDED/STABILIZE, not AUTO/RTL.
+                        # Sequence: GUIDED → ARM → TAKEOFF → AUTO
+                        if drone.altitude < 2.0:
+                            # 1. Switch to GUIDED first so arming is permitted
+                            self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Switching to GUIDED...")
+                            if not drone.set_mode("GUIDED", timeout=5.0):
+                                self.logMessage.emit("WARN", f"[{drone_id}] ⚠ GUIDED mode failed, trying anyway...")
+
+                            # 2. ARM
+                            if not drone.armed:
+                                self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
+                                if not drone.arm(timeout=10.0):
+                                    self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Arm failed")
+                                    continue
+                                self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
+
+                            # 3. TAKEOFF
+                            if self._mission_mode == 1:
+                                takeoff_alt = self._seed_altitude
+                            elif self._mission_mode == 2:
+                                takeoff_alt = self._solar_altitude
+                            else:
+                                takeoff_alt = self._coverage_altitude
+                            self.logMessage.emit("INFO", f"[{drone_id}] 🚁 Taking off to {takeoff_alt}m...")
+                            if not drone.takeoff(altitude=takeoff_alt, timeout=30.0):
+                                self.logMessage.emit("WARN", f"[{drone_id}] ⚠ Takeoff timeout, continuing...")
+                            else:
+                                self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
+                                time.sleep(1.0)  # brief settle after takeoff
+
+                        # 4. SET AUTO to start the uploaded mission
+                        self.logMessage.emit("INFO", f"[{drone_id}] 🎯 Starting mission (AUTO)...")
+                        ok = drone.set_mode("AUTO", timeout=5.0)
+                        if ok:
+                            success_count += 1
+                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Mission started!")
+                            # Mark mission active in SwarmContext
+                            if self._swarm_context is not None:
+                                with self._swarm_context._state_lock:
+                                    if drone_id not in self._swarm_context._mission_active:
+                                        self._swarm_context._mission_active[drone_id] = threading.Event()
+                                    self._swarm_context._mission_active[drone_id].clear()
+                        else:
+                            self.logMessage.emit("WARN", f"[{drone_id}] ⚠ Could not set AUTO mode")
+
+                    elif action == "pause":
+                        drone = getattr(backend, "_drone", None)
+                        ok = bool(drone and drone.set_mode("LOITER", timeout=5.0))
+                        if ok:
+                            success_count += 1
+                        else:
+                            self.logMessage.emit("WARN", f"[{drone_id}] Pause failed")
+
+                    elif action == "abort":
+                        backend.rtl()
+                        success_count += 1
+                        # Clear mission-active flag
+                        if self._swarm_context is not None:
+                            with self._swarm_context._state_lock:
+                                self._swarm_context._mission_active.pop(drone_id, None)
+
+                    else:
+                        self.logMessage.emit("WARN", f"[{drone_id}] Unknown action: {action}")
+
+                except Exception as e:
+                    self.logMessage.emit("ERROR", f"[{drone_id}] Mission {action} error: {e}")
+
+            self.logMessage.emit(
+                "INFO",
+                f"[MISSION] {action} command sent to {success_count}/{len(connected)} drone(s)"
+            )
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] {action} worker error: {e}")
     
     @Slot()
     def uploadCoverageMission(self):
@@ -596,15 +845,20 @@ class MissionContext(QObject):
         with self._lock:
             if not self._coverage_waypoints:
                 self.logMessage.emit("ERROR", "[MISSION] No waypoints to upload")
+                self.missionUploadFinished.emit(False, "No waypoints to upload")
                 return
             
             if not self._swarm_context:
                 self.logMessage.emit("ERROR", "[MISSION] SwarmContext not available")
+                self.missionUploadFinished.emit(False, "SwarmContext not available")
                 return
             
             # Get selected drone IDs from AppState (QML singleton)
             # We'll call a method on swarm_context to get the list
             waypoints = list(self._coverage_waypoints)
+
+        self._clear_uploaded_missions()
+        self.missionUploadStarted.emit("coverage")
         
         # Run upload in background thread to avoid blocking UI
         threading.Thread(
@@ -737,63 +991,9 @@ class MissionContext(QObject):
                         f"[{drone_id}] ✅ Mission uploaded ({len(drone_waypoints)} waypoints)"
                     )
                     
-                    # Auto-sequence: ARM → TAKEOFF → START MISSION
-                    drone_obj = backend._drone
-                    
-                    # 1. ARM if not armed
-                    if not drone_obj.armed:
-                        self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
-                        if not drone_obj.arm(timeout=10.0):
-                            self.logMessage.emit(
-                                "ERROR",
-                                f"[{drone_id}] ❌ Failed to arm"
-                            )
-                            continue
-                        self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
-                    
-                    # 2. TAKEOFF if not airborne (use coverage altitude)
-                    if drone_obj.altitude < 2.0:  # Not airborne
-                        takeoff_alt = self._coverage_altitude
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] 🚁 Taking off to {takeoff_alt}m..."
-                        )
-                        if not drone_obj.takeoff(altitude=takeoff_alt, timeout=30.0):
-                            self.logMessage.emit(
-                                "WARN",
-                                f"[{drone_id}] ⚠ Takeoff timeout, but continuing..."
-                            )
-                        else:
-                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
-                    
-                    # 3. START MISSION (set mode to AUTO)
-                    self.logMessage.emit("INFO", f"[{drone_id}] 🎯 Starting mission...")
-                    if mission.start():
-                        success_count += 1
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] ✅ Mission started! Flying coverage pattern..."
-                        )
-                        
-                        # Notify SwarmContext that this drone is now mission-controlled
-                        # This prevents APF/formations from interfering with the mission
-                        if self._swarm_context is not None:
-                            with self._swarm_context._state_lock:
-                                # Mark mission as active for this drone
-                                if drone_id not in self._swarm_context._mission_active:
-                                    self._swarm_context._mission_active[drone_id] = threading.Event()
-                                # Clear the event to indicate mission is running
-                                self._swarm_context._mission_active[drone_id].clear()
-                            
-                            self.logMessage.emit(
-                                "INFO",
-                                f"[{drone_id}] 🔒 Mission lock acquired (APF/formations disabled)"
-                            )
-                    else:
-                        self.logMessage.emit(
-                            "WARN",
-                            f"[{drone_id}] ⚠ Failed to start mission (set mode to AUTO manually)"
-                        )
+                    # Upload only — execution is triggered explicitly via startMission()
+                    self._mark_mission_uploaded(drone_id, 0, len(drone_waypoints))
+                    success_count += 1
                 
                 except Exception as e:
                     self.logMessage.emit(
@@ -801,11 +1001,10 @@ class MissionContext(QObject):
                         f"[{drone_id}] Upload error: {e}"
                     )
             
-            # Summary
             if success_count > 0:
                 self.logMessage.emit(
                     "INFO",
-                    f"[MISSION] ✅ Upload complete: {success_count}/{len(target_drones)} successful"
+                    f"[MISSION] ✅ Upload complete: {success_count}/{len(target_drones)} drone(s). Press Start Mission to execute."
                 )
             else:
                 self.logMessage.emit(
@@ -858,6 +1057,24 @@ class MissionContext(QObject):
             return [{"lat": float(lat), "lon": float(lon)} for lat, lon in self._boundary_points]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getBoundaryPoints failed: {e}")
+            return []
+
+    @Slot(result="QVariantList")
+    def getExclusionZones(self):
+        """Return completed and in-progress exclusion zones for QML/JavaScript."""
+        try:
+            zones = [
+                [{"lat": float(lat), "lon": float(lon)} for lat, lon in zone]
+                for zone in self._exclusion_zones
+            ]
+            if self._current_exclusion_zone:
+                zones.append([
+                    {"lat": float(lat), "lon": float(lon)}
+                    for lat, lon in self._current_exclusion_zone
+                ])
+            return zones
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[MISSION] getExclusionZones failed: {e}")
             return []
 
     # ── Mission Mode Properties ───────────────────────────────────────────
@@ -978,6 +1195,184 @@ class MissionContext(QObject):
     
     # ── Seeding Mission Methods ───────────────────────────────────────────
     
+    def _mission_param(self, params: dict, keys: List[str], default: Any) -> Any:
+        for key in keys:
+            if key in params and params[key] is not None:
+                return params[key]
+        return default
+
+    def _mission_float_param(self, params: dict, keys: List[str], default: float) -> float:
+        return float(self._mission_param(params, keys, default))
+
+    def _mission_int_param(self, params: dict, keys: List[str], default: int) -> int:
+        return int(self._mission_param(params, keys, default))
+
+    def _mission_bool_param(self, params: dict, keys: List[str], default: bool) -> bool:
+        value = self._mission_param(params, keys, default)
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+
+    def _boundary_point_from_mapping(self, point: dict) -> Tuple[float, float]:
+        return float(point["lat"]), float(point["lon"])
+
+    def _seeding_boundary_from_params(self, params: dict) -> FieldBoundary:
+        if "boundary" in params:
+            raw_points = params["boundary"]
+        elif "fieldBoundary" in params:
+            raw_points = params["fieldBoundary"]
+        elif "boundaryPoints" in params:
+            raw_points = params["boundaryPoints"]
+        elif "points" in params:
+            raw_points = params["points"]
+        else:
+            raw_points = [{"lat": lat, "lon": lon} for lat, lon in self._boundary_points]
+
+        corners = [self._boundary_point_from_mapping(dict(point)) for point in raw_points]
+        return FieldBoundary(corners=corners)
+
+    def _seeding_calibration_from_params(self, params: dict) -> DispenserCalibration:
+        tank_capacity_kg = self._mission_float_param(
+            params, ["tankCapacityKg", "tank_capacity_kg"], 1.0
+        )
+        if "tankCapacityG" in params or "tank_capacity_g" in params:
+            tank_capacity_kg = self._mission_float_param(
+                params, ["tankCapacityG", "tank_capacity_g"], 1000.0
+            ) / 1000.0
+
+        return DispenserCalibration(
+            seed_capacity=self._mission_int_param(
+                params, ["seedCapacity", "seed_capacity"], 500
+            ),
+            seed_weight_g=self._mission_float_param(
+                params, ["seedWeightG", "seed_weight_g", "seedWeight"], 0.05
+            ),
+            tank_capacity_kg=tank_capacity_kg,
+            seeds_per_drop=self._mission_int_param(
+                params, ["seedsPerDrop", "seeds_per_drop"], 1
+            ),
+            max_drop_rate=self._mission_float_param(
+                params, ["maxDropRate", "max_drop_rate", "dispenseRate"], 2.0
+            ),
+        )
+
+    @Slot("QVariantMap", result="QVariantMap")
+    def generateSeedingPreview(self, params: dict):
+        """Generate seeding mission preview data for QML without upload or execution."""
+        try:
+            params = dict(params or {})
+            with self._lock:
+                boundary = self._seeding_boundary_from_params(params)
+                home_lat = self._home_lat if self._home_set else boundary.corners[0][0]
+                home_lon = self._home_lon if self._home_set else boundary.corners[0][1]
+                config = SeedingConfig(
+                    seed_spacing=self._mission_float_param(
+                        params, ["seedSpacing", "seed_spacing"], self._seed_spacing
+                    ),
+                    row_spacing=self._mission_float_param(
+                        params, ["rowSpacing", "row_spacing"], self._seed_row_spacing
+                    ),
+                    altitude=self._mission_float_param(
+                        params, ["altitude"], self._seed_altitude
+                    ),
+                    speed=self._mission_float_param(params, ["speed"], self._coverage_speed),
+                    servo_channel=self._mission_int_param(
+                        params, ["servoChannel", "servo_channel"], self._servo_channel
+                    ),
+                    servo_open_pwm=self._mission_int_param(
+                        params, ["servoOpenPWM", "servo_open_pwm"], self._servo_open_pwm
+                    ),
+                    servo_close_pwm=self._mission_int_param(
+                        params, ["servoClosePWM", "servo_close_pwm"], self._servo_close_pwm
+                    ),
+                    drop_duration=self._mission_float_param(
+                        params, ["dropDuration", "drop_duration"], self._seed_drop_duration
+                    ),
+                )
+                calibration = self._seeding_calibration_from_params(params)
+
+            planner = SeedingMissionPlanner()
+            planner.set_home_position(home_lat, home_lon)
+            stored_exclusion_zones = [
+                {
+                    "points": [{"lat": lat, "lon": lon} for lat, lon in zone],
+                    "name": f"exclusion-{idx + 1}",
+                }
+                for idx, zone in enumerate(self._exclusion_zones)
+            ]
+            if len(self._current_exclusion_zone) >= 3:
+                stored_exclusion_zones.append(
+                    {
+                        "points": [
+                            {"lat": lat, "lon": lon}
+                            for lat, lon in self._current_exclusion_zone
+                        ],
+                        "name": f"exclusion-{len(stored_exclusion_zones) + 1}",
+                    }
+                )
+            exclusion_zones = list(
+                self._mission_param(
+                    params,
+                    ["exclusionZones", "exclusion_zones"],
+                    stored_exclusion_zones,
+                )
+            )
+            add_rtl = self._mission_bool_param(params, ["addRtl", "add_rtl"], True)
+            battery_available = self._mission_float_param(
+                params, ["batteryAvailablePercent", "battery_available_percent"], 100.0
+            )
+
+            preview = planner.generate_seeding_mission_with_preview(
+                boundary,
+                config,
+                calibration=calibration,
+                exclusion_zones=exclusion_zones,
+                add_rtl=add_rtl,
+            )
+            validation = planner.validate_seeding_mission(
+                boundary,
+                config,
+                calibration=calibration,
+                exclusion_zones=exclusion_zones,
+                battery_available_percent=battery_available,
+            )
+
+            result = preview.to_dict()
+            result["valid"] = bool(validation["valid"])
+            result["errors"] = list(validation["errors"])
+            result["warnings"] = list(dict.fromkeys(result["warnings"] + validation["warnings"]))
+            result["validation"] = validation
+            with self._lock:
+                self._last_seeding_preview = result
+                self._seeding_waypoints = list(preview.waypoints) if result["valid"] else []
+                self._uploaded_missions.clear()
+            self.seedingPreviewChanged.emit()
+            return result
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SEEDING] Preview generation failed: {e}")
+            return {
+                "valid": False,
+                "errors": [str(e)],
+                "warnings": [],
+                "waypoints": [],
+                "flightPath": [],
+                "flightRows": [],
+                "dropPoints": [],
+                "exclusionZones": [],
+                "estimatedSeedUsage": 0,
+                "estimatedSeedWeightKg": 0.0,
+                "estimatedDuration": 0.0,
+                "estimatedBatteryUsage": 0.0,
+                "estimatedDistance": 0.0,
+                "fieldArea": 0.0,
+                "validation": {"valid": False, "errors": [str(e)], "warnings": []},
+            }
+
+    @Slot(result="QVariantMap")
+    def getSeedingPreview(self):
+        """Return the last computed seeding preview for main.qml to push to the map."""
+        return dict(self._last_seeding_preview)
+
     @Slot()
     def generateSeedingMission(self):
         """Generate seeding mission with servo commands for seed drops."""
@@ -1045,13 +1440,18 @@ class MissionContext(QObject):
         with self._lock:
             if not self._seeding_waypoints:
                 self.logMessage.emit("ERROR", "[SEEDING] No waypoints to upload")
+                self.missionUploadFinished.emit(False, "No seeding waypoints to upload")
                 return
             
             if not self._swarm_context:
                 self.logMessage.emit("ERROR", "[SEEDING] SwarmContext not available")
+                self.missionUploadFinished.emit(False, "SwarmContext not available")
                 return
             
             waypoints = list(self._seeding_waypoints)
+
+        self._clear_uploaded_missions()
+        self.missionUploadStarted.emit("seeding")
         
         # Run upload in background thread
         threading.Thread(
@@ -1132,75 +1532,9 @@ class MissionContext(QObject):
                         f"[{drone_id}] ✅ Seeding mission uploaded ({len(waypoints)} WP)"
                     )
                     
-                    # Check drone state and execute appropriate sequence
-                    drone_obj = backend._drone
-                    fsm_state = backend.fsm_state if hasattr(backend, 'fsm_state') else "UNKNOWN"
-                    
-                    self.logMessage.emit("INFO", f"[{drone_id}] Current state: {fsm_state}")
-                    
-                    # If already flying, just start the mission
-                    if fsm_state in ["FLYING", "MISSION"]:
-                        self.logMessage.emit("INFO", f"[{drone_id}] 🌱 Starting seeding mission...")
-                        if mission.start():
-                            success_count += 1
-                            self.logMessage.emit(
-                                "INFO",
-                                f"[{drone_id}] ✅ Seeding mission started!"
-                            )
-                            
-                            # Mark mission as active
-                            if self._swarm_context is not None:
-                                with self._swarm_context._state_lock:
-                                    if drone_id not in self._swarm_context._mission_active:
-                                        self._swarm_context._mission_active[drone_id] = threading.Event()
-                                    self._swarm_context._mission_active[drone_id].clear()
-                        else:
-                            self.logMessage.emit(
-                                "WARN",
-                                f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
-                            )
-                        continue
-                    
-                    # If on ground, execute full sequence: ARM → TAKEOFF → START
-                    if not drone_obj.armed:
-                        self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
-                        if not drone_obj.arm(timeout=10.0):
-                            self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Arm failed")
-                            continue
-                        self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
-                    
-                    if drone_obj.altitude < 2.0:
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] 🚁 Taking off to {self._seed_altitude}m..."
-                        )
-                        if not drone_obj.takeoff(altitude=self._seed_altitude, timeout=30.0):
-                            self.logMessage.emit(
-                                "WARN",
-                                f"[{drone_id}] ⚠ Takeoff timeout, continuing..."
-                            )
-                        else:
-                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
-                    
-                    self.logMessage.emit("INFO", f"[{drone_id}] 🌱 Starting seeding mission...")
-                    if mission.start():
-                        success_count += 1
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] ✅ Seeding mission started!"
-                        )
-                        
-                        # Mark mission as active
-                        if self._swarm_context is not None:
-                            with self._swarm_context._state_lock:
-                                if drone_id not in self._swarm_context._mission_active:
-                                    self._swarm_context._mission_active[drone_id] = threading.Event()
-                                self._swarm_context._mission_active[drone_id].clear()
-                    else:
-                        self.logMessage.emit(
-                            "WARN",
-                            f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
-                        )
+                    # Upload only — execution is triggered explicitly via startMission()
+                    self._mark_mission_uploaded(drone_id, 1, len(waypoints))
+                    success_count += 1
                 
                 except Exception as e:
                     self.logMessage.emit("ERROR", f"[{drone_id}] Upload error: {e}")
@@ -1208,7 +1542,7 @@ class MissionContext(QObject):
             if success_count > 0:
                 self.logMessage.emit(
                     "INFO",
-                    f"[SEEDING] ✅ {success_count}/{len(target_drones)} successful"
+                    f"[SEEDING] ✅ Upload complete: {success_count}/{len(target_drones)} drone(s). Press Start Mission to execute."
                 )
             else:
                 self.logMessage.emit("ERROR", "[SEEDING] ❌ All uploads failed")
@@ -1334,11 +1668,30 @@ class MissionContext(QObject):
     # ── Solar Inspection Methods ───────────────────────────────────────────
     
     @Slot()
+    def startDrawingSolarRows(self):
+        """QML alias for starting solar row drawing."""
+        self.startAddingSolarRow()
+
+    @Slot()
+    def clearSolarRows(self):
+        """QML alias for clearing drawn solar rows."""
+        self.clearSolarPanelRows()
+
+    @Slot()
     def startAddingSolarRow(self):
         """Start interactive solar row addition on map."""
-        self._adding_solar_row = True
-        self._solar_row_start_lat = 0.0
-        self._solar_row_start_lon = 0.0
+        with self._lock:
+            self._commit_current_exclusion_zone_locked()
+            self._adding_solar_row = True
+            self._solar_row_start_lat = 0.0
+            self._solar_row_start_lon = 0.0
+            self._drawing_mode = False
+            self._exclusion_zone_drawing = False
+            self._mission_waypoint_mode = False
+            self._drawing_timeout_timer.stop()
+        self.drawingModeChanged.emit(False)
+        self.missionWaypointModeChanged.emit(False)
+        self.fieldBoundaryChanged.emit()
         self.solarRowDrawingModeChanged.emit(True)
         self.logMessage.emit("INFO", "[SOLAR] Click two points on map to define panel row")
     
@@ -1403,7 +1756,7 @@ class MissionContext(QObject):
             
             with self._lock:
                 self._solar_panel_rows.append(row)
-                self._adding_solar_row = False
+                self._adding_solar_row = True
             
             self.solarPanelRowsChanged.emit()
             self.logMessage.emit("INFO", f"[SOLAR] Added row {len(self._solar_panel_rows)} ({length:.1f}m)")
@@ -1440,7 +1793,149 @@ class MissionContext(QObject):
                     self.logMessage.emit("INFO", f"[SOLAR] Removed row {index + 1}")
         except Exception as e:
             self.logMessage.emit("ERROR", f"[SOLAR] Failed to remove row: {e}")
+
+    def _solar_param(self, params: dict, keys: List[str], default: Any) -> Any:
+        """Read a QML params value by accepting camelCase and snake_case names."""
+        for key in keys:
+            if key in params and params[key] is not None:
+                return params[key]
+        return default
+
+    def _solar_float_param(self, params: dict, keys: List[str], default: float) -> float:
+        return float(self._solar_param(params, keys, default))
+
+    def _solar_bool_param(self, params: dict, keys: List[str], default: bool) -> bool:
+        value = self._solar_param(params, keys, default)
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+
+    def _solar_point_from_params(self, row: dict, prefix: str) -> Tuple[float, float]:
+        nested = row.get(prefix)
+        if isinstance(nested, dict):
+            return float(nested["lat"]), float(nested["lon"])
+        return float(row[f"{prefix}_lat"]), float(row[f"{prefix}_lon"])
+
+    def _solar_preview_rows_from_params(self, params: dict):
+        from skymeshx.control.solar_inspection import PanelRow
+
+        if "rows" in params:
+            raw_rows = params["rows"]
+        elif "panelRows" in params:
+            raw_rows = params["panelRows"]
+        else:
+            raw_rows = list(self._solar_panel_rows)
+
+        rows = []
+        for raw_row in raw_rows:
+            row = dict(raw_row)
+            start = self._solar_point_from_params(row, "start")
+            end = self._solar_point_from_params(row, "end")
+            width = float(row.get("width", 2.0))
+            rows.append(PanelRow(start=start, end=end, width=width))
+        return rows
+
+    @Slot("QVariantMap", result="QVariantMap")
+    def generateSolarPreview(self, params: dict):
+        """Generate solar mission preview data for QML without upload or execution."""
+        try:
+            from skymeshx.control.solar_inspection import (
+                SolarParkInspectionPlanner,
+                InspectionConfig,
+            )
+
+            params = dict(params or {})
+            with self._lock:
+                rows = self._solar_preview_rows_from_params(params)
+                altitude = self._solar_float_param(params, ["altitude"], self._solar_altitude)
+                gimbal_pitch = self._solar_float_param(
+                    params, ["gimbalPitch", "gimbal_pitch", "gimbalAngle", "cameraAngle"], self._solar_gimbal_pitch
+                )
+                speed = self._solar_float_param(params, ["speed"], 3.0)
+                trigger_distance = self._solar_float_param(
+                    params, ["triggerDistance", "trigger_distance"], self._solar_trigger_distance
+                )
+                trigger_time = self._solar_float_param(
+                    params, ["triggerTime", "trigger_time"], 0.0
+                )
+                if trigger_distance <= 0 and trigger_time > 0:
+                    trigger_distance = speed * trigger_time
+                overlap = self._solar_float_param(
+                    params,
+                    ["overlap", "forwardOverlap", "forward_overlap", "sideOverlap", "side_overlap"],
+                    self._solar_overlap,
+                )
+                if overlap > 1.0:
+                    overlap = overlap / 100.0
+
+            config = InspectionConfig(
+                altitude=altitude,
+                gimbal_pitch=gimbal_pitch,
+                trigger_distance=trigger_distance,
+                overlap=overlap,
+                speed=speed,
+                camera_fov_horizontal=self._solar_float_param(
+                    params, ["cameraHFov", "cameraHFOV", "camera_hfov", "cameraFovHorizontal", "camera_fov_horizontal"], 60.0
+                ),
+                camera_fov_vertical=self._solar_float_param(
+                    params, ["cameraVFov", "cameraVFOV", "camera_vfov", "cameraFovVertical", "camera_fov_vertical"], 45.0
+                ),
+            )
+            thermal_enabled = self._solar_bool_param(
+                params, ["thermalEnabled", "thermal_enabled"], False
+            )
+            add_rtl = self._solar_bool_param(params, ["addRtl", "addRTL", "add_rtl"], True)
+            battery_available = self._solar_float_param(
+                params, ["batteryAvailablePercent", "battery_available_percent"], 100.0
+            )
+
+            planner = SolarParkInspectionPlanner()
+            preview = planner.generate_solar_mission_with_preview(
+                rows,
+                config,
+                add_rtl=add_rtl,
+                thermal_enabled=thermal_enabled,
+            )
+            validation = planner.validate_solar_mission(
+                rows,
+                config,
+                thermal_enabled=thermal_enabled,
+                battery_available_percent=battery_available,
+            )
+
+            result = preview.to_dict()
+            result["valid"] = bool(validation["valid"])
+            result["errors"] = list(validation["errors"])
+            result["warnings"] = list(dict.fromkeys(result["warnings"] + validation["warnings"]))
+            result["validation"] = validation
+            with self._lock:
+                self._last_solar_preview = result
+                self._solar_waypoints = list(preview.waypoints) if result["valid"] else []
+                self._uploaded_missions.clear()
+            self.solarPreviewChanged.emit()
+            return result
+        except Exception as e:
+            self.logMessage.emit("ERROR", f"[SOLAR] Preview generation failed: {e}")
+            return {
+                "valid": False,
+                "errors": [str(e)],
+                "warnings": [],
+                "waypoints": [],
+                "triggerPoints": [],
+                "flightPath": [],
+                "estimatedDuration": 0.0,
+                "estimatedBatteryUsage": 0.0,
+                "totalImages": 0,
+                "storageRequired": 0.0,
+                "coverageArea": 0.0,
+                "validation": {"valid": False, "errors": [str(e)], "warnings": []},
+            }
     
+    @Slot(result="QVariantMap")
+    def getSolarPreview(self):
+        """Return the last computed solar preview for main.qml to push to the map."""
+        return dict(self._last_solar_preview)
+
     @Slot()
     def generateSolarInspection(self):
         """Generate solar inspection mission waypoints."""
@@ -1528,13 +2023,18 @@ class MissionContext(QObject):
         with self._lock:
             if not self._solar_waypoints:
                 self.logMessage.emit("ERROR", "[SOLAR] No waypoints to upload")
+                self.missionUploadFinished.emit(False, "No solar waypoints to upload")
                 return
             
             if not self._swarm_context:
                 self.logMessage.emit("ERROR", "[SOLAR] SwarmContext not available")
+                self.missionUploadFinished.emit(False, "SwarmContext not available")
                 return
             
             waypoints = list(self._solar_waypoints)
+
+        self._clear_uploaded_missions()
+        self.missionUploadStarted.emit("solar")
         
         # Run upload in background thread
         threading.Thread(
@@ -1615,58 +2115,9 @@ class MissionContext(QObject):
                         f"[{drone_id}] ✅ {len(waypoints)} waypoints uploaded"
                     )
                     
-                    # Get drone object for arm/takeoff
-                    drone_obj = backend._drone
-                    if not drone_obj:
-                        self.logMessage.emit(
-                            "WARN",
-                            f"[{drone_id}] No drone object, skipping auto-start"
-                        )
-                        success_count += 1
-                        continue
-                    
-                    # Auto-arm if not armed
-                    if not drone_obj.armed:
-                        self.logMessage.emit("INFO", f"[{drone_id}] 🔧 Arming...")
-                        if not drone_obj.arm(timeout=10.0):
-                            self.logMessage.emit("ERROR", f"[{drone_id}] ❌ Arm failed")
-                            continue
-                        self.logMessage.emit("INFO", f"[{drone_id}] ✅ Armed")
-                    
-                    # Auto-takeoff if on ground
-                    if drone_obj.altitude < 2.0:
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] 🚁 Taking off to {self._solar_altitude}m..."
-                        )
-                        if not drone_obj.takeoff(altitude=self._solar_altitude, timeout=30.0):
-                            self.logMessage.emit(
-                                "WARN",
-                                f"[{drone_id}] ⚠ Takeoff timeout, continuing..."
-                            )
-                        else:
-                            self.logMessage.emit("INFO", f"[{drone_id}] ✅ Airborne")
-                    
-                    # Start mission
-                    self.logMessage.emit("INFO", f"[{drone_id}] ☀ Starting solar inspection...")
-                    if mission.start():
-                        success_count += 1
-                        self.logMessage.emit(
-                            "INFO",
-                            f"[{drone_id}] ✅ Solar inspection started!"
-                        )
-                        
-                        # Mark mission as active
-                        if self._swarm_context is not None:
-                            with self._swarm_context._state_lock:
-                                if drone_id not in self._swarm_context._mission_active:
-                                    self._swarm_context._mission_active[drone_id] = threading.Event()
-                                self._swarm_context._mission_active[drone_id].clear()
-                    else:
-                        self.logMessage.emit(
-                            "WARN",
-                            f"[{drone_id}] ⚠ Failed to start (set AUTO mode manually)"
-                        )
+                    # Upload only — execution is triggered explicitly via startMission()
+                    self._mark_mission_uploaded(drone_id, 2, len(waypoints))
+                    success_count += 1
                 
                 except Exception as e:
                     self.logMessage.emit("ERROR", f"[{drone_id}] Upload error: {e}")
@@ -1674,7 +2125,7 @@ class MissionContext(QObject):
             if success_count > 0:
                 self.logMessage.emit(
                     "INFO",
-                    f"[SOLAR] ✅ {success_count}/{len(target_drones)} successful"
+                    f"[SOLAR] ✅ Upload complete: {success_count}/{len(target_drones)} drone(s). Press Start Mission to execute."
                 )
             else:
                 self.logMessage.emit("ERROR", "[SOLAR] ❌ All uploads failed")
