@@ -317,7 +317,15 @@ Item {
             anchors { top: parent.top; right: parent.right; margins: 4 }
             width: 18; height: 18; radius: 4; color: "#334155"
             Text { anchors.centerIn: parent; text: "✕"; color: "#94a3b8"; font.pixelSize: 9 }
-            MouseArea { anchors.fill: parent; onClicked: { if (typeof videoStream !== "undefined" && videoStream) videoStream.stopStream() } }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    if (typeof videoStream !== "undefined" && videoStream) {
+                        var did = (typeof Cmp !== "undefined" && Cmp.AppState) ? Cmp.AppState.selectedDroneId : ""
+                        if (did) videoStream.stopStream(did)
+                    }
+                }
+            }
         }
     }
 
@@ -407,7 +415,7 @@ Item {
     // Called from main.qml on telemetry
     // B-M3: single combined call to avoid double IPC round-trip
     function updateDronesAndSelect(jsonStr, did) {
-        webView.runJavaScript("updateDronesAndSelect(" + jsonStr + ", '" + did + "')")
+        webView.runJavaScript("updateDronesAndSelect(" + jsonStr + ", " + JSON.stringify(did) + ")")
     }
     // Legacy individual calls kept for compatibility (header drone-select, etc.)
     function updateDrones(jsonStr)      { webView.runJavaScript("updateDrones(" + jsonStr + ")") }
@@ -655,7 +663,7 @@ function updateDrones(data) {
   var ids = Object.keys(data);
   ids.forEach(function(id) {
     var d = data[id];
-    if (!d.lat || !d.lon) return;
+    if (d.lat === null || d.lat === undefined || d.lon === null || d.lon === undefined) return;
     var prevType = droneTypes[id];
     droneTypes[id] = d.droneType || "generic";
     var col = droneColor(id);
@@ -1449,6 +1457,7 @@ var seedingDropPointCount = 0;
 function clearSeedingMission() {
   seedingDropMarkers.forEach(function(marker) { map.removeLayer(marker); });
   seedingDropMarkers = [];
+  seedingDropPointCount = 0;
   seedingFlightLines.forEach(function(line) { map.removeLayer(line); });
   seedingFlightLines = [];
   seedingExclusionPolygons.forEach(function(poly) { map.removeLayer(poly); });

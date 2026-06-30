@@ -228,15 +228,6 @@ def run() -> int:
 
     contexts = _build_contexts(app)
     
-    # Register cleanup handler for battery history persistence
-    def cleanup_battery_history():
-        safety_ctx = contexts.get("safety")
-        if safety_ctx and hasattr(safety_ctx, "_battery_monitor") and safety_ctx._battery_monitor:
-            safety_ctx._battery_monitor.shutdown()
-            print("[GCS] Battery history saved on shutdown")
-    
-    app.aboutToQuit.connect(cleanup_battery_history)
-
     def cleanup_contexts():
         for obj in contexts.values():
             shutdown = getattr(obj, "shutdown", None)

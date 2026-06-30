@@ -599,7 +599,10 @@ def main():
     if not _api_token:
         # Generate a random token if none provided
         _api_token = secrets.token_urlsafe(32)
-        log(f"[SECURITY] No API token provided. Generated token: {_api_token}", "WARN")
+        # Print the token only to the local console (stdout), never to the
+        # unauthenticated /api/log ring buffer.
+        print(f"[SECURITY] Generated API token: {_api_token}", flush=True)
+        log("[SECURITY] No API token provided — token printed to console only", "WARN")
         log("[SECURITY] Set --api-token or SKYMESHX_PI_TOKEN to use a persistent token", "WARN")
     else:
         log("[SECURITY] API authentication enabled", "INFO")

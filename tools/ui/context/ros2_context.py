@@ -1753,8 +1753,6 @@ class ROS2Context(QObject):
                 compression="zstd",
             )
             if success:
-                self._mission_waypoints.pop(drone_id, None)
-                self._last_wp_trace.pop(drone_id, None)
                 status = self._bag_recorder.get_recording_status()
                 path = str(status.get("bag_path", ""))
                 self.bagRecordStarted.emit(path)

@@ -131,15 +131,6 @@ class ObservationUAVModel(GenericUAVModel):
     def stop_stream(self):
         self._stream_active = False
 
-    def start_recording(self, path: Optional[str] = None):
-        self._recording = True
-        self._recording_path = path or "logs/"
-        print(f"[{self.id}] Recording started → {path or 'logs/'}")
-
-    def stop_recording(self):
-        self._recording = False
-        print(f"[{self.id}] Recording stopped.")
-
     def start_recording(self, path: Optional[str] = None) -> bool:
         self._recording = True
         self._recording_path = path or "logs/"

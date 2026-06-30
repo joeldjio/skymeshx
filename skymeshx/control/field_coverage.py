@@ -230,6 +230,8 @@ class FieldCoveragePlanner:
                 unique.append(value)
 
         segments: List[Tuple[float, float]] = []
+        # Step by 2 — if odd count (non-convex edge case), the last unpaired
+        # entry is intentionally skipped rather than accessing unique[idx+1].
         for idx in range(0, len(unique) - 1, 2):
             start_n = unique[idx]
             end_n = unique[idx + 1]

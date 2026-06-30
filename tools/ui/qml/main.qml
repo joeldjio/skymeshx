@@ -400,6 +400,9 @@ Window {
         if (_missionSignalsConnected) return
         if (!mapLoader.item) return
         if (typeof mission === "undefined" || !mission) return
+        // Set the flag BEFORE connecting so that partial connects on a retry
+        // (where some signals are already connected) don't double-connect.
+        _missionSignalsConnected = true
         try {
             mission.fieldBoundaryChanged.connect(root.syncFieldBoundaryToMap)
             mission.coverageGenerated.connect(root.syncCoverageWaypointsToMap)
@@ -424,9 +427,10 @@ Window {
             mission.seedingPreviewChanged.connect(root.syncSeedingPreviewToMap)
             if (typeof mission.solarPreviewChanged !== "undefined")
                 mission.solarPreviewChanged.connect(root.syncSolarPreviewToMap)
-            _missionSignalsConnected = true
             console.log("[MAIN] Mission signals connected successfully")
         } catch (e) {
+            // Reset flag so the next Loader reload can try again cleanly.
+            _missionSignalsConnected = false
             console.error("[MAIN] Failed to connect mission signals:", e)
         }
     }

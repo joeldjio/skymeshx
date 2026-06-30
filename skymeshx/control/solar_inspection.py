@@ -245,7 +245,8 @@ class SolarParkInspectionPlanner:
         The preview is hardware-free and does not upload or execute a mission.
         """
         waypoints = self.plan_inspection(panel_rows, config, add_rtl=add_rtl)
-        nav_waypoints = [wp for wp in waypoints if wp.cmd == 16]
+        from pymavlink.dialects.v20.ardupilotmega import MAV_CMD_NAV_WAYPOINT
+        nav_waypoints = [wp for wp in waypoints if wp.cmd == MAV_CMD_NAV_WAYPOINT]
         trigger_points = self._build_trigger_points(panel_rows, config)
         mission_time = self.estimate_mission_time(panel_rows, config)
         coverage_area = self.calculate_coverage_area(panel_rows, config)

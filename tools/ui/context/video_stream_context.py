@@ -476,6 +476,11 @@ class VideoStreamContext(QObject):
                 state.probe_stop.wait(timeout=1.0)
 
             except Exception as exc:
+                # Close the socket before error handling to prevent FD leak
+                try:
+                    sock.close()
+                except Exception:
+                    pass
                 state.status = STATUS_ERROR
                 self._emit_status(drone_id)
                 self.streamError.emit(drone_id, str(exc))
@@ -485,7 +490,8 @@ class VideoStreamContext(QObject):
     def _check_stalls(self) -> None:
         """Called every 2s — transition receiving→stalled if no data recently."""
         now = time.monotonic()
-        for drone_id, state in self._states.items():
+        # Snapshot keys to avoid RuntimeError if the dict is modified during iteration
+        for drone_id, state in list(self._states.items()):
             if state.status == STATUS_RECEIVING:
                 if state.last_frame_ts > 0 and now - state.last_frame_ts > _STALL_TIMEOUT:
                     state.status = STATUS_STALLED

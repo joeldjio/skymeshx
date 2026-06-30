@@ -199,10 +199,15 @@ class BatteryMonitor:
             
             self._power_history[drone_id].append(sample)
             self._last_sample[drone_id] = sample
-            
-            # Check if auto-save is needed
-            if self.persistence_path and (time.time() - self._last_save_time) >= self.auto_save_interval:
-                self._auto_save_history()
+            should_save = (
+                self.persistence_path
+                and (time.time() - self._last_save_time) >= self.auto_save_interval
+            )
+
+        # Perform file I/O outside the lock to avoid blocking telemetry updates
+        # and to prevent deadlock if _auto_save_history also acquires _lock.
+        if should_save:
+            self._auto_save_history()
     
     def should_trigger_rtl(self, drone_id: str, home_position: Tuple[float, float, float]) -> Tuple[bool, str]:
         """

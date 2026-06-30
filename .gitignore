@@ -20,6 +20,10 @@ bags/*/
 # Trace bundles (created by TraceLogger.start_session)
 trace_runs/*/
 !trace_runs/.gitkeep
+# Experiment upload artifacts (path-traversal test scripts etc.)
+experiments/uploads/*
+!experiments/uploads/.gitkeep
+
 
 
 # Environment

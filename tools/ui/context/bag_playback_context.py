@@ -261,8 +261,11 @@ class BagPlaybackContext(QObject):
                 break
 
             # Update progress based on elapsed time
+            # Read _playback_rate under a snapshot to avoid data races with
+            # the main thread calling setPlaybackRate().
+            playback_rate = self._playback_rate
             if self._duration > 0:
-                elapsed = (time.time() - start_time) * self._playback_rate
+                elapsed = (time.time() - start_time) * playback_rate
                 progress = min(1.0, elapsed / self._duration)
                 if abs(progress - self._progress) > 0.001:
                     self._progress = progress

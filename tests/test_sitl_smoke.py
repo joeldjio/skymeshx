@@ -258,7 +258,7 @@ def test_sitl_mission_upload_roundtrip_contract() -> None:
                 _mission_item_send(conn, seq, *mission[seq])
             sent.add(seq)
 
-        assert sent == {0, 1}
+        assert sent == set(range(len(mission)))
         ack = conn.recv_match(type="MISSION_ACK", blocking=True, timeout=_timeout())
         assert ack is not None
         assert int(ack.type) == int(mavutil.mavlink.MAV_MISSION_ACCEPTED)

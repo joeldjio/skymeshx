@@ -190,6 +190,9 @@ class TraceLogger:
         self._topic_health: dict[str, JsonDict] = {}
         self._last_ros2_event_at: dict[str, float] = {}
         self._active = False
+        # Open file handles kept alive for the duration of a session to avoid
+        # the overhead of re-opening on every logged event.
+        self._jsonl_handles: dict[str, Any] = {}
 
     @classmethod
     def get(cls) -> "TraceLogger":
@@ -257,6 +260,13 @@ class TraceLogger:
             self._manifest["stoppedAt"] = _now_iso()
             self._write_manifest()
             self._write_topic_health()
+            # Close all open JSONL file handles for this session.
+            for handle in self._jsonl_handles.values():
+                try:
+                    handle.close()
+                except Exception:
+                    pass
+            self._jsonl_handles.clear()
             path = self._session_path
             self._active = False
             self._session_path = None
@@ -420,10 +430,15 @@ class TraceLogger:
             "source": str(source),
             "data": data,
         }
-        path = self._session_path / filename
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(event, ensure_ascii=False, default=_json_default) + "\n")
-            handle.flush()
+        # Re-use a persistent file handle for the session lifetime to avoid
+        # the syscall overhead of opening the file on every logged event.
+        handle = self._jsonl_handles.get(filename)
+        if handle is None:
+            path = self._session_path / filename
+            handle = path.open("a", encoding="utf-8")
+            self._jsonl_handles[filename] = handle
+        handle.write(json.dumps(event, ensure_ascii=False, default=_json_default) + "\n")
+        handle.flush()
 
     def _touch(self, filename: str) -> None:
         if self._session_path is not None:

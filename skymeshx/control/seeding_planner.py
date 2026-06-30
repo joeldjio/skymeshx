@@ -291,6 +291,15 @@ class SeedingMissionPlanner:
         """
         calibration = calibration or DispenserCalibration()
         exclusion_zones = list(exclusion_zones or [])
+        # Validate first so a bad config raises a structured error before
+        # plan_seeding_mission is called (which would raise an unguarded exception
+        # if home position is unset or boundary is invalid).
+        validation = self.validate_seeding_mission(
+            boundary,
+            config,
+            calibration=calibration,
+            exclusion_zones=exclusion_zones,
+        )
         waypoints = self.plan_seeding_mission(
             boundary=boundary,
             seed_spacing=config.seed_spacing,
@@ -305,12 +314,6 @@ class SeedingMissionPlanner:
         )
         stats = self.estimate_mission_stats(boundary, config)
         drop_points = self._build_drop_points(waypoints, calibration)
-        validation = self.validate_seeding_mission(
-            boundary,
-            config,
-            calibration=calibration,
-            exclusion_zones=exclusion_zones,
-        )
 
         return SeedingMissionPreview(
             waypoints=waypoints,

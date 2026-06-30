@@ -469,19 +469,26 @@ class MissionContext(QObject):
 
     @Slot()
     def finishDrawingBoundary(self):
+        exclusion_committed = False
+        boundary_count = 0
         with self._lock:
             self._drawing_mode = False
             self._drawing_timeout_timer.stop()  # Stop timeout timer
-            self.drawingModeChanged.emit(False)
             if self._exclusion_zone_drawing:
                 self._exclusion_zone_drawing = False
                 self._commit_current_exclusion_zone_locked()
-                self.fieldBoundaryChanged.emit()
-                return
-            if len(self._boundary_points) >= 3:
-                self.logMessage.emit("INFO", f"[MISSION] ✅ Boundary: {len(self._boundary_points)} points")
+                exclusion_committed = True
             else:
-                self.logMessage.emit("WARNING", "[MISSION] Need ≥3 points")
+                boundary_count = len(self._boundary_points)
+        # Emit signals outside the lock to prevent deadlock.
+        self.drawingModeChanged.emit(False)
+        if exclusion_committed:
+            self.fieldBoundaryChanged.emit()
+            return
+        if boundary_count >= 3:
+            self.logMessage.emit("INFO", f"[MISSION] ✅ Boundary: {boundary_count} points")
+        else:
+            self.logMessage.emit("WARNING", "[MISSION] Need ≥3 points")
     
     @Slot(int, float, float)
     def updateBoundaryPoint(self, index: int, lat: float, lon: float):
@@ -539,9 +546,11 @@ class MissionContext(QObject):
             self._mission_waypoint_mode = True
             # Also activate drawing mode so map accepts clicks
             self._drawing_mode = True
-            self.missionWaypointModeChanged.emit(True)
-            self.drawingModeChanged.emit(True)
-            self.logMessage.emit("INFO", "[MISSION] Click map to add waypoints")
+        # Emit signals outside the lock to prevent deadlock if a connected
+        # QML slot re-enters any locked MissionContext method.
+        self.missionWaypointModeChanged.emit(True)
+        self.drawingModeChanged.emit(True)
+        self.logMessage.emit("INFO", "[MISSION] Click map to add waypoints")
     
     @Slot()
     def finishMissionWaypointMode(self):
@@ -550,12 +559,14 @@ class MissionContext(QObject):
             self._mission_waypoint_mode = False
             # Also deactivate drawing mode
             self._drawing_mode = False
-            self.missionWaypointModeChanged.emit(False)
-            self.drawingModeChanged.emit(False)
-            if len(self._mission_waypoints) > 0:
-                self.logMessage.emit("INFO", f"[MISSION] ✅ Added {len(self._mission_waypoints)} waypoints")
-            else:
-                self.logMessage.emit("WARNING", "[MISSION] No waypoints added")
+            wp_count = len(self._mission_waypoints)
+        # Emit signals outside the lock to prevent deadlock.
+        self.missionWaypointModeChanged.emit(False)
+        self.drawingModeChanged.emit(False)
+        if wp_count > 0:
+            self.logMessage.emit("INFO", f"[MISSION] ✅ Added {wp_count} waypoints")
+        else:
+            self.logMessage.emit("WARNING", "[MISSION] No waypoints added")
     
     @Slot()
     def cancelMissionWaypointMode(self):
@@ -1039,22 +1050,23 @@ class MissionContext(QObject):
 
     @Slot(result="QVariantList")
     def getCoverageWaypoints(self):
-        """Return coverage waypoints as list of dicts for QML/JavaScript. Lock-free for UI responsiveness."""
+        """Return coverage waypoints as list of dicts for QML/JavaScript."""
         try:
-            # No lock - reading a list is atomic in CPython (GIL)
+            with self._lock:
+                snapshot = list(self._coverage_waypoints)
             return [{"lat": float(lat), "lon": float(lon), "alt": float(alt)}
-                    for lat, lon, alt in self._coverage_waypoints]
+                    for lat, lon, alt in snapshot]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getCoverageWaypoints failed: {e}")
             return []
 
     @Slot(result="QVariantList")
     def getBoundaryPoints(self):
-        """Return boundary points as list of dicts for QML/JavaScript. Lock-free for UI responsiveness."""
+        """Return boundary points as list of dicts for QML/JavaScript."""
         try:
-            # No lock - reading a list is atomic in CPython (GIL)
-            # Worst case: we get a slightly stale snapshot
-            return [{"lat": float(lat), "lon": float(lon)} for lat, lon in self._boundary_points]
+            with self._lock:
+                snapshot = list(self._boundary_points)
+            return [{"lat": float(lat), "lon": float(lon)} for lat, lon in snapshot]
         except Exception as e:
             self.logMessage.emit("ERROR", f"[MISSION] getBoundaryPoints failed: {e}")
             return []
@@ -1756,7 +1768,7 @@ class MissionContext(QObject):
             
             with self._lock:
                 self._solar_panel_rows.append(row)
-                self._adding_solar_row = True
+                self._adding_solar_row = False
             
             self.solarPanelRowsChanged.emit()
             self.logMessage.emit("INFO", f"[SOLAR] Added row {len(self._solar_panel_rows)} ({length:.1f}m)")
