@@ -176,11 +176,18 @@ def _status_dict(source: Any) -> Dict[str, Any]:
         status = source.status()
         if isinstance(status, dict):
             return status
-    return {
-        key: getattr(source, key)
-        for key in dir(source)
-        if key.startswith("has_") or key in {"droneType", "type"}
-    }
+    # Last-resort: read only the known safe attribute names instead of
+    # iterating dir(), which can invoke property getters with side effects.
+    _SAFE_KEYS = ("has_camera", "has_gimbal", "has_thermal", "has_dispenser",
+                  "has_gps", "droneType", "type")
+    result: Dict[str, Any] = {}
+    for key in _SAFE_KEYS:
+        if hasattr(source, key):
+            try:
+                result[key] = getattr(source, key)
+            except Exception:
+                pass
+    return result
 
 
 def _parse_resolution(value: Any) -> Optional[Tuple[int, int]]:

@@ -836,6 +836,7 @@ class SwarmContext(QObject):
             with open(clean, "r", encoding="utf-8", errors="replace") as f:
                 return f.read()
         except Exception as exc:
+            self.logMessage.emit("ERROR", f"[SWARM] readFile failed for '{path}': {exc}")
             return ""
 
     @Slot(str, str, result=str)

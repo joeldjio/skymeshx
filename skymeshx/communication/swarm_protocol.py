@@ -40,10 +40,13 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import socket
 import threading
 import time
 from typing import Any, Callable, Dict, Optional
+
+_log = logging.getLogger(__name__)
 
 
 class SwarmCommunicationProtocol:
@@ -128,7 +131,7 @@ class SwarmCommunicationProtocol:
                 return True
                 
             except Exception as e:
-                print(f"[SwarmComm] Failed to start: {e}")
+                _log.error("[SwarmComm] Failed to start: %s", e)
                 self._running = False
                 if self._socket:
                     self._socket.close()
@@ -140,67 +143,71 @@ class SwarmCommunicationProtocol:
         with self._lock:
             if not self._running:
                 return
-            
             self._running = False
-        
-        # Wait for receiver thread to finish
+            # Close the socket while holding the lock so that broadcast() and
+            # _receive_loop() cannot use it after we set _running=False.
+            if self._socket:
+                try:
+                    self._socket.close()
+                except Exception:
+                    pass
+                self._socket = None
+
+        # Wait for receiver thread to finish outside the lock.
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
-        
-        # Close socket
-        if self._socket:
-            self._socket.close()
-            self._socket = None
     
     def broadcast(self, message_type: str, data: Dict[str, Any]) -> bool:
         """
         Broadcast a message to all drones in range.
-        
+
         Args:
             message_type : Type of message (e.g., "bid", "task", "status")
             data         : Message payload (must be JSON-serializable)
-        
+
         Returns:
             True if sent successfully, False otherwise
-        
+
         Thread Safety:
             Safe to call from multiple threads concurrently.
         """
-        if not self._running or not self._socket:
-            return False
-        
+        # Acquire the lock to read both _running and _socket atomically so
+        # that stop() cannot close the socket between our check and sendto().
+        with self._lock:
+            if not self._running or not self._socket:
+                return False
+            sock = self._socket
+
         try:
-            # Build message
             message = {
                 'sender': self.drone_id,
                 'type': message_type,
                 'data': data,
                 'timestamp': time.time()
             }
-            
-            # Serialize to JSON
             payload = json.dumps(message).encode('utf-8')
-            
-            # Send broadcast
-            self._socket.sendto(payload, (self.broadcast_addr, self.port))
-            
-            # Update statistics
+            sock.sendto(payload, (self.broadcast_addr, self.port))
+
             with self._lock:
                 self._messages_sent += 1
                 self._bytes_sent += len(payload)
-            
+
             return True
-            
+
         except Exception as e:
-            print(f"[SwarmComm] Broadcast failed: {e}")
+            _log.warning("[SwarmComm] Broadcast failed: %s", e)
             return False
     
     def _receive_loop(self):
         """Background thread that receives messages."""
         while self._running:
+            # Snapshot the socket under lock; stop() may clear it at any time.
+            with self._lock:
+                sock = self._socket
+            if sock is None:
+                break
             try:
-                # Receive message (with timeout)
-                data, addr = self._socket.recvfrom(self.buffer_size)
+                data, addr = sock.recvfrom(self.buffer_size)
                 
                 # Update statistics
                 with self._lock:
@@ -227,18 +234,17 @@ class SwarmCommunicationProtocol:
                         try:
                             self.callback(sender, msg_type, msg_data, timestamp)
                         except Exception as e:
-                            print(f"[SwarmComm] Callback error: {e}")
+                                _log.warning("[SwarmComm] Callback error: %s", e)
                 
                 except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                    print(f"[SwarmComm] Invalid message format: {e}")
+                    _log.debug("[SwarmComm] Invalid message format: %s", e)
                     continue
-                
+
             except socket.timeout:
-                # Normal timeout, continue loop
                 continue
             except Exception as e:
                 if self._running:
-                    print(f"[SwarmComm] Receive error: {e}")
+                    _log.warning("[SwarmComm] Receive error: %s", e)
     
     def get_statistics(self) -> Dict[str, Any]:
         """

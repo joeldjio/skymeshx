@@ -350,7 +350,9 @@ class CameraContext(QObject):
         lowered = source.lower()
         if lowered.startswith(("rtsp://", "rtsps://")):
             return True
-        if source.startswith("/") and " " not in source:
+        # Device paths (e.g. /dev/video0) — restrict to /dev/ only to prevent
+        # arbitrary filesystem access via path traversal.
+        if lowered.startswith("/dev/") and " " not in source:
             return True
         return self._fail(f"Unsupported camera source: {source}")
 

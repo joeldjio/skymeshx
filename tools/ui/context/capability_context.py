@@ -70,6 +70,12 @@ class CapabilityContext(QObject):
 
     def _capabilities_for_drone(self, drone_id: str) -> DroneCapabilities:
         source = self._backend_for_drone(drone_id)
+        if source is None and drone_id:
+            # No backend found — log so the caller is not misled by default caps
+            self.logMessage.emit(
+                "WARN",
+                f"[CAPABILITIES] No backend for drone '{drone_id}' — returning default capabilities",
+            )
         overrides = self._manual_overrides.get(drone_id) or self._manual_overrides.get("")
         return detect_capabilities(source, overrides=overrides)
 
