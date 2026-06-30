@@ -35,6 +35,7 @@ class FakePX4GazeboCluster:
 def _sync_context(qapp):
     ctx = ROS2Context()
     ctx._run_async = lambda target: target()
+    ctx.setUseVisibleTerminal(False)
     return ctx
 
 
@@ -76,6 +77,100 @@ def test_start_sitl_profile_normalizes_gz_model_for_cluster(qapp):
     assert status["namespace"] == "px4_1"
     assert status["pid"] == 4321
     assert status["gazebo_running"] is True
+
+
+def test_ros2_setup_sources_are_normalized_and_passed_to_sitl(qapp):
+    FakePX4GazeboCluster.instances.clear()
+    ctx = _sync_context(qapp)
+    ctx.setUseVisibleTerminal(False)
+    ctx.setRos2SetupSourcesText(
+        "source /opt/ros/humble/setup.bash\n"
+        ". /home/iruz/ws_sensor_combined/install/setup.bash\n"
+        "/opt/ros/humble/setup.bash\n"
+    )
+
+    with patch("skymeshx.simulation.PX4GazeboCluster", FakePX4GazeboCluster):
+        assert ctx.startSitl({"model": "gz_x500", "namespace": "px4_1"})
+
+    cluster = FakePX4GazeboCluster.instances[0]
+    assert cluster.kwargs["ros2_setups"] == [
+        "/opt/ros/humble/setup.bash",
+        "/home/iruz/ws_sensor_combined/install/setup.bash",
+    ]
+
+
+def test_empty_ros2_setup_sources_do_not_fallback_to_defaults(qapp):
+    FakePX4GazeboCluster.instances.clear()
+    ctx = _sync_context(qapp)
+
+    with patch("skymeshx.simulation.PX4GazeboCluster", FakePX4GazeboCluster):
+        assert ctx.startSitl({"model": "gz_x500", "namespace": "px4_1", "ros2Setups": []})
+
+    cluster = FakePX4GazeboCluster.instances[0]
+    assert cluster.kwargs["ros2_setups"] == []
+
+
+def test_sitl_terminal_script_contains_sources_and_px4_command(qapp):
+    ctx = ROS2Context()
+    ctx.setRos2SetupSources(["/opt/ros/humble/setup.bash", "/home/iruz/ws_sensor_combined/install/setup.bash"])
+    profile = ctx._normalize_sitl_profile({"model": "gz_x500_gimbal", "namespace": "uav_1"})
+    captured = {}
+
+    def fake_terminal(title, lines):
+        captured["title"] = title
+        captured["lines"] = lines
+        return FakeProcess()
+
+    with patch.object(ctx, "_launch_visible_terminal", side_effect=fake_terminal):
+        assert ctx._start_sitl_in_terminal(profile) is True
+
+    script = "\n".join(captured["lines"])
+    assert captured["title"] == "SkyMeshX PX4 SITL"
+    assert "source /opt/ros/humble/setup.bash" in script
+    assert "source /home/iruz/ws_sensor_combined/install/setup.bash" in script
+    assert "export PX4_UXRCE_DDS_NS=uav_1" in script
+    assert "make px4_sitl gz_x500_gimbal" in script
+
+
+def test_empty_sitl_terminal_sources_do_not_emit_source_commands(qapp):
+    ctx = ROS2Context()
+    ctx.setRos2SetupSources(["/opt/ros/humble/setup.bash"])
+    profile = ctx._normalize_sitl_profile({"model": "gz_x500", "namespace": "uav_1", "ros2Setups": []})
+    captured = {}
+
+    def fake_terminal(title, lines):
+        captured["title"] = title
+        captured["lines"] = lines
+        return FakeProcess()
+
+    with patch.object(ctx, "_launch_visible_terminal", side_effect=fake_terminal):
+        assert ctx._start_sitl_in_terminal(profile) is True
+
+    script = "\n".join(captured["lines"])
+    assert "source " not in script
+    assert "make px4_sitl gz_x500" in script
+
+
+def test_bridge_terminal_tails_bridge_log(qapp):
+    ctx = ROS2Context()
+    captured = {}
+
+    def fake_terminal(title, lines):
+        captured["title"] = title
+        captured["lines"] = lines
+        return FakeProcess()
+
+    with patch.object(ctx, "_launch_visible_terminal", side_effect=fake_terminal):
+        ctx._launch_bridge_terminal("drone1", "uav_1")
+
+    ctx._write_bridge_terminal_log("drone1", "Bridge started")
+    script = "\n".join(captured["lines"])
+    log_path = ctx._bridge_terminal_logs["drone1"]
+
+    assert captured["title"] == "SkyMeshX PX4 Bridge drone1"
+    assert "tail -n +1 -F" in script
+    assert str(log_path) in script
+    assert "Bridge started" in log_path.read_text(encoding="utf-8")
 
 
 def test_start_multi_sitl_builds_px4_namespace_and_ports(qapp):

@@ -33,6 +33,12 @@ QML Slots:
 import threading
 import importlib.util
 import math
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -165,11 +171,40 @@ _BAG_PRESETS = {
 }
 
 
+class _TerminalProcessCluster:
+    """Small process handle used when SITL is launched in a visible terminal."""
+
+    def __init__(self, proc: subprocess.Popen):
+        self._proc = proc
+        self._processes = [("sitl_terminal", proc)]
+
+    def is_running(self) -> bool:
+        return self._proc.poll() is None
+
+    def stop(self) -> None:
+        if self._proc.poll() is not None:
+            return
+        self._proc.terminate()
+        try:
+            self._proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+
+
+def _refresh_ros2_availability() -> None:
+    """Refresh import probes after ROS2 setup files changed the environment."""
+    global _ROS2_AVAILABLE, _BRIDGE_AVAILABLE
+    importlib.invalidate_caches()
+    _ROS2_AVAILABLE = importlib.util.find_spec("rclpy") is not None
+    _BRIDGE_AVAILABLE = importlib.util.find_spec("skymeshx.ros.px4_bridge") is not None
+
+
 def _ensure_bridge_loaded() -> bool:
     """Import PX4ROS2Bridge on first use. Returns True if available."""
     global _PX4Bridge
     if _PX4Bridge is not None:
         return True
+    _refresh_ros2_availability()
     if not (_ROS2_AVAILABLE and _BRIDGE_AVAILABLE):
         return False
     try:
@@ -208,6 +243,7 @@ class ROS2Context(QObject):
         self._bridges: Dict[str, object] = {}
         self._namespaces: Dict[str, str] = {}
         self._active_drone_ids: set = set()
+        self._bridge_terminal_logs: Dict[str, Path] = {}
 
         # Poll timer — forward bridge telemetry to QML at 5 Hz.
         # Started lazily on first bridge start, stopped when last bridge stops.
@@ -252,6 +288,212 @@ class ROS2Context(QObject):
 
     def _run_async(self, target) -> None:
         threading.Thread(target=target, daemon=True).start()
+
+    def _ros2_setup_sources(self) -> list[str]:
+        return self._clean_ros2_setup_sources(self._sitl_config.get("ros2_setups", []))
+
+    def _clean_ros2_setup_sources(self, sources: Any) -> list[str]:
+        if isinstance(sources, str):
+            raw_items = sources.replace(";", "\n").splitlines()
+        elif isinstance(sources, (list, tuple)):
+            raw_items = sources
+        else:
+            raw_items = []
+
+        cleaned: list[str] = []
+        for item in raw_items:
+            path = str(item or "").strip()
+            if not path:
+                continue
+            if path.startswith("source "):
+                path = path[len("source "):].strip()
+            elif path.startswith(". "):
+                path = path[2:].strip()
+            path = path.strip("\"'")
+            if path and path not in cleaned:
+                cleaned.append(path)
+        return cleaned
+
+    def _source_command_lines(self, sources: Any) -> list[str]:
+        return [f"source {shlex.quote(path)}" for path in self._clean_ros2_setup_sources(sources)]
+
+    def _apply_ros2_setup_environment(self, sources: Any, purpose: str) -> bool:
+        if sys.platform == "win32":
+            return False
+
+        configured = self._clean_ros2_setup_sources(sources)
+        if not configured:
+            return False
+
+        existing = [
+            os.path.expanduser(path)
+            for path in configured
+            if os.path.isfile(os.path.expanduser(path))
+        ]
+        if not existing:
+            self.ros2LogMessage.emit("WARN", f"[ROS2] No existing setup.bash paths for {purpose}")
+            return False
+
+        source_cmds = " && ".join(f"source {shlex.quote(path)}" for path in existing)
+        cmd = f"{{ {source_cmds}; }} >/dev/null 2>&1 && env -0"
+        try:
+            result = subprocess.run(
+                ["/bin/bash", "-lc", cmd],
+                check=False,
+                capture_output=True,
+                timeout=15,
+            )
+        except Exception as exc:
+            self.ros2LogMessage.emit("WARN", f"[ROS2] Could not source setup files for {purpose}: {exc}")
+            return False
+
+        if result.returncode != 0:
+            err = result.stderr.decode("utf-8", errors="replace").strip()
+            self.ros2LogMessage.emit("WARN", f"[ROS2] setup.bash source failed for {purpose}: {err}")
+            return False
+
+        for entry in result.stdout.split(b"\0"):
+            if not entry or b"=" not in entry:
+                continue
+            key, value = entry.split(b"=", 1)
+            os.environ[key.decode("utf-8", errors="replace")] = value.decode("utf-8", errors="replace")
+        _refresh_ros2_availability()
+        self.ros2LogMessage.emit("INFO", f"[ROS2] Sourced {len(existing)} setup file(s) for {purpose}")
+        return True
+
+    def _terminal_launcher(self) -> tuple[str, list[str]] | None:
+        if sys.platform == "win32" or not self._use_terminal:
+            return None
+        candidates = [
+            ("gnome-terminal", ["gnome-terminal", "--title", "{title}", "--", "bash", "{script}"]),
+            ("konsole", ["konsole", "--hold", "-p", "tabtitle={title}", "-e", "bash", "{script}"]),
+            ("xfce4-terminal", ["xfce4-terminal", "--title", "{title}", "--hold", "--command", "bash {script_q}"]),
+            ("xterm", ["xterm", "-T", "{title}", "-hold", "-e", "bash", "{script}"]),
+        ]
+        for binary, template in candidates:
+            path = shutil.which(binary)
+            if path:
+                resolved = [path if part == binary else part for part in template]
+                return binary, resolved
+        return None
+
+    def _launch_visible_terminal(self, title: str, script_lines: list[str]) -> subprocess.Popen | None:
+        launcher = self._terminal_launcher()
+        if not launcher:
+            self.ros2LogMessage.emit("WARN", f"[ROS2] No Linux terminal launcher found for '{title}'")
+            return None
+
+        terminal_name, template = launcher
+        script_dir = Path(tempfile.gettempdir()) / "skymeshx_terminals"
+        script_dir.mkdir(parents=True, exist_ok=True)
+        script_path = script_dir / f"{title.lower().replace(' ', '_').replace('/', '_')}_{int(time.time())}.sh"
+        script = "\n".join(
+            [
+                "#!/usr/bin/env bash",
+                "set -u",
+                f"echo '[SkyMeshX] {title}'",
+                *script_lines,
+                "status=$?",
+                "echo",
+                "echo \"[SkyMeshX] Session exited with status ${status}\"",
+                "exec bash",
+            ]
+        )
+        script_path.write_text(script + "\n", encoding="utf-8")
+        script_path.chmod(0o755)
+
+        replacements = {
+            "{title}": title,
+            "{script}": str(script_path),
+            "{script_q}": shlex.quote(str(script_path)),
+        }
+        cmd = [replacements.get(part, part.format(title=title, script=str(script_path), script_q=shlex.quote(str(script_path)))) for part in template]
+        try:
+            proc = subprocess.Popen(cmd)
+            self.ros2LogMessage.emit("INFO", f"[ROS2] Opened {terminal_name}: {title}")
+            return proc
+        except Exception as exc:
+            self.ros2LogMessage.emit("WARN", f"[ROS2] Could not open terminal '{terminal_name}': {exc}")
+            return None
+
+    def _launch_bridge_terminal(self, drone_id: str, namespace: str) -> None:
+        sources = self._ros2_setup_sources()
+        log_dir = Path(tempfile.gettempdir()) / "skymeshx_terminals"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / f"bridge_{drone_id}.log"
+        log_path.write_text(f"[SkyMeshX] PX4 bridge terminal log for {drone_id}\n", encoding="utf-8")
+        self._bridge_terminal_logs[drone_id] = log_path
+        lines = [
+            *self._source_command_lines(sources),
+            f"cd {shlex.quote(str(Path.cwd()))}",
+            f"echo '[SkyMeshX] PX4 bridge diagnostics for {drone_id} namespace {namespace or '/'}'",
+            "echo '[SkyMeshX] Bridge runs inside the UI process; this shell uses the same ROS2 setup sources.'",
+            "echo '[SkyMeshX] ROS_DOMAIN_ID='${ROS_DOMAIN_ID:-unset}",
+            "ros2 topic list 2>/dev/null | grep -E '(/fmu/|/px4_|/uav_)' || true",
+            f"echo '[SkyMeshX] Tailing bridge log: {log_path}'",
+            f"tail -n +1 -F {shlex.quote(str(log_path))}",
+        ]
+        self._launch_visible_terminal(f"SkyMeshX PX4 Bridge {drone_id}", lines)
+
+    def _write_bridge_terminal_log(self, drone_id: str, message: str) -> None:
+        log_path = self._bridge_terminal_logs.get(drone_id)
+        if not log_path:
+            return
+        try:
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(f"{time.strftime('%H:%M:%S')}  {message}\n")
+        except Exception:
+            pass
+
+    def _start_sitl_in_terminal(self, first: dict) -> bool:
+        cluster_model = first.get("clusterModel") or self._normalize_model_for_cluster(first.get("model", "gz_x500"))
+        namespace = str(first.get("namespace") or self._sitl_config.get("namespace", "px4_1")).strip("/") or "px4_1"
+        px4_dir = str(first.get("px4Dir") or self._sitl_config.get("px4_dir", ""))
+        xrce_port = int(first.get("xrcePort", 8888))
+        world = str(first.get("world", "default"))
+        world_env = dict(first.get("worldEnv") or {})
+
+        lines = [
+            *self._source_command_lines(first.get("ros2Setups", self._ros2_setup_sources())),
+            f"cd {shlex.quote(os.path.expanduser(px4_dir))}",
+            f"export PX4_SIM_MODEL={shlex.quote(str(cluster_model))}",
+            f"export PX4_GZ_WORLD={shlex.quote(world)}",
+            f"export PX4_UXRCE_DDS_NS={shlex.quote(namespace)}",
+        ]
+        for key, value in sorted(world_env.items()):
+            lines.append(f"export {key}={shlex.quote(str(value))}")
+        lines.extend(
+            [
+                f"echo '[SkyMeshX] Starting MicroXRCEAgent udp4 -p {xrce_port}'",
+                f"MicroXRCEAgent udp4 -p {xrce_port} &",
+                "XRCE_PID=$!",
+                "PX4_PID=",
+                "trap 'test -n \"${PX4_PID}\" && kill ${PX4_PID} 2>/dev/null || true; kill ${XRCE_PID} 2>/dev/null || true' EXIT INT TERM",
+                "sleep 1",
+                f"echo '[SkyMeshX] Starting PX4 SITL: make px4_sitl gz_{cluster_model}'",
+                f"make px4_sitl {shlex.quote('gz_' + str(cluster_model))} &",
+                "PX4_PID=$!",
+                "wait ${PX4_PID}",
+            ]
+        )
+        proc = self._launch_visible_terminal("SkyMeshX PX4 SITL", lines)
+        if proc is None:
+            return False
+        self._sitl_cluster = _TerminalProcessCluster(proc)
+        self._sitl_started_at = time.monotonic()
+        self._sitl_status.update(
+            {
+                "running": True,
+                "status": "running",
+                "gazebo_running": not bool(first.get("sih", False)),
+                "pid": self._extract_cluster_pid(),
+                "uptime_s": 0.0,
+            }
+        )
+        self.ros2LogMessage.emit("INFO", "[SITL] Visible terminal session started")
+        self._trace_event("sitl_launch", {"status": "running", "terminal": True, "profiles": self._sitl_profiles})
+        self._emit_sitl_status()
+        return True
 
     def _trace_event(self, event_type: str, data: dict) -> None:
         try:
@@ -399,6 +641,12 @@ class ROS2Context(QObject):
             world_env.setdefault("PX4_GZ_WORLD", world)
         if model_pose:
             world_env.setdefault("PX4_GZ_MODEL_POSE", model_pose)
+        if "ros2Setups" in data:
+            ros2_setups = data.get("ros2Setups")
+        elif "ros2_setups" in data:
+            ros2_setups = data.get("ros2_setups")
+        else:
+            ros2_setups = self._sitl_config.get("ros2_setups", [])
 
         normalized = {
             "autopilot": "px4",
@@ -417,7 +665,7 @@ class ROS2Context(QObject):
             "cameraEnabled": bool(data.get("cameraEnabled", data.get("camera_enabled", "camera" in model))),
             "gimbalEnabled": bool(data.get("gimbalEnabled", data.get("gimbal_enabled", "gimbal" in model))),
             "px4Dir": str(data.get("px4Dir") or data.get("px4_dir") or self._sitl_config.get("px4_dir", "")),
-            "ros2Setups": list(data.get("ros2Setups") or data.get("ros2_setups") or self._sitl_config.get("ros2_setups", [])),
+            "ros2Setups": self._clean_ros2_setup_sources(ros2_setups),
         }
         return normalized
 
@@ -458,6 +706,7 @@ class ROS2Context(QObject):
     # ── Status ────────────────────────────────────────────────────────────
 
     def _emit_node_status(self):
+        _refresh_ros2_availability()
         if not _ROS2_AVAILABLE:
             self.nodeStatusChanged.emit("no_ros2")
         elif not _BRIDGE_AVAILABLE:
@@ -467,6 +716,7 @@ class ROS2Context(QObject):
 
     @Slot(result=str)
     def nodeStatus(self) -> str:
+        _refresh_ros2_availability()
         if not _ROS2_AVAILABLE:
             return "no_ros2"
         if not _BRIDGE_AVAILABLE:
@@ -508,21 +758,28 @@ class ROS2Context(QObject):
     @Slot(str, str)
     def startBridge(self, drone_id: str, namespace: str) -> None:
         """Start uXRCE-DDS bridge for a drone. Stops MAVLink if it was active."""
-        if not _ROS2_AVAILABLE:
-            self.ros2LogMessage.emit("ERROR", "[ROS2] rclpy not found — install ROS2 Humble+")
-            return
-        if not _BRIDGE_AVAILABLE:
-            self.ros2LogMessage.emit("ERROR", "[ROS2] px4_msgs not found — build px4_msgs in your ROS2 workspace")
-            return
+        sources = self._ros2_setup_sources()
+        self._apply_ros2_setup_environment(sources, "bridge")
+        _refresh_ros2_availability()
+
         if drone_id in self._active_drone_ids:
             self.ros2LogMessage.emit("WARN", f"[ROS2] Bridge for {drone_id} already running")
             return
 
         ns = namespace.strip()
         self._namespaces[drone_id] = ns
+        self._launch_bridge_terminal(drone_id, ns)
+        self._write_bridge_terminal_log(drone_id, f"Starting bridge namespace='{ns or '/'}'")
 
+        if not _ROS2_AVAILABLE:
+            self.ros2LogMessage.emit("ERROR", "[ROS2] rclpy not found — install ROS2 Humble+")
+            return
+        if not _BRIDGE_AVAILABLE:
+            self.ros2LogMessage.emit("ERROR", "[ROS2] px4_msgs not found — build px4_msgs in your ROS2 workspace")
+            return
         if not _ensure_bridge_loaded():
             self.ros2LogMessage.emit("ERROR", "[ROS2] PX4 bridge module unavailable")
+            self._write_bridge_terminal_log(drone_id, "ERROR PX4 bridge module unavailable")
             return
 
         def _start():
@@ -537,8 +794,11 @@ class ROS2Context(QObject):
                 self.bridgeStatusChanged.emit(drone_id, True)
                 self.ros2LogMessage.emit("INFO", f"[ROS2] Bridge started for {drone_id} ns='{ns or '/'}'")
                 self.ros2LogMessage.emit("INFO", f"[ROS2] Listening on {ns or ''}/fmu/out/*")
+                self._write_bridge_terminal_log(drone_id, "Bridge started")
+                self._write_bridge_terminal_log(drone_id, f"Listening on {ns or ''}/fmu/out/*")
             except Exception as e:
                 self.ros2LogMessage.emit("ERROR", f"[ROS2] Bridge start failed: {e}")
+                self._write_bridge_terminal_log(drone_id, f"ERROR Bridge start failed: {e}")
 
         threading.Thread(target=_start, daemon=True).start()
 
@@ -554,6 +814,7 @@ class ROS2Context(QObject):
                 pass
         self.bridgeStatusChanged.emit(drone_id, False)
         self.ros2LogMessage.emit("INFO", f"[ROS2] Bridge stopped for {drone_id}")
+        self._write_bridge_terminal_log(drone_id, "Bridge stopped")
 
     # ── Offboard control ──────────────────────────────────────────────────
 
@@ -772,6 +1033,7 @@ class ROS2Context(QObject):
         """Handle connection status changes from bridge."""
         status_str = status.value if hasattr(status, 'value') else str(status)
         self.connectionStatusChanged.emit(drone_id, status_str)
+        self._write_bridge_terminal_log(drone_id, f"Connection status: {status_str}")
         
         # Log status changes to LogPanel via ros2LogMessage
         if status_str == "connected":
@@ -829,19 +1091,51 @@ class ROS2Context(QObject):
     @Slot(result="QVariant")
     def getSitlRos2Setups(self) -> list:
         """Get ROS2 setup files."""
-        return self._sitl_config.get('ros2_setups', [])
+        return self._ros2_setup_sources()
+
+    @Slot(result="QVariant")
+    def getRos2SetupSources(self) -> list:
+        """Get shared ROS2 setup files for Bridge and SITL."""
+        return self._ros2_setup_sources()
+
+    @Slot(result=str)
+    def getRos2SetupSourcesText(self) -> str:
+        """Get shared ROS2 setup files as newline-separated text."""
+        return "\n".join(self._ros2_setup_sources())
+
+    @Slot(str)
+    def setRos2SetupSourcesText(self, text: str) -> None:
+        """Set shared ROS2 setup files from newline-separated text."""
+        self._sitl_config["ros2_setups"] = self._clean_ros2_setup_sources(text)
+
+    @Slot("QVariant")
+    def setRos2SetupSources(self, sources: Any) -> None:
+        """Set shared ROS2 setup files from QML list/string data."""
+        self._sitl_config["ros2_setups"] = self._clean_ros2_setup_sources(sources)
+
+    @Slot(result=bool)
+    def getUseVisibleTerminal(self) -> bool:
+        """Return whether Bridge/SITL starts should open a visible Linux terminal."""
+        return bool(self._use_terminal)
+
+    @Slot(bool)
+    def setUseVisibleTerminal(self, enabled: bool) -> None:
+        """Enable/disable visible terminal launch for Bridge/SITL starts."""
+        self._use_terminal = bool(enabled)
 
     @Slot(str)
     def addSitlRos2Setup(self, path: str) -> None:
         """Add ROS2 setup file."""
-        if path and path not in self._sitl_config['ros2_setups']:
-            self._sitl_config['ros2_setups'].append(path)
+        cleaned = self._clean_ros2_setup_sources([path])
+        if cleaned and cleaned[0] not in self._sitl_config['ros2_setups']:
+            self._sitl_config['ros2_setups'].append(cleaned[0])
 
     @Slot(str)
     def removeSitlRos2Setup(self, path: str) -> None:
         """Remove ROS2 setup file."""
-        if path in self._sitl_config['ros2_setups']:
-            self._sitl_config['ros2_setups'].remove(path)
+        cleaned = self._clean_ros2_setup_sources([path])
+        if cleaned and cleaned[0] in self._sitl_config['ros2_setups']:
+            self._sitl_config['ros2_setups'].remove(cleaned[0])
 
     @Slot(result="QVariant")
     def listLaunchProfiles(self) -> list:
@@ -940,6 +1234,11 @@ class ROS2Context(QObject):
         }
         self._emit_sitl_status()
         self._trace_event("sitl_launch", {"status": "starting", "profiles": self._sitl_profiles})
+
+        if len(self._sitl_profiles) == 1 and sys.platform != "win32" and self._terminal_launcher():
+            if self._start_sitl_in_terminal(first):
+                return True
+            self.ros2LogMessage.emit("WARN", "[SITL] Visible terminal failed, falling back to background launcher")
 
         def _start():
             try:

@@ -7,6 +7,61 @@
 
 ---
 
+### 2026-06-28T01:10:00+02:00 | Codex | DONE | Empty setup paths execute nothing
+
+Leere Bridge/SITL-Setup-Pfadfelder duerfen keine `source`-Kommandos ausfuehren und nicht auf Default-Pfade zurueckfallen.
+
+---
+
+### 2026-06-28T01:00:00+02:00 | Codex | DONE | Separate SITL setup source field
+
+`tools/ui/qml/panels/ROS2Panel.qml`: PX4 SITL hat jetzt ein eigenes `ROS2 setup sources (SITL)` Pfadfeld; `Start SITL` nutzt dieses Feld statt des Bridge-Felds.
+
+---
+
+### 2026-06-28T00:45:00+02:00 | Codex | DONE | ROS2Panel terminal toggle UI fix
+
+**User-Feedback:** Im PX4-SITL-Bereich fehlt ein eigener `Open visible terminal` Schalter. Der vorhandene Text ueberlappt die Checkbox. Vor den Source-Pfadfeldern soll ein englischer Tooltip stehen.
+
+**Working on:**
+- `tools/ui/qml/panels/ROS2Panel.qml`
+
+---
+
+### 2026-06-28T00:30:00+02:00 | Codex | DONE | ROS2 setup sources + visible terminal sessions
+
+**Erledigt:**
+- `tools/ui/qml/panels/ROS2Panel.qml`: Editierbarer mehrzeiliger Source-Block fuer Bridge + SITL.
+- `tools/ui/qml/panels/ROS2Panel.qml`: Toggle `Open visible terminal on Bridge/SITL start`.
+- `tools/ui/context/ros2_context.py`: Shared API `get/setRos2SetupSources*`.
+- `tools/ui/context/ros2_context.py`: Bridge-Connect sourced die Pfade, refreshed ROS2 Import-Probe und oeffnet ein Bridge-Diagnose-Terminal mit live getailtem Bridge-Log.
+- `tools/ui/context/ros2_context.py`: Einzel-SITL startet unter Linux bevorzugt in sichtbarer Terminal-Session mit `source`, `MicroXRCEAgent` und `make px4_sitl ...`; ohne Terminal faellt es auf den bestehenden Background-Cluster zurueck.
+- `tests/test_ros2_sitl_launcher.py`: Hardware-freie Tests fuer Source-Normalisierung, SITL-Weitergabe und Terminal-Skript-Inhalt.
+
+**Lokal geprueft:**
+- `git diff --check` sauber bis auf bekannte LF/CRLF-Warnungen.
+- Pattern-Scan auf `Unexpected token`, `TODO`, `FIXME`: keine Treffer.
+
+**Lokal blockiert:**
+- `python -m py_compile ...` blockiert durch WindowsApps Session-Fehler.
+- `pytest ...` nicht installiert/verfuegbar in dieser Shell.
+
+**Bitte auf Linux testen:**
+```bash
+pytest tests/test_ros2_sitl_launcher.py -q
+python -m tools.ui
+```
+
+**Manueller UI-Test:**
+1. ROS2Panel -> Connection.
+2. Source-Pfade setzen:
+   `/opt/ros/humble/setup.bash`
+   `/home/iruz/ws_sensor_combined/install/setup.bash`
+3. PX4 Bridge: `Connect` klicken -> sichtbares Terminal + Bridge-Log im UI.
+4. PX4 SITL: `Start SITL` klicken -> sichtbares Terminal mit `MicroXRCEAgent`/PX4/Gazebo-Ausgabe.
+
+---
+
 ### 2026-06-28 | Bob | HOTFIX/DONE | BagPlaybackContext Thread-Safety Fix (Freeze Root Cause)
 
 **Diagnose:**

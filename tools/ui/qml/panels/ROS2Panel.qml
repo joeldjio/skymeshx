@@ -10,6 +10,7 @@ Item {
     property string selectedDroneId: ""
     property string _nodeStatus: (typeof ros2 !== "undefined" && ros2) ? ros2.nodeStatus() : "no_ros2"
     property var globalWaypoints: null  // Injected from main.qml
+    property bool _useVisibleTerminal: (typeof ros2 !== "undefined" && ros2 && ros2.getUseVisibleTerminal) ? ros2.getUseVisibleTerminal() : true
 
     function statusColor(s) {
         if (s === "ok")           return "#22c55e"
@@ -25,6 +26,39 @@ Item {
         if (typeof ros2 === "undefined" || !ros2 || !ros2.getWorldProfileWarnings)
             return []
         return ros2.getWorldProfileWarnings(model, worldProfile)
+    }
+    function setupSourceListFromText(text) {
+        var raw = text.split(/\r?\n/)
+        var result = []
+        for (var i = 0; i < raw.length; ++i) {
+            var line = raw[i].trim()
+            if (line.indexOf("source ") === 0)
+                line = line.substring(7).trim()
+            if (line.indexOf(". ") === 0)
+                line = line.substring(2).trim()
+            if (line.length > 0 && result.indexOf(line) < 0)
+                result.push(line)
+        }
+        return result
+    }
+    function ros2SetupSourceList() {
+        if (!setupSourcesEdit)
+            return []
+        return root.setupSourceListFromText(setupSourcesEdit.text)
+    }
+    function sitlRos2SetupSourceList() {
+        if (!sitlSetupSourcesEdit)
+            return []
+        return root.setupSourceListFromText(sitlSetupSourcesEdit.text)
+    }
+    function syncRos2SetupSources() {
+        if (typeof ros2 !== "undefined" && ros2 && ros2.setRos2SetupSourcesText)
+            ros2.setRos2SetupSourcesText(setupSourcesEdit.text)
+    }
+    function setVisibleTerminalEnabled(enabled) {
+        root._useVisibleTerminal = enabled
+        if (typeof ros2 !== "undefined" && ros2 && ros2.setUseVisibleTerminal)
+            ros2.setUseVisibleTerminal(enabled)
     }
 
     Timer { interval: 2000; running: true; repeat: true
@@ -164,6 +198,50 @@ Item {
                             color: "#475569"; font.pixelSize: 8; font.family: "Consolas"
                         }
 
+                        Row {
+                            width: parent.width; spacing: 6; height: 18
+                            Text { text: "ROS2 setup sources (Bridge + SITL)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle {
+                                width: 16; height: 16; radius: 8
+                                color: setupSourceHelp.containsMouse ? "#1e3a5f" : "#1e2535"
+                                border.color: "#3b82f6"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "?"; color: "#93c5fd"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea {
+                                    id: setupSourceHelp; anchors.fill: parent; hoverEnabled: true
+                                    ToolTip.visible: containsMouse
+                                    ToolTip.delay: 350
+                                    ToolTip.text: "Source these setup.bash files before starting the PX4 bridge or SITL. Put one path per line."
+                                }
+                            }
+                        }
+                        TextArea {
+                            id: setupSourcesEdit
+                            width: parent.width; height: 58
+                            text: (typeof ros2 !== "undefined" && ros2 && ros2.getRos2SetupSourcesText) ? ros2.getRos2SetupSourcesText() : "/opt/ros/humble/setup.bash\n/home/iruz/ws_sensor_combined/install/setup.bash"
+                            wrapMode: TextEdit.NoWrap
+                            selectByMouse: true
+                            color: "#e2e8f0"; selectedTextColor: "#0f172a"; selectionColor: "#93c5fd"
+                            font.pixelSize: 9; font.family: "Consolas"
+                            leftPadding: 6; rightPadding: 6; topPadding: 5; bottomPadding: 5
+                            background: Rectangle { color: "#111827"; radius: 5; border.color: "#2d3748"; border.width: 1 }
+                            onActiveFocusChanged: { if (!activeFocus) root.syncRos2SetupSources() }
+                        }
+                        Row {
+                            width: parent.width; spacing: 8; height: 24
+                            CheckBox {
+                                id: visibleTerminalToggle
+                                width: 22; height: 22
+                                checked: root._useVisibleTerminal
+                                onCheckedChanged: { if (checked !== root._useVisibleTerminal) root.setVisibleTerminalEnabled(checked) }
+                            }
+                            Text {
+                                width: parent.width - 30
+                                text: "Open visible terminal on Bridge start"
+                                color: "#94a3b8"; font.pixelSize: 9; wrapMode: Text.WordWrap
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
                         property bool _bridgeActive: (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ? ros2.isBridgeActive(root.selectedDroneId) : false
                         Timer { interval: 500; running: true; repeat: true
                             onTriggered: connCol._bridgeActive = (typeof ros2 !== "undefined" && ros2 && root.selectedDroneId !== "") ? ros2.isBridgeActive(root.selectedDroneId) : false
@@ -172,10 +250,9 @@ Item {
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
                             color: {
-                                if (root._nodeStatus !== "ok") return "#1e293b"
                                 return bridgeTogM.containsMouse ? (connCol._bridgeActive ? "#7f1d1d" : "#166534") : (connCol._bridgeActive ? "#450a0a" : "#14532d")
                             }
-                            border.color: root._nodeStatus !== "ok" ? "#475569" : (connCol._bridgeActive ? "#ef4444" : "#22c55e"); border.width: 1
+                            border.color: connCol._bridgeActive ? "#ef4444" : "#22c55e"; border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
                             Row {
                                 anchors.centerIn: parent; spacing: 6
@@ -184,12 +261,19 @@ Item {
                             }
                             MouseArea {
                                 id: bridgeTogM; anchors.fill: parent; hoverEnabled: true
-                                enabled: root._nodeStatus === "ok" && root.selectedDroneId !== ""
+                                enabled: root.selectedDroneId !== ""
                                 onClicked: {
                                     if (typeof ros2 === "undefined" || !ros2) return
+                                    root.syncRos2SetupSources()
                                     connCol._bridgeActive ? ros2.stopBridge(root.selectedDroneId) : ros2.startBridge(root.selectedDroneId, nsField.text.trim())
                                 }
                             }
+                        }
+                        Text {
+                            width: parent.width
+                            visible: root._nodeStatus !== "ok"
+                            text: "Connect sources the setup files first, then checks ROS2 again."
+                            color: "#fbbf24"; font.pixelSize: 8; wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -220,6 +304,34 @@ Item {
                                 color: "#e2e8f0"; font.pixelSize: 9; font.family: "Consolas"; leftPadding: 6
                                 onEditingFinished: { if (typeof ros2 !== "undefined" && ros2) ros2.setSitlPx4Dir(text) }
                             }
+                        }
+
+                        Row {
+                            width: parent.width; spacing: 6; height: 18
+                            Text { text: "ROS2 setup sources (SITL)"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle {
+                                width: 16; height: 16; radius: 8
+                                color: sitlSetupSourceHelp.containsMouse ? "#1e3a5f" : "#1e2535"
+                                border.color: "#3b82f6"; border.width: 1
+                                Text { anchors.centerIn: parent; text: "?"; color: "#93c5fd"; font.pixelSize: 10; font.weight: Font.Bold }
+                                MouseArea {
+                                    id: sitlSetupSourceHelp; anchors.fill: parent; hoverEnabled: true
+                                    ToolTip.visible: containsMouse
+                                    ToolTip.delay: 350
+                                    ToolTip.text: "These setup.bash files are sourced only for PX4 SITL startup. Put one path per line."
+                                }
+                            }
+                        }
+                        TextArea {
+                            id: sitlSetupSourcesEdit
+                            width: parent.width; height: 58
+                            text: (typeof ros2 !== "undefined" && ros2 && ros2.getRos2SetupSourcesText) ? ros2.getRos2SetupSourcesText() : "/opt/ros/humble/setup.bash\n/home/iruz/ws_sensor_combined/install/setup.bash"
+                            wrapMode: TextEdit.NoWrap
+                            selectByMouse: true
+                            color: "#e2e8f0"; selectedTextColor: "#0f172a"; selectionColor: "#93c5fd"
+                            font.pixelSize: 9; font.family: "Consolas"
+                            leftPadding: 6; rightPadding: 6; topPadding: 5; bottomPadding: 5
+                            background: Rectangle { color: "#111827"; radius: 5; border.color: "#2d3748"; border.width: 1 }
                         }
 
                         Row {
@@ -297,6 +409,22 @@ Item {
 
                         Text { visible: modelCombo.currentText.includes("sih"); text: "SIH: headless — no Gazebo"; color: "#60a5fa"; font.pixelSize: 8; width: parent.width }
 
+                        Row {
+                            width: parent.width; spacing: 8; height: 24
+                            CheckBox {
+                                id: sitlVisibleTerminalToggle
+                                width: 22; height: 22
+                                checked: root._useVisibleTerminal
+                                onCheckedChanged: { if (checked !== root._useVisibleTerminal) root.setVisibleTerminalEnabled(checked) }
+                            }
+                            Text {
+                                width: parent.width - 30
+                                text: "Open visible terminal on SITL start"
+                                color: "#94a3b8"; font.pixelSize: 9; wrapMode: Text.WordWrap
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
                         // Start / Stop SITL
                         Rectangle {
                             width: parent.width; height: 32; radius: 6
@@ -317,7 +445,8 @@ Item {
                                     } else {
                                         ros2.startSitl({ model: modelCombo.currentText, worldProfile: worldCombo.currentText,
                                                          namespace: sitlNsField.text, cameraEnabled: cameraToggle.checked,
-                                                         gimbalEnabled: gimbalToggle.checked })
+                                                         gimbalEnabled: gimbalToggle.checked, px4Dir: px4DirField.text,
+                                                         ros2Setups: root.sitlRos2SetupSourceList() })
                                     }
                                 }
                             }
@@ -396,7 +525,7 @@ Item {
                                 color: startAllM.containsMouse ? "#166534" : "#14532d"; border.color: "#22c55e"; border.width: 1
                                 Text { anchors.centerIn: parent; text: "▶ Start All"; color: "#86efac"; font.pixelSize: 10; font.weight: Font.Bold }
                                 MouseArea { id: startAllM; anchors.fill: parent; hoverEnabled: true
-                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) ros2.startMultiSitl(multiCountSpin.value, parseInt(basePortField.text) || 5762) }
+                                    onClicked: { if (typeof ros2 !== "undefined" && ros2) { root.syncRos2SetupSources(); ros2.startMultiSitl(multiCountSpin.value, parseInt(basePortField.text) || 5762) } }
                                 }
                             }
                             Rectangle {
