@@ -171,5 +171,3 @@ def test_service_locator_uses_explicit_method():
     
     # Verify the old fragile pattern is removed
     assert 'hasattr(swarm, "_is_drone_mission_controlled")' not in content
-
-# Made with Bob

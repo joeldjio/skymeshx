@@ -352,5 +352,3 @@ def test_margin_never_below_minimum_with_uncertainty():
     margin = apf.compute_adaptive_margin(pos_a, pos_b, vel_a, vel_b)
     
     assert margin == apf.min_separation
-
-# Made with Bob

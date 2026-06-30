@@ -242,11 +242,11 @@ class LicenseManager(QObject):
     def activate(self, key: str) -> bool:
         exp = validate_key(key)
         if exp is None:
-            self._last_error = "Ungültiger Schlüssel. Format: UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD"
+            self._last_error = "Invalid key. Format: UAVGCS-XXXX-XXXX-XXXX-YYYYMMDD"
             self.lastErrorChanged.emit()
             return False
         if exp < date.today():
-            self._last_error = f"Schlüssel abgelaufen am {exp.isoformat()}."
+            self._last_error = f"Key expired on {exp.isoformat()}."
             self.lastErrorChanged.emit()
             return False
         self._stored_key = key.strip().upper()

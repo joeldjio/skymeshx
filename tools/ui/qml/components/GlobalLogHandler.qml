@@ -18,6 +18,10 @@ Item {
     property alias  model:      logModel
     property int    maxEntries: 3000
 
+    // P1: maintained counters — O(1) per append, no full-model scan on every message
+    property int errorCount: 0
+    property int warnCount:  0
+
     // External listeners (e.g. status bar) can hook this
     signal newEntry(string level, string text)
 
@@ -54,8 +58,16 @@ Item {
         var d    = new Date()
         var time = Qt.formatTime(d, "hh:mm:ss")
         logModel.append({ time: time, level: level, text: text })
-        if (logModel.count > handler.maxEntries)
+        // P1: update maintained counters — O(1), no scan needed
+        if (level === "ERROR") handler.errorCount++
+        else if (level === "WARN") handler.warnCount++
+        // Trim ring buffer — decrement counter for evicted entry
+        if (logModel.count > handler.maxEntries) {
+            var evicted = logModel.get(0)
+            if (evicted.level === "ERROR") handler.errorCount = Math.max(0, handler.errorCount - 1)
+            else if (evicted.level === "WARN") handler.warnCount = Math.max(0, handler.warnCount - 1)
             logModel.remove(0, 1)
+        }
         _appendToSyslog(time, level, text)
         handler.newEntry(level, text)
     }

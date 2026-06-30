@@ -21,10 +21,10 @@ Update procedure
    whose name starts with ``skymeshx-gcs-setup-`` and ends with ``.exe``.
    (The in-app updater downloads any asset matching that pattern.)
 """
-
 from __future__ import annotations
+import os
 
-VERSION: str = "0.3.7"
+VERSION: str = "0.4.0"
 
 # Asset-name prefix the in-app updater looks for when scanning a
 # GitHub release. Must match ``OutputBaseFilename`` in the .iss file.
@@ -47,7 +47,13 @@ TRIAL_DAYS: int = 30
 # A key minted with one secret is NOT accepted by builds carrying a
 # different secret, which lets you "revoke" all keys by rotating the
 # secret + shipping a new installer.
-LICENSE_SECRET: str = "skymeshx-dev-secret-CHANGE-ME-before-shipping"
+#
+# For production builds, set SKYMESHX_LICENSE_SECRET environment variable.
+# The setup.py build script will fail if the development secret is detected.
+LICENSE_SECRET: str = os.getenv(
+    "SKYMESHX_LICENSE_SECRET",
+    "skymeshx-dev-secret-CHANGE-ME-before-shipping"
+)
 
 # Vendor contact shown in the activation overlay.
 LICENSE_CONTACT: str = "djiojoel2@gmail.com"

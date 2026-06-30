@@ -139,6 +139,66 @@ Window {
         selectTab(0)  // jump to Map tab so user can click
     }
 
+    // ── Check if any map mode is active ────────────────────────────────────────
+    function isAnyMapModeActive() {
+        if (mapWaypointMode || mapPickMode) return true
+        if (typeof mission !== "undefined" && mission) {
+            if (mission.drawingMode || mission.missionWaypointMode || mission.addingSolarRow) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    // ── Cancel all active map interaction modes ────────────────────────────────
+    function cancelAllMapModes() {
+        try {
+            // Cancel waypoint mode
+            if (mapWaypointMode) {
+                mapWaypointMode = false
+                if (mapLoader.item) mapLoader.item.setPickMode(false)
+            }
+            
+            // Cancel pick mode
+            if (mapPickMode) {
+                mapPickMode = false
+                if (mapLoader.item) mapLoader.item.setPickMode(false)
+                _mapPickTarget = null
+            }
+            
+            // Finish boundary drawing without clearing points (async to avoid blocking)
+            if (typeof mission !== "undefined" && mission) {
+                try {
+                    if (mission.drawingMode && typeof mission.finishDrawingBoundary === "function") {
+                        Qt.callLater(mission.finishDrawingBoundary)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] finishDrawingBoundary error:", e)
+                }
+                
+                // Cancel mission waypoint mode (async to avoid blocking)
+                try {
+                    if (mission.missionWaypointMode && typeof mission.finishMissionWaypointMode === "function") {
+                        Qt.callLater(mission.finishMissionWaypointMode)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] finishMissionWaypointMode error:", e)
+                }
+                
+                // Cancel solar row drawing (async to avoid blocking)
+                try {
+                    if (typeof mission.cancelSolarRowDrawing === "function") {
+                        Qt.callLater(mission.cancelSolarRowDrawing)
+                    }
+                } catch (e) {
+                    console.error("[MAIN] cancelSolarRowDrawing error:", e)
+                }
+            }
+        } catch (e) {
+            console.error("[MAIN] cancelAllMapModes error:", e)
+        }
+    }
+
     function deliverMapPick(lat, lon) {
         // Routing: either waypoint-add mode OR legacy single-pick mode
         if (mapWaypointMode) {
@@ -167,6 +227,18 @@ Window {
             console.log("Waypoint", index + 1, "moved to", lat.toFixed(6), lon.toFixed(6))
         }
     }
+    
+    function handleBoundaryPointMoved(index, lat, lon) {
+        // Update boundary point position when dragged on map
+        try {
+            if (typeof mission !== "undefined" && mission) {
+                mission.updateBoundaryPoint(index, lat, lon)
+                console.log("Boundary point", index + 1, "moved to", lat.toFixed(6), lon.toFixed(6))
+            }
+        } catch (e) {
+            console.error("[MAIN] handleBoundaryPointMoved error:", e)
+        }
+    }
 
     // ── Auto-set mission home position from first drone ───────────────────────
     Timer {
@@ -191,7 +263,12 @@ Window {
     function handleBoundaryPoint(lat, lon) {
         try {
             if (typeof mission !== "undefined" && mission) {
-                if (mission.drawingMode === true) {
+                // Check if in mission waypoint mode first
+                if (mission.missionWaypointMode === true) {
+                    mission.addMissionWaypoint(lat, lon)
+                }
+                // Otherwise check if in boundary drawing mode
+                else if (mission.drawingMode === true) {
                     mission.addBoundaryPoint(lat, lon)
                 }
             }
@@ -209,6 +286,18 @@ Window {
             console.error("[MAIN] handleSolarRowPoint error:", e)
         }
     }
+    
+    function handleMissionWaypointPoint(lat, lon) {
+        try {
+            if (typeof mission !== "undefined" && mission) {
+                if (mission.missionWaypointMode === true) {
+                    mission.addMissionWaypoint(lat, lon)
+                }
+            }
+        } catch (e) {
+            console.error("[MAIN] handleMissionWaypointPoint error:", e)
+        }
+    }
 
     function syncFieldBoundaryToMap() {
         try {
@@ -216,6 +305,10 @@ Window {
             var points = mission.getBoundaryPoints()
             if (points && mapLoader.item.updateFieldBoundary) {
                 mapLoader.item.updateFieldBoundary(points)
+            }
+            var zones = mission.getExclusionZones()
+            if (zones && mapLoader.item.updateExclusionZones) {
+                mapLoader.item.updateExclusionZones(zones)
             }
         } catch (e) {
             console.error("[MAIN] syncFieldBoundaryToMap error:", e)
@@ -241,17 +334,104 @@ Window {
         }
     }
 
+    function syncSeedingPreviewToMap() {
+        try {
+            if (!mapLoader.item || typeof mission === "undefined" || !mission) return
+            var data = mission.getSeedingPreview()
+            if (!data || !data.valid) return
+            // dropPoints are [{lat,lon,alt,seedCount,...}]
+            if (mapLoader.item.updateSeedingDropPoints)
+                mapLoader.item.updateSeedingDropPoints(data.dropPoints || [])
+            if (mapLoader.item.updateSeedingFlightRows)
+                mapLoader.item.updateSeedingFlightRows(data.flightRows || [])
+            // exclusionZones come as [{name, points:[{lat,lon}]}] — unwrap to [[{lat,lon}]]
+            var rawZones = data.exclusionZones || []
+            var zones = []
+            for (var i = 0; i < rawZones.length; i++) {
+                zones.push(rawZones[i].points || rawZones[i])
+            }
+            if (mapLoader.item.updateSeedingExclusionZones)
+                mapLoader.item.updateSeedingExclusionZones(zones)
+        } catch (e) {
+            console.error("[MAIN] syncSeedingPreviewToMap error:", e)
+        }
+    }
+
+    function syncSolarPreviewToMap() {
+        try {
+            if (!mapLoader.item || typeof mission === "undefined" || !mission) return
+            var data = mission.getSolarPreview()
+            if (!data || !data.valid) return
+            if (mapLoader.item.updateSolarTriggerPoints)
+                mapLoader.item.updateSolarTriggerPoints(data.triggerPoints || [])
+            if (mapLoader.item.updateSolarFootprints)
+                mapLoader.item.updateSolarFootprints(data.triggerPoints || [])
+            if (mapLoader.item.updateSolarMissionRows)
+                mapLoader.item.updateSolarMissionRows(data.rows || [])
+        } catch (e) {
+            console.error("[MAIN] syncSolarPreviewToMap error:", e)
+        }
+    }
+
     function syncSolarPanelRowsToMap() {
         try {
             if (!mapLoader.item || typeof mission === "undefined" || !mission) return
-            if (mission.missionMode !== 2) return // Only for solar inspection mode
             
             var rows = mission.solarPanelRows
-            if (rows && mapLoader.item.updateSolarPanelRows) {
-                mapLoader.item.updateSolarPanelRows(rows)
+            if (rows && rows.length === 0) {
+                // Clear solar inspection visualization when no rows
+                if (mapLoader.item.clearSolarInspection) {
+                    mapLoader.item.clearSolarInspection()
+                }
+            } else if (mapLoader.item.updateSolarPanelRows) {
+                // Update with rows
+                mapLoader.item.updateSolarPanelRows(rows || [])
             }
         } catch (e) {
             console.error("[MAIN] syncSolarPanelRowsToMap error:", e)
+        }
+    }
+
+    // ── Mission signal wiring — called from mapLoader.onLoaded AND fallback timer ──
+    // Using a dedicated function prevents the race condition where mapLoader.item
+    // is null when the 500ms timer fires (asynchronous loader) or vice versa.
+    property bool _missionSignalsConnected: false
+    function connectMissionSignals() {
+        if (_missionSignalsConnected) return
+        if (!mapLoader.item) return
+        if (typeof mission === "undefined" || !mission) return
+        // Set the flag BEFORE connecting so that partial connects on a retry
+        // (where some signals are already connected) don't double-connect.
+        _missionSignalsConnected = true
+        try {
+            mission.fieldBoundaryChanged.connect(root.syncFieldBoundaryToMap)
+            mission.coverageGenerated.connect(root.syncCoverageWaypointsToMap)
+            mission.coverageCleared.connect(function() {
+                if (mapLoader.item && mapLoader.item.clearFieldCoverage)
+                    mapLoader.item.clearFieldCoverage()
+            })
+            mission.drawingModeChanged.connect(function(active) {
+                if (mapLoader.item && mapLoader.item.setBoundaryDrawMode)
+                    mapLoader.item.setBoundaryDrawMode(active)
+                if (active)
+                    root.selectTab(0)
+            })
+            mission.solarPanelRowsChanged.connect(root.syncSolarPanelRowsToMap)
+            mission.solarStatsChanged.connect(root.syncCoverageWaypointsToMap)
+            mission.solarRowDrawingModeChanged.connect(function(active) {
+                if (mapLoader.item && mapLoader.item.setSolarRowDrawMode)
+                    mapLoader.item.setSolarRowDrawMode(active)
+                if (active)
+                    root.selectTab(0)
+            })
+            mission.seedingPreviewChanged.connect(root.syncSeedingPreviewToMap)
+            if (typeof mission.solarPreviewChanged !== "undefined")
+                mission.solarPreviewChanged.connect(root.syncSolarPreviewToMap)
+            console.log("[MAIN] Mission signals connected successfully")
+        } catch (e) {
+            // Reset flag so the next Loader reload can try again cleanly.
+            _missionSignalsConnected = false
+            console.error("[MAIN] Failed to connect mission signals:", e)
         }
     }
 
@@ -579,6 +759,7 @@ Window {
                             item.mapPickSelected.connect(root.deliverMapPick)
                             item.waypointMoved.connect(root.handleWaypointMoved)
                             item.boundaryPointSelected.connect(root.handleBoundaryPoint)
+                            item.boundaryPointMoved.connect(root.handleBoundaryPointMoved)
                             item.solarRowPointSelected.connect(root.handleSolarRowPoint)
 
                             // Connect collision prediction visualization
@@ -589,48 +770,17 @@ Window {
                                     }
                                 })
                             }
+
+                            // Connect mission signals as soon as map is loaded — no timer needed
+                            root.connectMissionSignals()
                         }
                         
-                        // Connect mission signals after a delay to ensure mission context is ready
+                        // Fallback timer in case map loaded before mission context was ready
                         Timer {
                             interval: 500
                             running: true
                             repeat: false
-                            onTriggered: {
-                                if (typeof mission !== "undefined" && mission && mapLoader.item) {
-                                    try {
-                                        mission.fieldBoundaryChanged.connect(root.syncFieldBoundaryToMap)
-                                        mission.coverageGenerated.connect(root.syncCoverageWaypointsToMap)
-                                        mission.coverageCleared.connect(function() {
-                                            if (mapLoader.item && mapLoader.item.clearFieldCoverage) {
-                                                mapLoader.item.clearFieldCoverage()
-                                            }
-                                        })
-                                        mission.drawingModeChanged.connect(function(active) {
-                                            if (mapLoader.item && mapLoader.item.setBoundaryDrawMode) {
-                                                mapLoader.item.setBoundaryDrawMode(active)
-                                            }
-                                            if (active) {
-                                                root.selectTab(0)
-                                            }
-                                        })
-                                        // Solar inspection signals
-                                        mission.solarPanelRowsChanged.connect(root.syncSolarPanelRowsToMap)
-                                        mission.solarStatsChanged.connect(root.syncCoverageWaypointsToMap)
-                                        mission.solarRowDrawingModeChanged.connect(function(active) {
-                                            if (mapLoader.item && mapLoader.item.setSolarRowDrawMode) {
-                                                mapLoader.item.setSolarRowDrawMode(active)
-                                            }
-                                            if (active) {
-                                                root.selectTab(0)
-                                            }
-                                        })
-                                        console.log("[MAIN] Mission signals connected successfully")
-                                    } catch (e) {
-                                        console.error("[MAIN] Failed to connect mission signals:", e)
-                                    }
-                                }
-                            }
+                            onTriggered: root.connectMissionSignals()
                         }
                     }
 
@@ -692,11 +842,12 @@ Window {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     onClicked: {
-                                        // Clear everything: waypoints, boundary, coverage
+                                        // Clear everything: waypoints, boundary, coverage, solar rows
                                         globalMissionWaypoints.clear()
                                         root.syncWaypointsToMap()
                                         if (typeof mission !== "undefined" && mission) {
                                             mission.clearFieldBoundary()
+                                            mission.clearSolarPanelRows()
                                         }
                                         if (mapLoader.item && mapLoader.item.clearFieldCoverage) {
                                             mapLoader.item.clearFieldCoverage()
@@ -762,6 +913,11 @@ Window {
                 }
 
                 // ── Telemetry → map bridge ────────────────────────────────
+                // B-M2: skip all map IPC when the map tab is not visible —
+                //        set _mapDirty so the first tab-switch triggers a refresh.
+                // B-M3: merged into a single runJavaScript call (updateDronesAndSelect).
+                property bool _mapDirty: false
+
                 Connections {
                     target: swarm
                     function onTelemetryUpdated(snapshot) {
@@ -778,12 +934,39 @@ Window {
                                     var zd = Object.assign({}, root._zoomedDrones)
                                     zd[id] = true
                                     root._zoomedDrones = zd
-                                    mapLoader.item.flyTo(s.lat, s.lon)
+                                    if (root.currentTab === 0)
+                                        mapLoader.item.flyTo(s.lat, s.lon)
                                 }
                             }
                         }
-                        mapLoader.item.updateDrones(JSON.stringify(drones))
-                        mapLoader.item.setSelectedDrone(root.selectedDroneId)
+                        // B-M2: skip expensive IPC when map tab is not shown
+                        if (root.currentTab !== 0) {
+                            workspace._mapDirty = true
+                            return
+                        }
+                        // B-M3: one combined call instead of two
+                        mapLoader.item.updateDronesAndSelect(JSON.stringify(drones), root.selectedDroneId)
+                    }
+                }
+
+                // B-M2: flush pending update the moment the map tab becomes visible
+                Connections {
+                    target: root
+                    function onCurrentTabChanged() {
+                        if (root.currentTab === 0 && workspace._mapDirty && mapLoader.item) {
+                            workspace._mapDirty = false
+                            var drones = {}
+                            var ids = (typeof swarm !== "undefined" && swarm) ? swarm.droneIds() : []
+                            if (ids) {
+                                for (var i = 0; i < ids.length; i++) {
+                                    var id = ids[i]
+                                    var s = swarm.droneSnapshot(id)
+                                    if (s && s.lat !== undefined && s.lat !== 0.0)
+                                        drones[id] = { lat: s.lat, lon: s.lon, heading: s.yaw || 0, armed: s.armed || false, droneType: (s.droneType || "generic") }
+                                }
+                            }
+                            mapLoader.item.updateDronesAndSelect(JSON.stringify(drones), root.selectedDroneId)
+                        }
                     }
                 }
 
@@ -886,20 +1069,9 @@ Window {
                 anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
                 spacing: 12
 
-                property int errorCount: {
-                    var count = 0
-                    for (var i = 0; i < globalLogModel.count; i++) {
-                        if (globalLogModel.get(i).level === "ERROR") count++
-                    }
-                    return count
-                }
-                property int warnCount: {
-                    var count = 0
-                    for (var i = 0; i < globalLogModel.count; i++) {
-                        if (globalLogModel.get(i).level === "WARN") count++
-                    }
-                    return count
-                }
+                // P1: read O(1) counters maintained by GlobalLogHandler — no scan
+                property int errorCount: globalLog.errorCount
+                property int warnCount:  globalLog.warnCount
 
                 Text {
                     id: statusMsg
@@ -1119,6 +1291,19 @@ Window {
         onActivated: {
             root.toggleMapWaypointMode()
             root._scFeedback("Waypoint-Modus: " + (root.mapWaypointMode ? "AN" : "AUS"))
+        }
+    }
+
+    // ESC — Cancel all map modes
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            // Call asynchronously to avoid blocking UI thread
+            Qt.callLater(function() {
+                root.cancelAllMapModes()
+                root._scFeedback("Map modes cancelled")
+            })
         }
     }
 

@@ -215,5 +215,3 @@ def test_fallback_to_backend_poll_when_dict_empty():
     
     # Verify: Mission detected via fallback
     assert mission_active
-
-# Made with Bob

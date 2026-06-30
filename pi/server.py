@@ -20,9 +20,12 @@ Usage:
     python3 pi/server.py --port tcp:127.0.0.1:5760 --http 8080
 """
 import argparse
+import hashlib
+import hmac
 import json
 import math
 import os
+import secrets
 import sys
 import threading
 import time
@@ -69,6 +72,9 @@ _state = {
 _log:   deque = deque(maxlen=200)   # ring buffer, max 200 lines
 _mav    = None
 _lock   = threading.Lock()
+_api_token: str = ""  # Bearer token for API authentication
+_cors_origin: str = ""  # CORS origin (empty = disabled)
+_max_body_size: int = 8192  # Max request body size in bytes
 
 _ARDUPILOT_MODES = {
     0:"STABILIZE",1:"ACRO",2:"ALT_HOLD",3:"AUTO",4:"GUIDED",
@@ -379,7 +385,20 @@ async function pollLog(){
     const r=await fetch('/api/log?n=50');
     const lines=await r.json();
     const el=document.getElementById('log');
-    el.innerHTML=lines.map(l=>`<span class="log-${l.l}">[${new Date(l.t*1000).toISOString().substr(11,8)}] ${l.m}</span>`).join('<br>');
+    // Clear existing content
+    el.innerHTML='';
+    // Build log entries safely using DOM methods to prevent XSS
+    lines.forEach(l=>{
+      const span=document.createElement('span');
+      // Whitelist log levels for CSS class
+      const level=['D','I','W','E','C','FC','INFO','WARN','ERROR'].includes(l.l)?l.l:'INFO';
+      span.className=`log-${level}`;
+      // Use textContent to safely set text (prevents script injection)
+      const timestamp=new Date(l.t*1000).toISOString().substr(11,8);
+      span.textContent=`[${timestamp}] ${l.m}`;
+      el.appendChild(span);
+      el.appendChild(document.createElement('br'));
+    });
     el.scrollTop=el.scrollHeight;
   }catch(e){}
 }
@@ -473,7 +492,7 @@ poll(); pollLog();
 """
 
 class _Handler(BaseHTTPRequestHandler):
-    def log_message(self, fmt, *args):
+    def log_message(self, format, *args):
         pass   # suppress access log — saves CPU
 
     def do_GET(self):
@@ -501,8 +520,39 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/command":
-            length = int(self.headers.get("Content-Length", 0))
-            body   = self.rfile.read(length)
+            # Check authentication for command endpoint
+            if not self._check_auth():
+                self._send(401, "application/json",
+                          json.dumps({"ok": False, "error": "Unauthorized"}).encode())
+                return
+            
+            # Enforce body size limit.
+            # When Content-Length is absent clients could send an unlimited
+            # body; read at most _max_body_size+1 bytes and reject if exceeded.
+            length_hdr = self.headers.get("Content-Length")
+            if length_hdr is not None:
+                try:
+                    length = int(length_hdr)
+                except ValueError:
+                    self._send(400, "application/json",
+                              json.dumps({"ok": False, "error": "Invalid Content-Length"}).encode())
+                    return
+                if length < 0:
+                    self._send(400, "application/json",
+                              json.dumps({"ok": False, "error": "Negative Content-Length"}).encode())
+                    return
+                if length > _max_body_size:
+                    self._send(413, "application/json",
+                              json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())
+                    return
+                body = self.rfile.read(length)
+            else:
+                # No Content-Length — read up to the limit and reject if more arrives
+                body = self.rfile.read(_max_body_size + 1)
+                if len(body) > _max_body_size:
+                    self._send(413, "application/json",
+                              json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())
+                    return
             try:
                 payload = json.loads(body)
                 result  = send_command(
@@ -515,6 +565,20 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, "text/plain", b"Not found")
 
+    def _check_auth(self) -> bool:
+        """Verify Bearer token authentication for API endpoints."""
+        if not _api_token:
+            return True  # No token configured = no auth required
+        
+        auth_header = self.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return False
+        
+        provided_token = auth_header[7:]  # Strip "Bearer "
+        
+        # Constant-time comparison to prevent timing attacks
+        return hmac.compare_digest(provided_token, _api_token)
+    
     def _json(self, obj):
         body = json.dumps(obj, separators=(",", ":")).encode()
         self._send(200, "application/json", body)
@@ -522,20 +586,59 @@ class _Handler(BaseHTTPRequestHandler):
     def _send(self, code, ctype, body):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", len(body))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Length", str(len(body)))
+        
+        # Only add CORS if explicitly configured
+        if _cors_origin:
+            self.send_header("Access-Control-Allow-Origin", _cors_origin)
+        
         self.end_headers()
         self.wfile.write(body)
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 def main():
+    global _api_token, _cors_origin
+    
     parser = argparse.ArgumentParser(description="SkyMeshX Pi Server")
     parser.add_argument("--port",   default="tcp:127.0.0.1:5760",
                         help="MAVLink connection (e.g. /dev/ttyUSB0 or tcp:127.0.0.1:5760)")
     parser.add_argument("--baud",   type=int, default=57600)
     parser.add_argument("--http",   type=int, default=8080,   help="HTTP port")
+    parser.add_argument("--host",   default="127.0.0.1",
+                        help="HTTP bind address (default: 127.0.0.1, use 0.0.0.0 for all interfaces)")
+    parser.add_argument("--api-token", default="",
+                        help="Bearer token for API authentication (or set SKYMESHX_PI_TOKEN env var)")
+    parser.add_argument("--cors-origin", default="",
+                        help="CORS origin to allow (default: disabled)")
     parser.add_argument("--demo",   action="store_true",      help="Demo mode (no drone)")
     args = parser.parse_args()
+    
+    # Set API token from argument or environment variable
+    _api_token = args.api_token or os.getenv("SKYMESHX_PI_TOKEN", "")
+    if not _api_token:
+        # Generate a random token if none provided
+        _api_token = secrets.token_urlsafe(32)
+        # Print the token only to the local console (stdout), never to the
+        # unauthenticated /api/log ring buffer.
+        print(f"[SECURITY] Generated API token: {_api_token}", flush=True)
+        log("[SECURITY] No API token provided — token printed to console only", "WARN")
+        log("[SECURITY] Set --api-token or SKYMESHX_PI_TOKEN to use a persistent token", "WARN")
+    else:
+        log("[SECURITY] API authentication enabled", "INFO")
+    
+    # Set CORS origin
+    _cors_origin = args.cors_origin
+    if _cors_origin:
+        log(f"[SECURITY] CORS enabled for origin: {_cors_origin}", "WARN")
+    else:
+        log("[SECURITY] CORS disabled (recommended)", "INFO")
+    
+    # Warn if binding to all interfaces
+    if args.host == "0.0.0.0":
+        log("[SECURITY] WARNING: Binding to all interfaces (0.0.0.0)", "WARN")
+        log("[SECURITY] Ensure firewall rules are configured appropriately", "WARN")
+    else:
+        log(f"[SECURITY] Binding to {args.host} (localhost only)", "INFO")
 
     if args.demo:
         _state["connected"] = True
@@ -547,12 +650,14 @@ def main():
         )
         t.start()
 
-    host = "0.0.0.0"
-    log(f"HTTP server: http://{host}:{args.http}")
-    log(f"Open in browser: http://<pi-ip>:{args.http}")
+    log(f"HTTP server: http://{args.host}:{args.http}")
+    if args.host == "127.0.0.1":
+        log(f"Access from Pi: http://localhost:{args.http}")
+    else:
+        log(f"Open in browser: http://<pi-ip>:{args.http}")
 
     try:
-        server = HTTPServer((host, args.http), _Handler)
+        server = HTTPServer((args.host, args.http), _Handler)
         server.serve_forever()
     except KeyboardInterrupt:
         log("Shutting down.")

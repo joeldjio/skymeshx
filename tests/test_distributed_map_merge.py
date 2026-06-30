@@ -352,5 +352,3 @@ def test_thread_safety():
     # Should have 30 voxels
     stats = map1.get_statistics()
     assert stats["voxel_count"] == 30
-
-# Made with Bob

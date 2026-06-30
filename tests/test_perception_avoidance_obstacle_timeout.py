@@ -244,5 +244,3 @@ def test_long_running_obstacle_map():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

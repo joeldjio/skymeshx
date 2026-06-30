@@ -259,5 +259,3 @@ class DepthCameraSubscriber:
         """Context manager support."""
         self.stop()
         return False
-
-# Made with Bob

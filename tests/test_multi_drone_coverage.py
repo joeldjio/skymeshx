@@ -233,5 +233,3 @@ def test_formation_without_home_position():
     # Can't generate waypoints without home
     with pytest.raises(ValueError, match="Home position must be set"):
         planner.generate_coverage_waypoints(boundary, config)
-
-# Made with Bob

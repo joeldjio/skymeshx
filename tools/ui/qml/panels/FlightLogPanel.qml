@@ -1,616 +1,441 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
-import QtQuick.Dialogs
-import "../components" as Cmp
 
 Item {
     id: root
     anchors.fill: parent
 
-    property var    rows:     []
-    property string logName:  ""
-    property int    hoverIdx: -1
+    property var rows: []
+    property string logName: ""
+    property string summaryText: qsTr("No flight log loaded.")
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-    function repaintAll() {
-        altCanvas.requestPaint()
-        spdCanvas.requestPaint()
-        batCanvas.requestPaint()
-        vzCanvas.requestPaint()
+    function localFilePath(urlValue) {
+        var path = String(urlValue || "")
+        if (path.indexOf("file:///") === 0)
+            path = path.substring(8)
+        else if (path.indexOf("file://") === 0)
+            path = path.substring(7)
+        var decoded = decodeURIComponent(path)
+        // Reject any path that contains traversal sequences after decoding
+        if (decoded.indexOf("..") !== -1) {
+            console.warn("FlightLogPanel: rejected path with traversal:", decoded)
+            return ""
+        }
+        return decoded
     }
 
-    onHoverIdxChanged: repaintAll()
-
-    // ── CSV Parser ────────────────────────────────────────────────────────
-    property real _altMax: 120
-    property real _spdMax: 30
-
-    function loadCsv(text) {
-        var lines = text.split("\n")
-        if (lines.length < 2) return
-        var hdrs = lines[0].split(",").map(function(h){ return h.trim() })
-        var parsed = []
-        var t0 = -1
-        for (var i = 1; i < lines.length; i++) {
-            var line = lines[i].trim()
-            if (!line) continue
-            var cols = line.split(",")
-            var getCol = function(name, c) {
-                var idx = hdrs.indexOf(name)
-                return idx >= 0 ? (parseFloat(c[idx]) || 0) : 0
-            }
-            var t = getCol("timestamp", cols)
-            if (t0 < 0) t0 = t
-            parsed.push({
-                t:   t - t0,
-                alt: getCol("alt_rel",     cols),
-                spd: getCol("groundspeed", cols),
-                bat: getCol("battery_pct", cols),
-                vz:  getCol("vz",          cols),
-            })
-        }
-        rows = parsed
-        if (parsed.length > 0) {
-            var maxAlt = 0, maxSpd = 0
-            for (var j = 0; j < parsed.length; j++) {
-                if (parsed[j].alt > maxAlt) maxAlt = parsed[j].alt
-                if (parsed[j].spd > maxSpd) maxSpd = parsed[j].spd
-            }
-            _altMax = Math.max(20, Math.ceil(maxAlt * 1.15 / 10) * 10)
-            _spdMax = Math.max(10, Math.ceil(maxSpd * 1.15 / 5)  * 5)
-        }
-        repaintAll()
-        statsRow.visible = parsed.length > 0
+    function showError(message) {
+        errorText.text = message
+        loadErrorFlash.visible = true
+        errorTimer.restart()
     }
 
-    // ── Helper: Format seconds as MM:SS ───────────────────────────────────
+    function openCsvDialog() {
+        if (typeof swarm === "undefined" || !swarm.openFileDialog) {
+            root.showError(qsTr("File dialog is not available"))
+            return
+        }
+        var pathStr = root.localFilePath(
+            swarm.openFileDialog(qsTr("Open CSV Flight Log"), qsTr("CSV Logs (*.csv);;All Files (*)"))
+        )
+        if (pathStr.length > 0)
+            root.loadCsvPath(pathStr)
+    }
+
+    function openBagDialog() {
+        if (typeof swarm === "undefined" || !swarm.openFileDialog) {
+            root.showError(qsTr("File dialog is not available"))
+            return
+        }
+        var pathStr = root.localFilePath(
+            swarm.openFileDialog(qsTr("Open ROS2 Bag"), qsTr("ROS2 Bags (*.mcap *.db3);;All Files (*)"))
+        )
+        if (pathStr.length > 0)
+            root.loadBagPath(pathStr)
+    }
+
+    function loadCsvPath(pathStr) {
+        try {
+            root.logName = pathStr.split("/").pop().split("\\").pop()
+            if (typeof swarm === "undefined" || !swarm.readFile) {
+                root.showError(qsTr("File reader is not available"))
+                return
+            }
+            var content = swarm.readFile(pathStr)
+            if (!content || content.length <= 0) {
+                root.showError(qsTr("File could not be read"))
+                return
+            }
+            root.loadCsv(content)
+        } catch (e) {
+            console.error("FlightLogPanel: Error loading CSV:", e)
+            root.showError(qsTr("CSV load failed"))
+        }
+    }
+
+    function loadBagPath(pathStr) {
+        try {
+            root.logName = pathStr.split("/").pop().split("\\").pop()
+            if (typeof bagPlayback !== "undefined" && bagPlayback.loadBag)
+                bagPlayback.loadBag(pathStr)
+            else
+                root.showError(qsTr("Bag playback is not available"))
+        } catch (e) {
+            console.error("FlightLogPanel: Error loading bag:", e)
+            root.showError(qsTr("Bag load failed"))
+        }
+    }
+
     function formatTime(seconds) {
+        if (!isFinite(seconds) || seconds < 0)
+            seconds = 0
         var mins = Math.floor(seconds / 60)
         var secs = Math.floor(seconds % 60)
         return mins.toString() + ":" + (secs < 10 ? "0" : "") + secs.toString()
     }
 
-    // ── Chart drawing ─────────────────────────────────────────────────────
-    function drawChart(ctx, w, h, dataRows, yKey, yMin, yMax, col, title, hover) {
-        var pad = { l: 38, r: 10, t: 22, b: 28 }
-        var W = w - pad.l - pad.r
-        var H = h - pad.t - pad.b
-        ctx.fillStyle = "#0a0e1a"; ctx.fillRect(0, 0, w, h)
-
-        ctx.fillStyle = "#4a5568"; ctx.font = "bold 9px Consolas, Courier New"
-        ctx.textAlign = "left"; ctx.textBaseline = "top"
-        ctx.fillText(title, pad.l + 2, 4)
-
-        for (var g = 0; g <= 4; g++) {
-            var gy = pad.t + H - g * H / 4
-            ctx.strokeStyle = g === 0 ? "#2d3748" : "#1a2035"
-            ctx.lineWidth   = g === 0 ? 1.2 : 0.8
-            ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(pad.l + W, gy); ctx.stroke()
-            var lv = yMin + g * (yMax - yMin) / 4
-            ctx.fillStyle = "#374151"; ctx.font = "8px Consolas, Courier New"
-            ctx.textAlign = "right"; ctx.textBaseline = "middle"
-            ctx.fillText(lv % 1 === 0 ? lv : lv.toFixed(1), pad.l - 3, gy)
+    function colIndex(headers, name) {
+        for (var i = 0; i < headers.length; i++) {
+            if (headers[i] === name)
+                return i
         }
+        return -1
+    }
 
-        if (!dataRows || dataRows.length < 2) {
-            ctx.fillStyle = "#2d3748"; ctx.font = "bold 11px Consolas"
-            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-            ctx.fillText(qsTr("No log — press OPEN LOG"), w / 2, h / 2)
+    function numberAt(cols, headers, name) {
+        var idx = root.colIndex(headers, name)
+        if (idx < 0 || idx >= cols.length)
+            return 0
+        var value = parseFloat(cols[idx])
+        return isFinite(value) ? value : 0
+    }
+
+    function loadCsv(text) {
+        var lines = text.split("\n")
+        if (lines.length < 2) {
+            root.showError(qsTr("CSV has no data rows"))
             return
         }
 
-        var tMax = dataRows[dataRows.length - 1].t || 1
-        ctx.fillStyle = "#374151"; ctx.font = "8px Consolas, Courier New"
-        ctx.textAlign = "left";  ctx.textBaseline = "bottom"; ctx.fillText("0s", pad.l, h - 2)
-        ctx.textAlign = "right"; ctx.fillText(tMax.toFixed(0) + "s", pad.l + W, h - 2)
+        var headers = lines[0].split(",").map(function(h) { return h.trim() })
+        var parsed = []
+        var t0 = -1
+        var maxAlt = 0
+        var maxSpd = 0
+        var firstBat = 0
+        var lastBat = 0
 
-        ctx.strokeStyle = col; ctx.lineWidth = 1.8
-        ctx.beginPath()
-        for (var i = 0; i < dataRows.length; i++) {
-            var x = pad.l + (dataRows[i].t / tMax) * W
-            var y = pad.t + H - ((dataRows[i][yKey] - yMin) / (yMax - yMin)) * H
-            if (i === 0) ctx.moveTo(x, y)
-            else         ctx.lineTo(x, y)
-        }
-        ctx.stroke()
-
-        if (hover && hoverIdx >= 0 && hoverIdx < dataRows.length) {
-            var hx = pad.l + (dataRows[hoverIdx].t / tMax) * W
-            var hy = pad.t + H - ((dataRows[hoverIdx][yKey] - yMin) / (yMax - yMin)) * H
-            ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 1
-            ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + H); ctx.stroke()
-            ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy, 4, 0, 2*Math.PI); ctx.fill()
-            ctx.fillStyle = "#fbbf24"; ctx.font = "bold 10px Consolas"
-            ctx.textAlign = "center"; ctx.textBaseline = "bottom"
-            ctx.fillText(dataRows[hoverIdx][yKey].toFixed(1), hx, hy - 8)
-        }
-    }
-
-    function updateHover(canvasX, canvasWidth) {
-        if (!rows || rows.length < 2) return
-        var tMax = rows[rows.length - 1].t
-        var t = (canvasX - 38) / (canvasWidth - 48) * tMax
-        var best = 0, bestDt = 1e9
-        for (var i = 0; i < rows.length; i++) {
-            var dt = Math.abs(rows[i].t - t)
-            if (dt < bestDt) { bestDt = dt; best = i }
-        }
-        hoverIdx = best
-    }
-
-    // ── File Dialogs ──────────────────────────────────────────────────────
-    FileDialog {
-        id: csvFileDlg
-        title: qsTr("Open CSV Flight Log")
-        nameFilters: [qsTr("CSV Logs (*.csv)"), qsTr("All Files (*)")]
-        onAccepted: {
-            try {
-                var pathStr = selectedFile.toString()
-                root.logName = pathStr.split("/").pop().split("\\").pop()
-                if (typeof swarm !== 'undefined' && swarm.readFile) {
-                    var content = swarm.readFile(pathStr)
-                    if (content && content.length > 0)
-                        root.loadCsv(content)
-                    else
-                        loadErrorFlash.visible = true
-                } else {
-                    console.error("FlightLogPanel: swarm.readFile not available")
-                    loadErrorFlash.visible = true
-                }
-            } catch (e) {
-                console.error("FlightLogPanel: Error loading CSV:", e)
-                loadErrorFlash.visible = true
+        for (var i = 1; i < lines.length; i++) {
+            var line = lines[i].trim()
+            if (!line)
+                continue
+            var cols = line.split(",")
+            var t = root.numberAt(cols, headers, "timestamp")
+            if (t0 < 0)
+                t0 = t
+            var row = {
+                t: t - t0,
+                alt: root.numberAt(cols, headers, "alt_rel"),
+                spd: root.numberAt(cols, headers, "groundspeed"),
+                bat: root.numberAt(cols, headers, "battery_pct"),
+                vz: root.numberAt(cols, headers, "vz")
             }
+            if (parsed.length === 0)
+                firstBat = row.bat
+            lastBat = row.bat
+            if (row.alt > maxAlt)
+                maxAlt = row.alt
+            if (row.spd > maxSpd)
+                maxSpd = row.spd
+            parsed.push(row)
         }
+
+        rows = parsed
+        if (parsed.length <= 0) {
+            root.summaryText = qsTr("CSV loaded, but no usable rows were found.")
+            return
+        }
+
+        var duration = parsed[parsed.length - 1].t
+        root.summaryText =
+            qsTr("Rows: ") + parsed.length +
+            qsTr("   Duration: ") + root.formatTime(duration) +
+            qsTr("   Max alt: ") + maxAlt.toFixed(1) + " m" +
+            qsTr("   Max speed: ") + maxSpd.toFixed(1) + " m/s" +
+            qsTr("   Battery delta: ") + (firstBat - lastBat).toFixed(0) + "%"
     }
 
-    FileDialog {
-        id: bagFileDlg
-        title: qsTr("Open ROS2 Bag")
-        nameFilters: [qsTr("ROS2 Bags (*.mcap *.db3)"), qsTr("All Files (*)")]
-        onAccepted: {
-            try {
-                var pathStr = selectedFile.toString()
-                root.logName = pathStr.split("/").pop().split("\\").pop()
-                if (typeof bagPlayback !== 'undefined' && bagPlayback.loadBag) {
-                    bagPlayback.loadBag(pathStr)
-                } else {
-                    console.error("FlightLogPanel: bagPlayback not available")
-                    loadErrorFlash.visible = true
-                }
-            } catch (e) {
-                console.error("FlightLogPanel: Error loading bag:", e)
-                loadErrorFlash.visible = true
-            }
-        }
+    function bagStateText() {
+        if (typeof bagPlayback === "undefined")
+            return "N/A"
+        return String(bagPlayback.state || "stopped").toUpperCase()
+    }
+
+    function bagProgressText() {
+        if (typeof bagPlayback === "undefined")
+            return "0:00 / 0:00"
+        return root.formatTime(bagPlayback.progress * bagPlayback.duration) +
+               " / " + root.formatTime(bagPlayback.duration)
     }
 
     Rectangle {
         id: loadErrorFlash
         visible: false
         anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
-        width: errTxt.implicitWidth + 24; height: 32; radius: 6; z: 10
-        color: "#7f1d1d"; border.color: "#ef4444"; border.width: 1
-        Text { id: errTxt; anchors.centerIn: parent; text: qsTr("File could not be read"); color: "#fca5a5"; font.pixelSize: 11 }
-        Timer { interval: 3000; running: loadErrorFlash.visible; onTriggered: loadErrorFlash.visible = false }
+        width: Math.min(parent.width - 24, errorText.implicitWidth + 24)
+        height: 32
+        radius: 6
+        z: 10
+        color: "#7f1d1d"
+        border.color: "#ef4444"
+        border.width: 1
+        Text {
+            id: errorText
+            anchors.centerIn: parent
+            color: "#fca5a5"
+            font.pixelSize: 11
+            elide: Text.ElideRight
+            width: parent.width - 16
+            horizontalAlignment: Text.AlignHCenter
+        }
+        Timer {
+            id: errorTimer
+            interval: 3000
+            repeat: false
+            onTriggered: loadErrorFlash.visible = false
+        }
     }
 
-    // ── Main Layout ───────────────────────────────────────────────────────
-    Flickable {
+    Column {
         anchors { fill: parent; margins: 12 }
-        contentHeight: mainColumn.height
-        contentWidth: width
-        clip: true
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        spacing: 10
 
-        ColumnLayout {
-            id: mainColumn
+        Row {
             width: parent.width
+            height: 32
             spacing: 8
 
-            // ── Top Bar (Buttons + Filename) ──────────────────────────────
-            Row {
-                Layout.fillWidth: true
+            Rectangle {
+                width: 120
                 height: 32
+                radius: 6
+                color: csvBtnMa.containsMouse ? "#2563eb" : "#1e2535"
+                border.color: "#2563eb"
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("OPEN CSV")
+                    color: "#e2e8f0"
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                }
+                MouseArea {
+                    id: csvBtnMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.openCsvDialog()
+                }
+            }
+
+            Rectangle {
+                width: 120
+                height: 32
+                radius: 6
+                color: bagBtnMa.containsMouse ? "#059669" : "#1e2535"
+                border.color: "#059669"
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("OPEN BAG")
+                    color: "#e2e8f0"
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                }
+                MouseArea {
+                    id: bagBtnMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.openBagDialog()
+                }
+            }
+
+            Text {
+                width: Math.max(0, parent.width - 256)
+                height: parent.height
+                verticalAlignment: Text.AlignVCenter
+                text: root.logName !== "" ? root.logName : qsTr("-- no log loaded --")
+                color: root.logName !== "" ? "#94a3b8" : "#475569"
+                font.pixelSize: 11
+                font.family: "Consolas"
+                elide: Text.ElideLeft
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 92
+            radius: 8
+            color: "#1a2035"
+            border.color: "#2d3748"
+            border.width: 1
+
+            Column {
+                anchors { fill: parent; margins: 12 }
                 spacing: 8
-
-                Rectangle {
-                    width: 120; height: 32; radius: 6
-                    color: csvBtnMa.containsMouse ? "#2563eb" : "#1e2535"
-                    border.color: "#2563eb"; border.width: 1
-                    Text {
-                        anchors.centerIn: parent
-                        text: qsTr("OPEN CSV")
-                        color: "#e2e8f0"
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                    }
-                    MouseArea { id: csvBtnMa; anchors.fill: parent; hoverEnabled: true; onClicked: csvFileDlg.open() }
+                Text {
+                    text: qsTr("Flight Log Summary")
+                    color: "#94a3b8"
+                    font.pixelSize: 12
+                    font.weight: Font.Bold
                 }
-
-                Rectangle {
-                    width: 120; height: 32; radius: 6
-                    color: bagBtnMa.containsMouse ? "#059669" : "#1e2535"
-                    border.color: "#059669"; border.width: 1
-                    Text {
-                        anchors.centerIn: parent
-                        text: qsTr("OPEN BAG")
-                        color: "#e2e8f0"
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                    }
-                    MouseArea { id: bagBtnMa; anchors.fill: parent; hoverEnabled: true; onClicked: bagFileDlg.open() }
+                Text {
+                    width: parent.width
+                    text: root.summaryText
+                    color: "#e2e8f0"
+                    font.pixelSize: 12
+                    font.family: "Consolas"
+                    wrapMode: Text.Wrap
                 }
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 110
+            radius: 8
+            color: "#1a2035"
+            border.color: "#2d3748"
+            border.width: 1
+
+            Column {
+                anchors { fill: parent; margins: 12 }
+                spacing: 10
 
                 Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.logName !== "" ? root.logName : qsTr("— no log loaded —")
-                    color: root.logName !== "" ? "#94a3b8" : "#374151"
-                    font.pixelSize: 11; font.family: "Consolas"
-                    elide: Text.ElideLeft
-                    width: parent.width - 256
+                    text: qsTr("ROS2 Bag Playback")
+                    color: "#94a3b8"
+                    font.pixelSize: 12
+                    font.weight: Font.Bold
                 }
-            }
 
-            // ── Bag Playback Controls ─────────────────────────────────────
-            Rectangle {
-                id: bagPlaybackSection
-                Layout.fillWidth: true
-                Layout.preferredHeight: 120
-                radius: 8
-                color: "#1a2035"
-                border.color: "#2d3748"
-                border.width: 1
-
-                ColumnLayout {
-                    anchors { fill: parent; margins: 12 }
+                Row {
                     spacing: 8
+                    height: 28
 
-                    // Title + State
-                    Row {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Text {
-                            text: qsTr("ROS2 Bag Playback")
-                            color: "#94a3b8"
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                        }
-                        Rectangle {
-                            width: stateText.implicitWidth + 12
-                            height: 18
-                            radius: 4
-                            color: (typeof bagPlayback !== 'undefined' && bagPlayback.state === "playing") ? "#059669" :
-                                   (typeof bagPlayback !== 'undefined' && bagPlayback.state === "paused") ? "#d97706" : "#374151"
-                            Text {
-                                id: stateText
-                                anchors.centerIn: parent
-                                text: (typeof bagPlayback !== 'undefined') ?
-                                      (bagPlayback.state === "playing" ? qsTr("PLAYING") : bagPlayback.state === "paused" ? qsTr("PAUSED") : qsTr("STOPPED")) :
-                                      "N/A"
-                                color: "#f1f5f9"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-                        }
+                    Text {
+                        width: 170
+                        height: parent.height
+                        verticalAlignment: Text.AlignVCenter
+                        text: root.bagStateText() + "  " + root.bagProgressText()
+                        color: "#cbd5e1"
+                        font.pixelSize: 10
+                        font.family: "Consolas"
                     }
 
-                    // Timeline
-                    Row {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: (typeof bagPlayback !== 'undefined') ? formatTime(bagPlayback.progress * bagPlayback.duration) : "0:00"
-                            color: "#64748b"
-                            font.pixelSize: 10
-                            font.family: "Consolas"
-                            width: 50
-                        }
-
-                        Slider {
-                            id: timelineSlider
-                            width: parent.width - 120
-                            from: 0.0
-                            to: 1.0
-                            value: (typeof bagPlayback !== 'undefined') ? bagPlayback.progress : 0.0
-                            enabled: (typeof bagPlayback !== 'undefined') && bagPlayback.state !== "stopped"
-                            onMoved: {
-                                if (typeof bagPlayback !== 'undefined' && bagPlayback.seek) {
-                                    bagPlayback.seek(value)
-                                }
-                            }
-
-                            background: Rectangle {
-                                x: timelineSlider.leftPadding
-                                y: timelineSlider.topPadding + timelineSlider.availableHeight / 2 - height / 2
-                                width: timelineSlider.availableWidth
-                                height: 4
-                                radius: 2
-                                color: "#2d3748"
-                                Rectangle {
-                                    width: timelineSlider.visualPosition * parent.width
-                                    height: parent.height
-                                    radius: 2
-                                    color: "#059669"
-                                }
-                            }
-
-                            handle: Rectangle {
-                                x: timelineSlider.leftPadding + timelineSlider.visualPosition * (timelineSlider.availableWidth - width)
-                                y: timelineSlider.topPadding + timelineSlider.availableHeight / 2 - height / 2
-                                width: 14
-                                height: 14
-                                radius: 7
-                                color: timelineSlider.pressed ? "#10b981" : "#059669"
-                                border.color: "#f1f5f9"
-                                border.width: 2
-                            }
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: (typeof bagPlayback !== 'undefined') ? formatTime(bagPlayback.duration) : "0:00"
-                            color: "#64748b"
-                            font.pixelSize: 10
-                            font.family: "Consolas"
-                            width: 50
-                        }
-                    }
-
-                    // Control Buttons
-                    Row {
-                        spacing: 6
-
-                        Rectangle {
-                            width: 80; height: 28; radius: 6
-                            color: playBtnMa.containsMouse ? "#059669" : "#1e2535"
-                            border.color: "#059669"; border.width: 1
-                            visible: (typeof bagPlayback === 'undefined') || bagPlayback.state !== "playing"
-                            Text {
-                                anchors.centerIn: parent
-                                text: qsTr("PLAY")
-                                color: "#e2e8f0"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                id: playBtnMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (typeof bagPlayback !== 'undefined' && bagPlayback.play) {
-                                        bagPlayback.play()
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 80; height: 28; radius: 6
-                            color: pauseBtnMa.containsMouse ? "#d97706" : "#1e2535"
-                            border.color: "#d97706"; border.width: 1
-                            visible: (typeof bagPlayback !== 'undefined') && bagPlayback.state === "playing"
-                            Text {
-                                anchors.centerIn: parent
-                                text: qsTr("PAUSE")
-                                color: "#e2e8f0"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                id: pauseBtnMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (typeof bagPlayback !== 'undefined' && bagPlayback.pause) {
-                                        bagPlayback.pause()
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 80; height: 28; radius: 6
-                            color: stopBtnMa.containsMouse ? "#dc2626" : "#1e2535"
-                            border.color: "#dc2626"; border.width: 1
-                            Text {
-                                anchors.centerIn: parent
-                                text: qsTr("STOP")
-                                color: "#e2e8f0"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                id: stopBtnMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (typeof bagPlayback !== 'undefined' && bagPlayback.stop) {
-                                        bagPlayback.stop()
-                                    }
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: (typeof bagPlayback !== 'undefined') ? qsTr("Speed: ") + bagPlayback.playbackRate.toFixed(1) + "x" : qsTr("Speed: 1.0x")
-                            color: "#64748b"
-                            font.pixelSize: 10
-                            font.family: "Consolas"
-                        }
-
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: speedDownMa.containsMouse ? "#374151" : "#1e2535"
-                            border.color: "#475569"; border.width: 1
-                            Text {
-                                anchors.centerIn: parent
-                                text: "−"
-                                color: "#e2e8f0"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                id: speedDownMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (typeof bagPlayback !== 'undefined') {
-                                        bagPlayback.playbackRate = Math.max(0.1, bagPlayback.playbackRate - 0.5)
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: speedUpMa.containsMouse ? "#374151" : "#1e2535"
-                            border.color: "#475569"; border.width: 1
-                            Text {
-                                anchors.centerIn: parent
-                                text: "+"
-                                color: "#e2e8f0"
-                                font.pixelSize: 14
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                id: speedUpMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (typeof bagPlayback !== 'undefined') {
-                                        bagPlayback.playbackRate = Math.min(10.0, bagPlayback.playbackRate + 0.5)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Stats Strip ───────────────────────────────────────────────
-            RowLayout {
-                id: statsRow
-                visible: false
-                Layout.fillWidth: true
-                Layout.preferredHeight: 52
-                spacing: 6
-
-                property var stats: [
-                    { label: qsTr("DURATION"),   icon: "T", col: "#06b6d4",
-                      val: function(r){ return r.length > 1 ? r[r.length-1].t.toFixed(0)+"s" : "—" } },
-                    { label: qsTr("MAX ALT"), icon: "A",  col: "#2563eb",
-                      val: function(r){ if (!r.length) return "—"; var m=r[0].alt; for(var i=1;i<r.length;i++) if(r[i].alt>m) m=r[i].alt; return m.toFixed(1)+"m" } },
-                    { label: qsTr("MAX SPD"), icon: "S",  col: "#22c55e",
-                      val: function(r){ if (!r.length) return "—"; var m=r[0].spd; for(var i=1;i<r.length;i++) if(r[i].spd>m) m=r[i].spd; return m.toFixed(1)+"m/s" } },
-                    { label: qsTr("BATT D"),  icon: "B", col: "#ef4444",
-                      val: function(r){ return r.length > 1 ? (r[0].bat-r[r.length-1].bat).toFixed(0)+"%" : "—" } },
-                ]
-
-                Repeater {
-                    model: statsRow.stats
-                    delegate: Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 52
-                        radius: 8
-                        color: "#1a2035"
-                        border.color: "#2d3748"
+                    Rectangle {
+                        width: 74
+                        height: 28
+                        radius: 6
+                        color: playBtnMa.containsMouse ? "#059669" : "#1e2535"
+                        border.color: "#059669"
                         border.width: 1
-                        Column {
-                            anchors.centerIn: parent; spacing: 2
-                            Row {
-                                anchors.horizontalCenter: parent.horizontalCenter; spacing: 4
-                                Text { text: modelData.icon; color: modelData.col; font.pixelSize: 14 }
-                                Text { text: modelData.label; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold }
-                            }
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.val(rows)
-                                color: "#e2e8f0"
-                                font.pixelSize: 16
-                                font.weight: Font.Bold
-                                font.family: "Consolas"
+                        Text { anchors.centerIn: parent; text: qsTr("PLAY"); color: "#e2e8f0"; font.pixelSize: 10; font.weight: Font.Bold }
+                        MouseArea {
+                            id: playBtnMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                if (typeof bagPlayback !== "undefined" && bagPlayback.play)
+                                    bagPlayback.play()
                             }
                         }
                     }
+
+                    Rectangle {
+                        width: 74
+                        height: 28
+                        radius: 6
+                        color: stopBtnMa.containsMouse ? "#dc2626" : "#1e2535"
+                        border.color: "#dc2626"
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: qsTr("STOP"); color: "#e2e8f0"; font.pixelSize: 10; font.weight: Font.Bold }
+                        MouseArea {
+                            id: stopBtnMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                if (typeof bagPlayback !== "undefined" && bagPlayback.stop)
+                                    bagPlayback.stop()
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 32
+                        height: 28
+                        radius: 6
+                        color: speedDownMa.containsMouse ? "#374151" : "#1e2535"
+                        border.color: "#475569"
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: "-"; color: "#e2e8f0"; font.pixelSize: 13; font.weight: Font.Bold }
+                        MouseArea {
+                            id: speedDownMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                if (typeof bagPlayback !== "undefined")
+                                    bagPlayback.playbackRate = Math.max(0.1, bagPlayback.playbackRate - 0.5)
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 32
+                        height: 28
+                        radius: 6
+                        color: speedUpMa.containsMouse ? "#374151" : "#1e2535"
+                        border.color: "#475569"
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: "+"; color: "#e2e8f0"; font.pixelSize: 13; font.weight: Font.Bold }
+                        MouseArea {
+                            id: speedUpMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                if (typeof bagPlayback !== "undefined")
+                                    bagPlayback.playbackRate = Math.min(10.0, bagPlayback.playbackRate + 0.5)
+                            }
+                        }
+                    }
+
+                    Text {
+                        height: parent.height
+                        verticalAlignment: Text.AlignVCenter
+                        text: (typeof bagPlayback !== "undefined") ? qsTr("Speed: ") + bagPlayback.playbackRate.toFixed(1) + "x" : qsTr("Speed: 1.0x")
+                        color: "#64748b"
+                        font.pixelSize: 10
+                        font.family: "Consolas"
+                    }
                 }
             }
+        }
 
-            // ── CSV Charts (2x2 Grid) ────────────────────────────────────
-            Grid {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 400
-                columns: 2
-                rowSpacing: 8
-                columnSpacing: 8
+        Rectangle {
+            width: parent.width
+            height: Math.max(120, parent.height - 258)
+            radius: 8
+            color: "#0a0e1a"
+            border.color: "#1e293b"
+            border.width: 1
 
-                // Altitude
-                Rectangle {
-                    width: (parent.width - 8) / 2; height: (parent.height - 8) / 2
-                    color: "#0a0e1a"; radius: 6; border.color: "#1e293b"; border.width: 1
-                    Canvas {
-                        id: altCanvas
-                        anchors.fill: parent
-                        onPaint: root.drawChart(getContext("2d"), width, height, rows, "alt", 0, _altMax, "#2563eb", qsTr("Altitude (m) [0-120m]"), true)
-                    }
-                    MouseArea {
-                        anchors.fill: parent; hoverEnabled: true
-                        onPositionChanged: root.updateHover(mouseX, width)
-                        onExited: { hoverIdx = -1 }
-                    }
-                }
-
-                // Groundspeed
-                Rectangle {
-                    width: (parent.width - 8) / 2; height: (parent.height - 8) / 2
-                    color: "#0a0e1a"; radius: 6; border.color: "#1e293b"; border.width: 1
-                    Canvas {
-                        id: spdCanvas
-                        anchors.fill: parent
-                        onPaint: root.drawChart(getContext("2d"), width, height, rows, "spd", 0, _spdMax, "#22c55e", qsTr("Groundspeed (m/s) [0-30m/s]"), true)
-                    }
-                    MouseArea {
-                        anchors.fill: parent; hoverEnabled: true
-                        onPositionChanged: root.updateHover(mouseX, width)
-                        onExited: { hoverIdx = -1 }
-                    }
-                }
-
-                // Battery
-                Rectangle {
-                    width: (parent.width - 8) / 2; height: (parent.height - 8) / 2
-                    color: "#0a0e1a"; radius: 6; border.color: "#1e293b"; border.width: 1
-                    Canvas {
-                        id: batCanvas
-                        anchors.fill: parent
-                        onPaint: root.drawChart(getContext("2d"), width, height, rows, "bat", 0, 100, "#f59e0b", qsTr("Battery (%)"), true)
-                    }
-                    MouseArea {
-                        anchors.fill: parent; hoverEnabled: true
-                        onPositionChanged: root.updateHover(mouseX, width)
-                        onExited: { hoverIdx = -1 }
-                    }
-                }
-
-                // Vertical Speed
-                Rectangle {
-                    width: (parent.width - 8) / 2; height: (parent.height - 8) / 2
-                    color: "#0a0e1a"; radius: 6; border.color: "#1e293b"; border.width: 1
-                    Canvas {
-                        id: vzCanvas
-                        anchors.fill: parent
-                        onPaint: root.drawChart(getContext("2d"), width, height, rows, "vz", -5, 5, "#8b5cf6", qsTr("Vertical Speed (m/s)"), true)
-                    }
-                    MouseArea {
-                        anchors.fill: parent; hoverEnabled: true
-                        onPositionChanged: root.updateHover(mouseX, width)
-                        onExited: { hoverIdx = -1 }
-                    }
-                }
+            Text {
+                anchors.centerIn: parent
+                width: parent.width - 32
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Charts are disabled in the safe FlightLog view until the tab-load freeze is isolated.")
+                color: "#64748b"
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
             }
         }
     }

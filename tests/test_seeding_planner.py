@@ -8,6 +8,7 @@ import pytest
 from skymeshx.control.seeding_planner import (
     SeedingMissionPlanner,
     SeedingConfig,
+    DispenserCalibration,
     MAV_CMD_NAV_WAYPOINT,
     MAV_CMD_DO_SET_SERVO,
     MAV_CMD_NAV_DELAY
@@ -320,14 +321,15 @@ def test_waypoint_sequence():
     )
     
     # Find first seed drop sequence
-    # New sequence: NAV (with hold) -> SERVO_OPEN -> SERVO_CLOSE
+    # Sequence: NAV (seed point) -> SERVO_OPEN -> DELAY -> SERVO_CLOSE
     for i, wp in enumerate(waypoints):
         if wp.cmd == MAV_CMD_NAV_WAYPOINT and wp.hold > 0:
             # This is a seed drop waypoint
             assert waypoints[i].cmd == MAV_CMD_NAV_WAYPOINT
             assert waypoints[i].hold > 0  # Has hold time for seed drop
             assert waypoints[i+1].cmd == MAV_CMD_DO_SET_SERVO  # Open
-            assert waypoints[i+2].cmd == MAV_CMD_DO_SET_SERVO  # Close
+            assert waypoints[i+2].cmd == MAV_CMD_NAV_DELAY
+            assert waypoints[i+3].cmd == MAV_CMD_DO_SET_SERVO  # Close
             break
 
 
@@ -358,7 +360,169 @@ def test_custom_servo_channel():
         assert wp.hold == 10.0
 
 
+def test_generate_seeding_mission_with_preview():
+    """Test seeding mission preview generation."""
+    planner = SeedingMissionPlanner()
+    planner.set_home_position(48.137, 11.575)
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.1375, 11.575),
+        (48.1375, 11.5755),
+        (48.137, 11.5755)
+    ])
+    config = SeedingConfig(seed_spacing=8.0, row_spacing=10.0)
+    calibration = DispenserCalibration(seed_capacity=1000, seeds_per_drop=2)
+
+    preview = planner.generate_seeding_mission_with_preview(
+        boundary,
+        config,
+        calibration=calibration,
+        exclusion_zones=[{"name": "tree", "points": []}],
+        add_rtl=False,
+    )
+
+    assert len(preview.waypoints) > 0
+    assert len(preview.waypoint_list) == len(preview.waypoints)
+    assert len(preview.flight_path) > 0
+    assert len(preview.flight_rows) > 0
+    assert len(preview.drop_points) > 0
+    assert preview.estimated_seed_usage == len(preview.drop_points) * 2
+    assert preview.estimated_seed_weight_kg > 0
+    assert preview.estimated_duration > 0
+    assert preview.estimated_battery_usage > 0
+    assert preview.exclusion_zones[0]["name"] == "tree"
+
+
+def test_seeding_preview_to_dict_matches_qml_contract():
+    """Preview dict should use QML-friendly key names."""
+    planner = SeedingMissionPlanner()
+    planner.set_home_position(48.137, 11.575)
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.1375, 11.575),
+        (48.1375, 11.5755),
+        (48.137, 11.5755)
+    ])
+
+    data = planner.generate_seeding_mission_with_preview(
+        boundary,
+        SeedingConfig(seed_spacing=8.0, row_spacing=10.0),
+        add_rtl=False,
+    ).to_dict()
+
+    assert set(data).issuperset({
+        "waypoints",
+        "flightPath",
+        "flightRows",
+        "dropPoints",
+        "exclusionZones",
+        "estimatedSeedUsage",
+        "estimatedDuration",
+        "estimatedBatteryUsage",
+        "fieldArea",
+        "estimatedWaypointCount",
+        "warnings",
+    })
+    assert {"lat", "lon", "alt", "cmd"}.issubset(data["waypoints"][0])
+    assert {"lat", "lon", "alt", "seedCount", "expectedDropId"}.issubset(
+        data["dropPoints"][0]
+    )
+
+
+def test_validate_seeding_mission_warnings():
+    """Validation should warn about capacity and rate risks."""
+    planner = SeedingMissionPlanner()
+    planner.set_home_position(48.137, 11.575)
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.1375, 11.575),
+        (48.1375, 11.5755),
+        (48.137, 11.5755)
+    ])
+    config = SeedingConfig(seed_spacing=8.0, row_spacing=10.0, speed=8.0)
+    calibration = DispenserCalibration(
+        seed_capacity=2,
+        seed_weight_g=2.0,
+        tank_capacity_kg=0.001,
+        max_drop_rate=0.5,
+    )
+
+    result = planner.validate_seeding_mission(boundary, config, calibration)
+
+    assert result["valid"] is True
+    assert any("seed capacity" in warning for warning in result["warnings"])
+    assert any("tank capacity" in warning for warning in result["warnings"])
+    assert any("drop rate" in warning for warning in result["warnings"])
+    assert result["estimatedSeedUsage"] > 0
+
+
+def test_large_seeding_mission_above_vehicle_limit_remains_valid():
+    """Large fields should preview with warnings instead of being rejected."""
+    planner = SeedingMissionPlanner()
+    planner.set_home_position(48.137, 11.575)
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.138, 11.575),
+        (48.138, 11.576),
+        (48.137, 11.576),
+    ])
+    config = SeedingConfig(seed_spacing=1.0, row_spacing=5.0)
+
+    result = planner.validate_seeding_mission(boundary, config)
+
+    assert result["valid"] is True
+    assert result["errors"] == []
+    assert result["estimatedWaypointCount"] > 700
+    assert any("700-waypoint" in warning for warning in result["warnings"])
+
+
+def test_large_seeding_preview_above_vehicle_limit_does_not_raise():
+    """Preview generation should not block large user-defined fields."""
+    planner = SeedingMissionPlanner()
+    planner.set_home_position(48.137, 11.575)
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.138, 11.575),
+        (48.138, 11.576),
+        (48.137, 11.576),
+    ])
+
+    preview = planner.generate_seeding_mission_with_preview(
+        boundary,
+        SeedingConfig(seed_spacing=1.0, row_spacing=5.0),
+        add_rtl=False,
+    )
+    data = preview.to_dict()
+
+    assert data["estimatedWaypointCount"] > 700
+    assert len(data["waypoints"]) > 700
+    assert any("700-waypoint" in warning for warning in data["warnings"])
+
+
+def test_validate_seeding_mission_requires_home():
+    """Validation should report missing home without hardware access."""
+    planner = SeedingMissionPlanner()
+    boundary = FieldBoundary(corners=[
+        (48.137, 11.575),
+        (48.1375, 11.575),
+        (48.1375, 11.5755),
+        (48.137, 11.5755)
+    ])
+
+    result = planner.validate_seeding_mission(boundary, SeedingConfig())
+
+    assert result["valid"] is False
+    assert "Home position must be set" in result["errors"][0]
+
+
+def test_dispenser_calibration_validation():
+    """Invalid dispenser calibration should be rejected."""
+    with pytest.raises(ValueError, match="Seed capacity must be positive"):
+        DispenserCalibration(seed_capacity=0)
+
+    with pytest.raises(ValueError, match="Max drop rate must be positive"):
+        DispenserCalibration(max_drop_rate=0)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

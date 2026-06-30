@@ -108,5 +108,3 @@ flags:
 # GitHub checks
 github_checks:
   annotations: true
-
-# Made with Bob

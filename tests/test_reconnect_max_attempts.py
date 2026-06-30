@@ -213,5 +213,3 @@ def test_is_connected_method():
             assert connected is False  # Not started yet
     except ImportError:
         pytest.skip("ROS2 dependencies not available")
-
-# Made with Bob

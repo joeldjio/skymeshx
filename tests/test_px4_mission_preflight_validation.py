@@ -201,5 +201,3 @@ def test_validate_large_mission(uploader):
     is_valid, errors = uploader.validate(waypoints)
     assert is_valid
     assert len(errors) == 0
-
-# Made with Bob

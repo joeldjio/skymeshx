@@ -55,5 +55,3 @@ def test_send_raw_error_message_shows_allowed_types(fake_conn):
     assert "Allowed types:" in error_msg
     # Should show some whitelisted types
     assert "heartbeat" in error_msg or "command_long" in error_msg
-
-# Made with Bob

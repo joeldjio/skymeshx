@@ -62,7 +62,8 @@ class ESCAPEContext(QObject):
         super().__init__(parent)
         
         if not _ESCAPE_OK:
-            print("[ESCAPEContext] ESCAPE modules not available")
+            import logging
+            logging.getLogger(__name__).warning("[ESCAPEContext] ESCAPE modules not available — features disabled")
         
         # Perception
         self._perception_apf: Optional[PerceptionEnhancedAPF] = None
@@ -131,14 +132,16 @@ class ESCAPEContext(QObject):
             decay_rate=0.1,
         )
         
-        print(f"[ESCAPEContext] Initialized for {drone_id}")
+        import logging
+        logging.getLogger(__name__).info("[ESCAPEContext] Initialized for %s", drone_id)
     
     @Slot()
     def shutdown(self):
         """Shutdown ESCAPE framework."""
         if self._protocol:
             self._protocol.stop()
-        print("[ESCAPEContext] Shutdown complete")
+        import logging
+        logging.getLogger(__name__).info("[ESCAPEContext] Shutdown complete")
     
     # ========== Perception Properties ==========
     
@@ -147,10 +150,13 @@ class ESCAPEContext(QObject):
         """Get nearby obstacles from perception filter."""
         if not self._perception_apf or not self._drone_positions:
             return []
-        
-        # Use first drone position as reference
-        drone_pos = list(self._drone_positions.values())[0]
-        
+
+        # Use first drone position as reference — guard against empty dict
+        positions = list(self._drone_positions.values())
+        if not positions:
+            return []
+        drone_pos = positions[0]
+
         nearby = self._perception_apf.get_nearby_obstacles(
             drone_pos=drone_pos,
             radius=20.0
@@ -171,8 +177,11 @@ class ESCAPEContext(QObject):
         """Update perception from point cloud data."""
         if not self._perception_apf or not self._drone_positions:
             return
-        
-        drone_pos = list(self._drone_positions.values())[0]
+
+        positions = list(self._drone_positions.values())
+        if not positions:
+            return
+        drone_pos = positions[0]
         self._perception_apf.update_from_pointcloud(points, drone_pos)
         self.obstaclesChanged.emit()
     
@@ -180,7 +189,12 @@ class ESCAPEContext(QObject):
     def clearObstacles(self):
         """Clear all obstacles from perception."""
         if self._perception_apf:
-            self._perception_apf._obstacle_map.clear()
+            # Use the public clear API if available; fall back to the internal
+            # map only when no public method is exposed by the class.
+            if hasattr(self._perception_apf, "clear_obstacles"):
+                self._perception_apf.clear_obstacles()
+            elif hasattr(self._perception_apf, "_obstacle_map"):
+                self._perception_apf._obstacle_map.clear()
             self.obstaclesChanged.emit()
     
     # ========== Task Allocation Properties ==========
@@ -226,7 +240,8 @@ class ESCAPEContext(QObject):
             priority=priority,
         )
         
-        print(f"[ESCAPEContext] Announced task {task_id}")
+        import logging
+        logging.getLogger(__name__).info("[ESCAPEContext] Announced task %s", task_id)
         self.tasksChanged.emit()
     
     @Slot(str)
@@ -435,5 +450,3 @@ class ESCAPEContext(QObject):
     def available(self) -> bool:
         """Check if ESCAPE framework is available."""
         return _ESCAPE_OK
-
-# Made with Bob

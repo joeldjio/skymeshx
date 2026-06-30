@@ -263,7 +263,7 @@ Item {
 
                         delegate: Row {
                             width: fsmHistView.width; height: 20; spacing: 8
-                            Text { text: modelData.t ? new Date(modelData.t * 1000).toLocaleTimeString("de-DE", {hour:"2-digit",minute:"2-digit",second:"2-digit"}) : ""; color: "#334155"; font.pixelSize: 8; font.family: "Consolas"; width: 55 }
+                            Text { text: modelData.t ? new Date(modelData.t * 1000).toLocaleTimeString("en-GB", {hour:"2-digit",minute:"2-digit",second:"2-digit"}) : ""; color: "#334155"; font.pixelSize: 8; font.family: "Consolas"; width: 55 }
                             Text { text: modelData.from || ""; color: "#64748b"; font.pixelSize: 8; font.family: "Consolas"; width: 70 }
                             Text { text: "→"; color: "#334155"; font.pixelSize: 8 }
                             Text {

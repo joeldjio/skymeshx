@@ -289,5 +289,3 @@ class TestMultiDroneSelectionLogic:
         
         assert "D1" not in mission_targets
 
-
-# Made with Bob

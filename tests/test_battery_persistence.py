@@ -253,5 +253,3 @@ def test_position_tuple_conversion():
     finally:
         Path(path).unlink(missing_ok=True)
 
-
-# Made with Bob

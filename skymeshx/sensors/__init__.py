@@ -27,5 +27,3 @@ try:
     _THERMAL_CAMERA_OK = True
 except ImportError:
     _THERMAL_CAMERA_OK = False
-
-# Made with Bob

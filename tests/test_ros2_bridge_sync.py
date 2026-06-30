@@ -167,5 +167,3 @@ def test_ros2_bridge_sync_integration():
     assert log_messages[2][0] == "INFO"  # connected
     assert log_messages[3][0] == "INFO"  # bridge stopped
     assert log_messages[4][0] == "WARN"  # connection lost
-
-# Made with Bob

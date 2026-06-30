@@ -225,5 +225,3 @@ def test_concurrent_updates():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

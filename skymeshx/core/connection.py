@@ -178,11 +178,13 @@ class MAVLinkConnection:
         connection_string: str,
         source_system: int = 255,
         auto_reconnect: bool = True,
+        baud: Optional[int] = None,
     ):
         if not _MAVLINK_OK:
             raise ImportError("pymavlink not installed: pip install pymavlink")
         self.connection_string = connection_string
         self.source_system = source_system
+        self._baud = baud
         self.telemetry = TelemetryState()
         self._mav = None
         self._thread = None
@@ -251,11 +253,20 @@ class MAVLinkConnection:
             return False
         self._stop.clear()
         try:
-            self._mav = mavutil.mavlink_connection(
-                self.connection_string,
-                source_system=self.source_system,
-                autoreconnect=True,
-            )
+            # For Windows COM ports, pymavlink needs baud as separate parameter
+            if self._baud is not None:
+                self._mav = mavutil.mavlink_connection(
+                    self.connection_string,
+                    baud=self._baud,
+                    source_system=self.source_system,
+                    autoreconnect=True,
+                )
+            else:
+                self._mav = mavutil.mavlink_connection(
+                    self.connection_string,
+                    source_system=self.source_system,
+                    autoreconnect=True,
+                )
             hb = self._mav.wait_heartbeat(timeout=timeout)
             if hb is None:
                 return False

@@ -229,5 +229,3 @@ def test_multiple_start_stop_cycles(qapp):
     ctx._on_drawing_timeout()
     qapp.processEvents()
     assert not ctx._drawing_timeout_timer.isActive()
-
-# Made with Bob

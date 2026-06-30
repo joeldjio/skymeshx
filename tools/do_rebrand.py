@@ -56,5 +56,3 @@ print(f"\n{'='*60}")
 print(f"Scanned: {total} files")
 print(f"Changed: {len(changed)} files")
 print(f"{'='*60}")
-
-# Made with Bob

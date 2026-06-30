@@ -42,12 +42,14 @@ class GenericUAVModel(Drone):
         connection_string: str,
         log_dir: str = "logs",
         auto_log: bool = True,
+        baud: Optional[int] = None,
     ):
         super().__init__(
             connection_string,
             drone_id=drone_id,
             log_dir=log_dir,
             auto_log=auto_log,
+            baud=baud,
         )
         # FSM
         self.fsm = StateMachine(drone_id=drone_id)

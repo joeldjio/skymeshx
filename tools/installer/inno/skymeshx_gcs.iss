@@ -21,7 +21,7 @@
 
 #define AppName        "skymeshx"
 #define AppPublisher   "SkyMeshX"
-#define AppVersion     "0.3.7"
+#define AppVersion     "0.4.0"
 #define AppURL         "https://github.com/joeldjio/skymeshx-gcs-releases"
 #define AppExeName     "skymeshx.exe"
 ; Stable, randomly-generated GUID. DO NOT change this once published

@@ -71,5 +71,3 @@ def test_behavior_trees_compatible_with_all(qapp, swarm_ctx):
     assert swarm_ctx.behaviorTreesEnabled is True
     assert swarm_ctx.leaderFollowerEnabled is True
     assert swarm_ctx.consensusEnabled is True
-
-# Made with Bob

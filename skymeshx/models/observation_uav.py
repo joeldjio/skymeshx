@@ -22,6 +22,7 @@ Usage:
 """
 import threading
 import time
+from pathlib import Path
 from typing import Callable, Optional
 
 from skymeshx.models.generic_uav import GenericUAVModel
@@ -42,14 +43,28 @@ class ObservationUAVModel(GenericUAVModel):
         camera_index:      int  = 0,
         log_dir:           str  = "logs",
         auto_log:          bool = True,
+        baud:              Optional[int] = None,
     ):
-        super().__init__(drone_id, connection_string, log_dir=log_dir, auto_log=auto_log)
+        super().__init__(drone_id, connection_string, log_dir=log_dir, auto_log=auto_log, baud=baud)
         self.camera_index    = camera_index
         self._gimbal_pitch   = 0.0
         self._gimbal_roll    = 0.0
         self._gimbal_yaw     = 0.0
         self._recording      = False
         self._stream_active  = False
+        self._camera_source  = "None"
+        self._recording_path: Optional[str] = None
+        self._last_snapshot_path: Optional[str] = None
+        self._frame_age_ms   = 0
+        self._dropped_frames = 0
+        self._camera_profile = {
+            "name": "RGB Camera",
+            "resolution": "1920x1080",
+            "fps": 30,
+            "hfov": 90.0,
+            "vfov": 60.0,
+            "format": "H264",
+        }
         self._frame_cb: Optional[Callable] = None
         self._detection_cb: Optional[Callable] = None
         self._capture_thread: Optional[threading.Thread] = None
@@ -116,13 +131,70 @@ class ObservationUAVModel(GenericUAVModel):
     def stop_stream(self):
         self._stream_active = False
 
-    def start_recording(self, path: Optional[str] = None):
-        self._recording = True
-        print(f"[{self.id}] Recording started → {path or 'logs/'}")
+    # MAVLink camera command IDs
+    _CMD_START_RECORDING = 2500   # MAV_CMD_VIDEO_START_CAPTURE (2500)
+    _CMD_STOP_RECORDING  = 2501   # MAV_CMD_VIDEO_STOP_CAPTURE  (2501)
+    _CMD_SNAPSHOT        = 203    # MAV_CMD_DO_DIGICAM_CONTROL  (203)
 
-    def stop_recording(self):
+    def start_recording(self, path: Optional[str] = None) -> bool:
+        if not self._stream_active:
+            return False
+        self._recording = True
+        self._recording_path = path or "logs/"
+        self._send_camera_command(self._CMD_START_RECORDING)
+        print(f"[{self.id}] Recording started -> {self._recording_path}")
+        return True
+
+    def stop_recording(self) -> bool:
         self._recording = False
+        self._send_camera_command(self._CMD_STOP_RECORDING)
         print(f"[{self.id}] Recording stopped.")
+        return True
+
+    def start_camera_stream(self, source: str) -> bool:
+        """Start stream from a named source. Test Source is hardware-free."""
+        self._camera_source = source
+        if source == "Test Source":
+            self._stream_active = True
+            self._frame_age_ms = 0
+            return True
+        self.start_stream()
+        return True
+
+    def stop_camera_stream(self) -> bool:
+        self._camera_source = "None"
+        self.stop_stream()
+        return True
+
+    def capture_snapshot(self):
+        """Capture a snapshot or return a mock path when no frame backend exists."""
+        if not self._stream_active:
+            return False
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        path = Path("logs") / "camera" / f"{self.id}-snapshot-{stamp}.jpg"
+        self._last_snapshot_path = str(path)
+        self._send_camera_command(203)
+        return self._last_snapshot_path
+
+    def get_camera_status(self) -> dict:
+        return {
+            "source": self._camera_source,
+            "streamActive": self._stream_active,
+            "recordingActive": self._recording,
+            "recordingPath": self._recording_path or "",
+            "lastSnapshotPath": self._last_snapshot_path or "",
+            "frameAgeMs": self._frame_age_ms,
+            "droppedFrames": self._dropped_frames,
+            "profile": self._camera_profile.get("name", "RGB Camera"),
+            "resolution": self._camera_profile.get("resolution", "1920x1080"),
+            "fps": self._camera_profile.get("fps", 30),
+            "hfov": self._camera_profile.get("hfov", 90.0),
+            "vfov": self._camera_profile.get("vfov", 60.0),
+            "backendAvailable": True,
+        }
+
+    def get_gimbal_status(self) -> dict:
+        return self.gimbal_state
 
     def on_detection(self, cb: Callable):
         """
@@ -160,6 +232,17 @@ class ObservationUAVModel(GenericUAVModel):
         return s
 
     # ── Internal ──────────────────────────────────────────────────────────
+
+    def _send_camera_command(self, command_id: int) -> bool:
+        """Send a MAVLink camera command when a connection is available."""
+        conn = getattr(self, "_conn", None)
+        if conn is None or not hasattr(conn, "_command_long"):
+            return False
+        try:
+            conn._command_long(command_id, 0, 0, 0, 0, 0, 0, 0)
+            return True
+        except Exception:
+            return False
 
     def _capture_loop(self):
         try:

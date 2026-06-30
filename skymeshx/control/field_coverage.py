@@ -160,16 +160,11 @@ class FieldCoveragePlanner:
         Returns:
             List of waypoints in local NED coordinates
         """
-        # Calculate bounding box
+        # Calculate bounding box for scanline placement.
         north_vals = [n for n, e in corners]
         east_vals = [e for n, e in corners]
         min_n, max_n = min(north_vals), max(north_vals)
         min_e, max_e = min(east_vals), max(east_vals)
-        
-        # Rotate heading to align with field
-        heading_rad = math.radians(config.heading)
-        cos_h = math.cos(heading_rad)
-        sin_h = math.sin(heading_rad)
         
         # Calculate number of lines needed
         field_width = max_e - min_e
@@ -179,18 +174,65 @@ class FieldCoveragePlanner:
         for i in range(num_lines):
             # Calculate line position
             offset = min_e + i * config.line_spacing
-            
-            # Alternate direction for efficiency
-            if i % 2 == 0:
-                start_n, end_n = min_n, max_n
-            else:
-                start_n, end_n = max_n, min_n
-            
-            # Add waypoints for this line
-            waypoints.append((start_n, offset))
-            waypoints.append((end_n, offset))
+            if offset > max_e:
+                offset = max_e
+
+            line_e = offset
+            segments = self._polygon_segments_at_east(corners, line_e)
+            if not segments and abs(offset - max_e) < 1e-6 and max_e > min_e:
+                line_e = max_e - 1e-6
+                segments = self._polygon_segments_at_east(corners, line_e)
+
+            # Fall back to the old bbox behavior only for degenerate polygons.
+            if not segments:
+                segments = [(min_n, max_n)]
+
+            for start_n, end_n in segments:
+                # Alternate direction for efficient zigzag traversal.
+                if i % 2 != 0:
+                    start_n, end_n = end_n, start_n
+
+                waypoints.append((start_n, line_e))
+                waypoints.append((end_n, line_e))
         
         return waypoints
+
+    def _polygon_segments_at_east(
+        self,
+        corners: List[Tuple[float, float]],
+        east: float,
+    ) -> List[Tuple[float, float]]:
+        """Return north-coordinate intervals where a north/east scanline is inside the polygon."""
+        if len(corners) < 3:
+            return []
+
+        intersections: List[float] = []
+        count = len(corners)
+        for idx in range(count):
+            n1, e1 = corners[idx]
+            n2, e2 = corners[(idx + 1) % count]
+
+            if abs(e2 - e1) < 1e-12:
+                continue
+            if (e1 <= east < e2) or (e2 <= east < e1):
+                t = (east - e1) / (e2 - e1)
+                intersections.append(n1 + t * (n2 - n1))
+
+        intersections.sort()
+        unique: List[float] = []
+        for value in intersections:
+            if not unique or abs(value - unique[-1]) > 1e-6:
+                unique.append(value)
+
+        segments: List[Tuple[float, float]] = []
+        # Step by 2 — if odd count (non-convex edge case), the last unpaired
+        # entry is intentionally skipped rather than accessing unique[idx+1].
+        for idx in range(0, len(unique) - 1, 2):
+            start_n = unique[idx]
+            end_n = unique[idx + 1]
+            if abs(end_n - start_n) > 0.1:
+                segments.append((start_n, end_n))
+        return segments
     
     def _generate_spiral(
         self,
@@ -390,9 +432,6 @@ class FieldCoveragePlanner:
             total_distance += distance
         
         return total_distance / speed
-
-# Made with Bob
-
     
     def distribute_waypoints_for_swarm(
         self,

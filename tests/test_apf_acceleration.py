@@ -186,5 +186,3 @@ def test_acceleration_limiting_with_multiple_drones():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-# Made with Bob

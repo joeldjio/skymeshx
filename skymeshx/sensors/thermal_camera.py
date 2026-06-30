@@ -381,5 +381,3 @@ class ThermalHotspotDetector:
             hotspots.append(hotspot)
         
         return hotspots
-
-# Made with Bob

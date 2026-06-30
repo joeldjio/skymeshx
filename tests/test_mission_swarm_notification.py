@@ -99,5 +99,3 @@ def test_multiple_drones_mission_lock():
     assert mission_active["D2"].is_set()
     assert not mission_active["D1"].is_set()
     assert not mission_active["D3"].is_set()
-
-# Made with Bob
