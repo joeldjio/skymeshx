@@ -422,14 +422,14 @@ class MissionContext(QObject):
 
     @Slot()
     def cancelDrawingBoundary(self):
-        """Cancel boundary drawing and clear points. Lock-free for UI responsiveness."""
+        """Cancel boundary drawing and clear points."""
         try:
-            # No lock needed - these are simple assignments that Qt handles atomically
-            self._drawing_mode = False
-            self._exclusion_zone_drawing = False
-            self._boundary_points.clear()
-            self._current_exclusion_zone.clear()
-            self._drawing_timeout_timer.stop()
+            with self._lock:
+                self._drawing_mode = False
+                self._exclusion_zone_drawing = False
+                self._boundary_points.clear()
+                self._current_exclusion_zone.clear()
+                self._drawing_timeout_timer.stop()
             self.drawingModeChanged.emit(False)
             self.fieldBoundaryChanged.emit()
             self.logMessage.emit("INFO", "[MISSION] ❌ Boundary drawing cancelled")
@@ -572,9 +572,10 @@ class MissionContext(QObject):
     def cancelMissionWaypointMode(self):
         """Cancel mission waypoint adding mode and clear waypoints."""
         try:
-            self._mission_waypoint_mode = False
-            self._drawing_mode = False
-            self._mission_waypoints.clear()
+            with self._lock:
+                self._mission_waypoint_mode = False
+                self._drawing_mode = False
+                self._mission_waypoints.clear()
             self.missionWaypointModeChanged.emit(False)
             self.drawingModeChanged.emit(False)
             self.missionWaypointsChanged.emit()
@@ -1075,14 +1076,17 @@ class MissionContext(QObject):
     def getExclusionZones(self):
         """Return completed and in-progress exclusion zones for QML/JavaScript."""
         try:
+            with self._lock:
+                snap_zones = [list(z) for z in self._exclusion_zones]
+                snap_current = list(self._current_exclusion_zone)
             zones = [
                 [{"lat": float(lat), "lon": float(lon)} for lat, lon in zone]
-                for zone in self._exclusion_zones
+                for zone in snap_zones
             ]
-            if self._current_exclusion_zone:
+            if snap_current:
                 zones.append([
                     {"lat": float(lat), "lon": float(lon)}
-                    for lat, lon in self._current_exclusion_zone
+                    for lat, lon in snap_current
                 ])
             return zones
         except Exception as e:
@@ -1357,7 +1361,10 @@ class MissionContext(QObject):
             with self._lock:
                 self._last_seeding_preview = result
                 self._seeding_waypoints = list(preview.waypoints) if result["valid"] else []
-                self._uploaded_missions.clear()
+                # Only clear the uploaded missions cache when the preview
+                # succeeds — preserve a valid upload if regeneration fails.
+                if result["valid"]:
+                    self._uploaded_missions.clear()
             self.seedingPreviewChanged.emit()
             return result
         except Exception as e:
@@ -1923,7 +1930,9 @@ class MissionContext(QObject):
             with self._lock:
                 self._last_solar_preview = result
                 self._solar_waypoints = list(preview.waypoints) if result["valid"] else []
-                self._uploaded_missions.clear()
+                # Only clear the uploaded missions cache when the preview succeeds.
+                if result["valid"]:
+                    self._uploaded_missions.clear()
             self.solarPreviewChanged.emit()
             return result
         except Exception as e:

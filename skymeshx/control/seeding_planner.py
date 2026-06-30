@@ -300,6 +300,24 @@ class SeedingMissionPlanner:
             calibration=calibration,
             exclusion_zones=exclusion_zones,
         )
+        if not validation["valid"]:
+            # Return a structured error preview rather than raising inside plan_seeding_mission
+            return SeedingMissionPreview(
+                waypoints=[],
+                waypoint_list=[],
+                flight_path=[],
+                flight_rows=[],
+                drop_points=[],
+                exclusion_zones=exclusion_zones,
+                estimated_seed_usage=0,
+                estimated_seed_weight_kg=0.0,
+                estimated_duration=0.0,
+                estimated_battery_usage=0.0,
+                estimated_distance=0.0,
+                field_area=0.0,
+                estimated_waypoint_count=0,
+                warnings=validation["warnings"],
+            )
         waypoints = self.plan_seeding_mission(
             boundary=boundary,
             seed_spacing=config.seed_spacing,

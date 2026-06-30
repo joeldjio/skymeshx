@@ -131,16 +131,23 @@ class ObservationUAVModel(GenericUAVModel):
     def stop_stream(self):
         self._stream_active = False
 
+    # MAVLink camera command IDs
+    _CMD_START_RECORDING = 2500   # MAV_CMD_VIDEO_START_CAPTURE (2500)
+    _CMD_STOP_RECORDING  = 2501   # MAV_CMD_VIDEO_STOP_CAPTURE  (2501)
+    _CMD_SNAPSHOT        = 203    # MAV_CMD_DO_DIGICAM_CONTROL  (203)
+
     def start_recording(self, path: Optional[str] = None) -> bool:
+        if not self._stream_active:
+            return False
         self._recording = True
         self._recording_path = path or "logs/"
-        self._send_camera_command(2500)
+        self._send_camera_command(self._CMD_START_RECORDING)
         print(f"[{self.id}] Recording started -> {self._recording_path}")
         return True
 
     def stop_recording(self) -> bool:
         self._recording = False
-        self._send_camera_command(2501)
+        self._send_camera_command(self._CMD_STOP_RECORDING)
         print(f"[{self.id}] Recording stopped.")
         return True
 

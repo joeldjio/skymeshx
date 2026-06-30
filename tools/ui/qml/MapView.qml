@@ -1559,7 +1559,7 @@ function updateSolarTriggerPoints(triggerPoints) {
   solarTriggerMarkers = [];
   if (!triggerPoints || triggerPoints.length === 0) return;
   triggerPoints.forEach(function(tp) {
-    if (!tp.lat || !tp.lon) return;
+    if (tp.lat === null || tp.lat === undefined || tp.lon === null || tp.lon === undefined) return;
     var gimbal = (tp.gimbalAngle || 0).toFixed(1);
     var icon = L.divIcon({
       className: "",

@@ -24,6 +24,11 @@ import math
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
+try:
+    from pymavlink.dialects.v20.ardupilotmega import MAV_CMD_NAV_WAYPOINT as _MAV_CMD_NAV_WAYPOINT
+except Exception:
+    _MAV_CMD_NAV_WAYPOINT = 16  # MAV_CMD_NAV_WAYPOINT fallback
+
 from skymeshx.control.mission import Waypoint
 
 
@@ -245,8 +250,7 @@ class SolarParkInspectionPlanner:
         The preview is hardware-free and does not upload or execute a mission.
         """
         waypoints = self.plan_inspection(panel_rows, config, add_rtl=add_rtl)
-        from pymavlink.dialects.v20.ardupilotmega import MAV_CMD_NAV_WAYPOINT
-        nav_waypoints = [wp for wp in waypoints if wp.cmd == MAV_CMD_NAV_WAYPOINT]
+        nav_waypoints = [wp for wp in waypoints if wp.cmd == _MAV_CMD_NAV_WAYPOINT]
         trigger_points = self._build_trigger_points(panel_rows, config)
         mission_time = self.estimate_mission_time(panel_rows, config)
         coverage_area = self.calculate_coverage_area(panel_rows, config)
@@ -295,6 +299,7 @@ class SolarParkInspectionPlanner:
         footprint_width, footprint_height = self._camera_footprint_m(config)
         if footprint_width <= 0 or footprint_height <= 0:
             errors.append("Camera footprint is invalid")
+            return {"valid": False, "warnings": warnings, "errors": errors}
 
         if config.trigger_distance > footprint_height * max(0.1, 1.0 - config.overlap):
             warnings.append(

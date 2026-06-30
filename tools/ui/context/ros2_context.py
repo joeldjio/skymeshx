@@ -470,7 +470,7 @@ class ROS2Context(QObject):
                 "PX4_PID=",
                 "trap 'test -n \"${PX4_PID}\" && kill ${PX4_PID} 2>/dev/null || true; kill ${XRCE_PID} 2>/dev/null || true' EXIT INT TERM",
                 "sleep 1",
-                f"echo '[SkyMeshX] Starting PX4 SITL: make px4_sitl gz_{cluster_model}'",
+                f"echo '[SkyMeshX] Starting PX4 SITL: make px4_sitl {shlex.quote('gz_' + str(cluster_model))}'",
                 f"make px4_sitl {shlex.quote('gz_' + str(cluster_model))} &",
                 "PX4_PID=$!",
                 "wait ${PX4_PID}",
@@ -1302,21 +1302,24 @@ class ROS2Context(QObject):
     @Slot(str, result=bool)
     def stopSitl(self, namespace: str = "") -> bool:
         """Stop PX4 SITL cluster. Namespace is accepted for future per-vehicle stop."""
-        if self._sitl_cluster is None:
+        # Atomically grab and clear the cluster reference so that concurrent
+        # calls cannot both pass the None guard and double-stop the same object.
+        cluster = self._sitl_cluster
+        if cluster is None:
             self.ros2LogMessage.emit("WARN", "[SITL] Not running")
             return False
+        self._sitl_cluster = None
 
         def _stop():
             try:
                 self.ros2LogMessage.emit("INFO", "[SITL] Stopping cluster...")
-                self._sitl_cluster.stop()
+                cluster.stop()
                 self._trace_event("sitl_launch", {"status": "stopped", "namespace": namespace})
                 self.ros2LogMessage.emit("INFO", "[SITL] ✓ Cluster stopped")
             except Exception as exc:
                 self.ros2LogMessage.emit("ERROR", f"[SITL] Stop failed: {exc}")
                 self._trace_event("sitl_launch", {"status": "stop_failed", "error": str(exc)})
             finally:
-                self._sitl_cluster = None
                 self._sitl_started_at = 0.0
                 self._sitl_status.update(
                     {"running": False, "status": "stopped", "gazebo_running": False, "pid": 0, "uptime_s": 0.0}

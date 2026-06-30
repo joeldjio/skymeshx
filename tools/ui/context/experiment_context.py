@@ -310,23 +310,33 @@ class ExperimentContext(QObject):
         
     @Slot(str)
     def runPythonFile(self, file_path: str) -> None:
-        """Execute a Python file (.py) with live log output."""
+        """Execute a Python file (.py) with live log output.
+
+        The resolved path must be inside the uploads directory to prevent
+        arbitrary filesystem access via path traversal.
+        """
         try:
-            # Clean file path
-            if file_path.startswith("file:///"):
-                file_path = file_path[8:]
-            elif file_path.startswith("file://"):
-                file_path = file_path[7:]
-                
-            with open(file_path, 'r', encoding='utf-8') as f:
+            # Strip file:// URI prefix
+            raw = str(file_path or "")
+            if raw.startswith("file:///"):
+                raw = raw[8:]
+            elif raw.startswith("file://"):
+                raw = raw[7:]
+
+            # Validate containment — reuse the same logic as saveAndRunScript
+            try:
+                validated = self._validate_script_path(os.path.basename(raw))
+            except ValueError as sec_err:
+                self.scriptLogMessage.emit(f"[SECURITY] {sec_err}")
+                self.scriptFinished.emit(False, str(sec_err))
+                return
+
+            with open(validated, 'r', encoding='utf-8') as f:
                 code = f.read()
-                
-            filename = os.path.basename(file_path)
-            self.scriptLogMessage.emit(f"[INFO] Loading script: {filename}")
-            
-            # Provide __file__ in globals
-            self.runPythonScript(code, {'__file__': file_path})
-            
+
+            self.scriptLogMessage.emit(f"[INFO] Loading script: {validated.name}")
+            self.runPythonScript(code, {'__file__': str(validated)})
+
         except Exception as e:
             self.scriptLogMessage.emit(f"[ERROR] Failed to load file: {e}")
             self.scriptFinished.emit(False, str(e))

@@ -46,8 +46,8 @@ import threading
 import time
 from typing import Dict, Optional
 
-from PySide6.QtCore import QObject, Property, QSize, Signal, Slot, QTimer
-from PySide6.QtGui import QColor, QImage
+from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer, QMetaObject, Qt
+from PySide6.QtGui import QImage
 from PySide6.QtQuick import QQuickImageProvider
 
 # Video status constants
@@ -413,8 +413,15 @@ class VideoStreamContext(QObject):
                     self.logMessage.emit("INFO", f"[VIDEO] {drone_id}: live frames receiving")
 
                 frame_url = self.frameUrl(drone_id)
-                self.frameChanged.emit(drone_id, frame_url)
-                self._emit_status(drone_id)
+                # Marshal signal emissions to the main thread; direct emission
+                # from a background thread is undefined behaviour in Qt.
+                QMetaObject.invokeMethod(
+                    self,
+                    "_emit_frame_from_main",
+                    Qt.ConnectionType.QueuedConnection,
+                    drone_id,
+                    frame_url,
+                )
         except Exception as exc:
             self._set_error(drone_id, state, str(exc))
         finally:
@@ -422,6 +429,12 @@ class VideoStreamContext(QObject):
                 cap.release()
             except Exception:
                 pass
+
+    @Slot(str, str)
+    def _emit_frame_from_main(self, drone_id: str, frame_url: str) -> None:
+        """Relay frameChanged and status update on the main thread."""
+        self.frameChanged.emit(drone_id, frame_url)
+        self._emit_status(drone_id)
 
     def _set_error(self, drone_id: str, state: _DroneVideoState, message: str) -> None:
         state.status = STATUS_ERROR
@@ -437,6 +450,7 @@ class VideoStreamContext(QObject):
         otherwise stays waiting (port open) or sets error.
         """
         while not state.probe_stop.is_set():
+            sock = None
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -446,19 +460,22 @@ class VideoStreamContext(QObject):
                 bind_host = "0.0.0.0"
                 try:
                     sock.bind((bind_host, state.port))
-                except OSError as e:
+                except OSError:
                     # Port already in use by GStreamer etc. — assume stream active
                     sock.close()
+                    sock = None
                     state.status = STATUS_RECEIVING
-                    state.last_frame_ts = time.monotonic()
+                    # Do NOT update last_frame_ts here — stall detection must
+                    # remain able to transition to STATUS_STALLED if no real
+                    # frames arrive after the port-in-use assumption.
                     self._emit_status(drone_id)
                     self.logMessage.emit("INFO", f"[VIDEO] {drone_id}: port {state.port} in use — assuming stream active")
-                    # Back off and re-check periodically
                     state.probe_stop.wait(timeout=3.0)
                     continue
 
                 data, _ = sock.recvfrom(65535)
                 sock.close()
+                sock = None
 
                 state.status = STATUS_RECEIVING
                 state.last_frame_ts = time.monotonic()
@@ -476,11 +493,13 @@ class VideoStreamContext(QObject):
                 state.probe_stop.wait(timeout=1.0)
 
             except Exception as exc:
-                # Close the socket before error handling to prevent FD leak
-                try:
-                    sock.close()
-                except Exception:
-                    pass
+                # Close the socket to prevent FD leak
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
+                    sock = None
                 state.status = STATUS_ERROR
                 self._emit_status(drone_id)
                 self.streamError.emit(drone_id, str(exc))
@@ -561,7 +580,12 @@ def _build_url(host: str, port: int, protocol: str) -> str:
 
 
 def _parse_url(url: str):
-    """Parse url → (host, port, protocol). Returns defaults on failure."""
+    """Parse url → (host, port, protocol). Returns defaults on failure.
+
+    Logs a warning when falling back to the default so misconfigured URLs
+    are not silently ignored.
+    """
+    import logging as _logging
     try:
         if url.startswith("udp://"):
             rest = url[6:]
@@ -581,6 +605,9 @@ def _parse_url(url: str):
             return rest, 8080, "mjpeg-http"
     except Exception:
         pass
+    _logging.getLogger(__name__).warning(
+        "[VIDEO] _parse_url: unrecognised URL %r — falling back to 0.0.0.0:5600 rtp-h264-udp", url
+    )
     return "0.0.0.0", 5600, "rtp-h264-udp"
 
 
@@ -602,11 +629,13 @@ def _load_cv2():
 
 def _opencv_source(state: _DroneVideoState) -> str:
     if state.protocol == "rtp-h264-udp":
+        # Single f-string — no implicit string concatenation across different
+        # string types, which prevents silent pipeline corruption on re-indent.
         return (
             f"udpsrc port={state.port} caps=\"application/x-rtp,media=video,"
-            "encoding-name=H264,payload=96\" ! rtph264depay ! h264parse ! "
-            "avdec_h264 ! videoconvert ! video/x-raw,format=BGR ! "
-            "appsink drop=true sync=false max-buffers=1"
+            f"encoding-name=H264,payload=96\" ! rtph264depay ! h264parse ! "
+            f"avdec_h264 ! videoconvert ! video/x-raw,format=BGR ! "
+            f"appsink drop=true sync=false max-buffers=1"
         )
     return state.url
 

@@ -526,14 +526,24 @@ class _Handler(BaseHTTPRequestHandler):
                           json.dumps({"ok": False, "error": "Unauthorized"}).encode())
                 return
             
-            # Check body size limit
-            length = int(self.headers.get("Content-Length", 0))
-            if length > _max_body_size:
-                self._send(413, "application/json",
-                          json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())
-                return
-            
-            body = self.rfile.read(length)
+            # Enforce body size limit.
+            # When Content-Length is absent clients could send an unlimited
+            # body; read at most _max_body_size+1 bytes and reject if exceeded.
+            length_hdr = self.headers.get("Content-Length")
+            if length_hdr is not None:
+                length = int(length_hdr)
+                if length > _max_body_size:
+                    self._send(413, "application/json",
+                              json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())
+                    return
+                body = self.rfile.read(length)
+            else:
+                # No Content-Length — read up to the limit and reject if more arrives
+                body = self.rfile.read(_max_body_size + 1)
+                if len(body) > _max_body_size:
+                    self._send(413, "application/json",
+                              json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())
+                    return
             try:
                 payload = json.loads(body)
                 result  = send_command(

@@ -171,27 +171,22 @@ class SwarmCommunicationProtocol:
         Thread Safety:
             Safe to call from multiple threads concurrently.
         """
-        # Acquire the lock to read both _running and _socket atomically so
-        # that stop() cannot close the socket between our check and sendto().
-        with self._lock:
-            if not self._running or not self._socket:
-                return False
-            sock = self._socket
-
+        # Keep the entire send inside the lock so stop() cannot close the
+        # socket between our check and sendto().
         try:
-            message = {
-                'sender': self.drone_id,
-                'type': message_type,
-                'data': data,
-                'timestamp': time.time()
-            }
-            payload = json.dumps(message).encode('utf-8')
-            sock.sendto(payload, (self.broadcast_addr, self.port))
-
             with self._lock:
+                if not self._running or not self._socket:
+                    return False
+                message = {
+                    'sender': self.drone_id,
+                    'type': message_type,
+                    'data': data,
+                    'timestamp': time.time()
+                }
+                payload = json.dumps(message).encode('utf-8')
+                self._socket.sendto(payload, (self.broadcast_addr, self.port))
                 self._messages_sent += 1
                 self._bytes_sent += len(payload)
-
             return True
 
         except Exception as e:
