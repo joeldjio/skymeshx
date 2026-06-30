@@ -163,9 +163,10 @@ class PX4GazeboCluster:
                 env["PX4_UXRCE_DDS_NS"] = namespace
                 
                 # Build command with ROS2 sourcing
-                if self.ros2_setups and sys.platform != "win32":
+                existing_setups = [setup for setup in self.ros2_setups if setup and os.path.isfile(setup)]
+                if existing_setups and sys.platform != "win32":
                     # Linux/Mac: source ROS2 setups in the same shell
-                    source_cmds = " && ".join([f"source {setup}" for setup in self.ros2_setups if os.path.isfile(setup)])
+                    source_cmds = " && ".join([f"source {setup}" for setup in existing_setups])
                     cmd = f"{source_cmds} && cd {self.px4_dir} && make px4_sitl gz_{self.model}"
                     
                     sitl_proc = subprocess.Popen(

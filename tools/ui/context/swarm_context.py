@@ -836,6 +836,25 @@ class SwarmContext(QObject):
             with open(clean, "r", encoding="utf-8", errors="replace") as f:
                 return f.read()
         except Exception as exc:
+            self.logMessage.emit("ERROR", f"[SWARM] readFile failed for '{path}': {exc}")
+            return ""
+
+    @Slot(str, str, result=str)
+    def openFileDialog(self, title: str, name_filter: str) -> str:
+        """Open a native file picker on demand and return the selected path."""
+        try:
+            from PySide6.QtWidgets import QApplication, QFileDialog
+
+            parent = QApplication.activeWindow()
+            path, _ = QFileDialog.getOpenFileName(
+                parent,
+                title or "Open File",
+                "",
+                name_filter or "All Files (*)",
+            )
+            return path or ""
+        except Exception as exc:
+            self.logMessage.emit("ERROR", f"[UI] File dialog failed: {exc}")
             return ""
 
     @Slot(str, str, result=bool)

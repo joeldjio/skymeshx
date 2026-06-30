@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../components" as Cmp
+import "." as Panels
 
 Rectangle {
     id: root
@@ -901,7 +902,7 @@ Rectangle {
                 }
             }
 
-            // ── SEEDING MISSION PLANNER ───────────────────────────────────
+            // ── OLD SEEDING MISSION PLANNER (REPLACED BY WIZARD) ──────────
             Rectangle {
                 width: parent.width
                 height: seedingColumn.height + 24
@@ -909,7 +910,7 @@ Rectangle {
                 radius: 8
                 border.color: "#334155"
                 border.width: 1
-                visible: mission && mission.missionMode === 1
+                visible: false  // Hidden - replaced by SeedingPanel.qml wizard
 
                 Column {
                     id: seedingColumn
@@ -1560,528 +1561,32 @@ Rectangle {
 
                 }
             }
-            // ── SOLAR INSPECTION PLANNING ─────────────────────────────────
-            Rectangle {
+            // ── SOLAR INSPECTION WIZARD ───────────────────────────────────
+            Loader {
                 width: parent.width
-                height: solarColumn.height + 24
-                color: "#1e293b"
-                radius: 8
-                border.color: "#334155"
-                border.width: 1
-                visible: mission && mission.missionMode === 2
-
-                Column {
-                    id: solarColumn
-                    width: parent.width - 24
-                    anchors.centerIn: parent
-                    spacing: 12
-
-                    // Header
-                    Row {
-                        width: parent.width
-                        spacing: 8
-
-                        Rectangle {
-                            width: 4
-                            height: 20
-                            color: "#f59e0b"
-                            radius: 2
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Text {
-                            text: "SOLAR PARK INSPECTION"
-                            color: "#f59e0b"
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Item { width: parent.width - 250; height: 1 }
-
-                        Text {
-                            text: mission && mission.solarInspectionActive ? "ACTIVE" : "INACTIVE"
-                            color: mission && mission.solarInspectionActive ? "#f59e0b" : "#64748b"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-
-                    Text {
-                        text: "Automated thermal imaging inspection of solar panel arrays with hotspot detection"
-                        color: "#94a3b8"
-                        font.pixelSize: 9
-                        font.italic: true
-                        wrapMode: Text.WordWrap
-                        width: parent.width
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-
-                    // Panel Rows Management
-                    Column {
-                        width: parent.width
-                        spacing: 8
-
-                        Row {
-                            width: parent.width
-                            spacing: 8
-
-                            Text {
-                                text: "Panel Rows"
-                                color: "#94a3b8"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Item { width: parent.width - 200; height: 1 }
-
-                            Text {
-                                text: mission ? mission.solarPanelRowCount + " rows" : "0 rows"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                                font.family: "Consolas"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-
-                        // Add Row Button
-                        Rectangle {
-                            width: parent.width
-                            height: 36
-                            radius: 6
-                            color: "#0f172a"
-                            border.color: "#f59e0b"
-                            border.width: 1
-                            opacity: mission && mission.missionLocked ? 0.4 : 1.0
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 8
-
-                                Cmp.Icon {
-                                    name: "plus"
-                                    size: 16
-                                    color: "#f59e0b"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: "Add Panel Row (Click on Map)"
-                                    color: "#f59e0b"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                enabled: !(mission && mission.missionLocked)
-                                onClicked: {
-                                    if (!mission) return
-                                    mission.startAddingSolarRow()
-                                }
-                            }
-                        }
-
-                        // Clear Rows Button
-                        Rectangle {
-                            width: parent.width
-                            height: 32
-                            radius: 6
-                            color: "#0f172a"
-                            border.color: "#ef4444"
-                            border.width: 1
-                            opacity: mission && mission.missionLocked ? 0.4 : (mission && mission.solarPanelRowCount > 0 ? 1.0 : 0.5)
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 8
-
-                                Cmp.Icon {
-                                    name: "trash-2"
-                                    size: 14
-                                    color: "#ef4444"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: "Clear All Rows"
-                                    color: "#ef4444"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                enabled: !(mission && mission.missionLocked) && mission && mission.solarPanelRowCount > 0
-                                onClicked: {
-                                    if (!mission) return
-                                    mission.clearSolarPanelRows()
-                                }
-                            }
-                        }
-
-                        // Row List
-                        ListView {
-                            width: parent.width
-                            height: Math.min(contentHeight, 200)
-                            clip: true
-                            model: mission ? mission.solarPanelRows : []
-                            spacing: 4
-
-                            delegate: Rectangle {
-                                width: parent.width
-                                height: 32
-                                radius: 4
-                                color: "#0f172a"
-                                border.color: "#334155"
-                                border.width: 1
-
-                                Row {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 8
-
-                                    Text {
-                                        text: "Row " + (index + 1)
-                                        color: "#e2e8f0"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        width: 50
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: modelData.length.toFixed(1) + "m"
-                                        color: "#94a3b8"
-                                        font.pixelSize: 8
-                                        font.family: "Consolas"
-                                        width: 60
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Item { width: parent.width - 180; height: 1 }
-
-                                    // Delete button
-                                    Rectangle {
-                                        width: 24
-                                        height: 24
-                                        radius: 4
-                                        color: "#ef4444"
-                                        opacity: deleteArea.pressed ? 0.8 : 1.0
-                                        anchors.verticalCenter: parent.verticalCenter
-
-                                        Cmp.Icon {
-                                            name: "trash-2"
-                                            size: 12
-                                            color: "#ffffff"
-                                            anchors.centerIn: parent
-                                        }
-
-                                        MouseArea {
-                                            id: deleteArea
-                                            anchors.fill: parent
-                                            enabled: !(mission && mission.missionLocked)
-                                            onClicked: {
-                                                if (mission) mission.removeSolarRow(index)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-
-                    // Inspection Parameters
-                    Grid {
-                        width: parent.width
-                        columns: 2
-                        columnSpacing: 12
-                        rowSpacing: 12
-                        opacity: mission && mission.missionLocked ? 0.4 : 1.0
-                        enabled: !(mission && mission.missionLocked)
-
-                        // Altitude
-                        Column {
-                            width: (parent.width - 12) / 2
-                            spacing: 2
-
-                            Text {
-                                text: "Altitude (m)"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-
-                                Slider {
-                                    id: solarAltitudeSlider
-                                    width: parent.width - 50
-                                    height: 18
-                                    from: 10
-                                    to: 30
-                                    stepSize: 1
-                                    value: mission ? mission.solarAltitude : 15
-                                    onMoved: if (mission) mission.solarAltitude = value
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: Math.round(solarAltitudeSlider.value) + " m"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    font.family: "Consolas"
-                                    width: 42
-                                    horizontalAlignment: Text.AlignRight
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            Text {
-                                text: "Height above solar panels"
-                                color: "#94a3b8"
-                                font.pixelSize: 8
-                                font.italic: true
-                            }
-                        }
-
-                        // Gimbal Pitch
-                        Column {
-                            width: (parent.width - 12) / 2
-                            spacing: 2
-
-                            Text {
-                                text: "Gimbal Pitch (°)"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-
-                                Slider {
-                                    id: solarGimbalSlider
-                                    width: parent.width - 50
-                                    height: 18
-                                    from: -90
-                                    to: -45
-                                    stepSize: 5
-                                    value: mission ? mission.solarGimbalPitch : -90
-                                    onMoved: if (mission) mission.solarGimbalPitch = value
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: Math.round(solarGimbalSlider.value) + "°"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    font.family: "Consolas"
-                                    width: 42
-                                    horizontalAlignment: Text.AlignRight
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            Text {
-                                text: solarGimbalSlider.value === -90 ? "Straight down" : "Angled view"
-                                color: "#94a3b8"
-                                font.pixelSize: 8
-                                font.italic: true
-                            }
-                        }
-
-                        // Trigger Distance
-                        Column {
-                            width: (parent.width - 12) / 2
-                            spacing: 2
-
-                            Text {
-                                text: "Trigger Distance (m)"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-
-                                Slider {
-                                    id: solarTriggerSlider
-                                    width: parent.width - 50
-                                    height: 18
-                                    from: 2
-                                    to: 10
-                                    stepSize: 0.5
-                                    value: mission ? mission.solarTriggerDistance : 5
-                                    onMoved: if (mission) mission.solarTriggerDistance = value
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: solarTriggerSlider.value.toFixed(1) + " m"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    font.family: "Consolas"
-                                    width: 42
-                                    horizontalAlignment: Text.AlignRight
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            Text {
-                                text: "Distance between photos"
-                                color: "#94a3b8"
-                                font.pixelSize: 8
-                                font.italic: true
-                            }
-                        }
-
-                        // Overlap
-                        Column {
-                            width: (parent.width - 12) / 2
-                            spacing: 2
-
-                            Text {
-                                text: "Image Overlap (%)"
-                                color: "#64748b"
-                                font.pixelSize: 9
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 4
-
-                                Slider {
-                                    id: solarOverlapSlider
-                                    width: parent.width - 50
-                                    height: 18
-                                    from: 0
-                                    to: 50
-                                    stepSize: 5
-                                    value: mission ? mission.solarOverlap * 100 : 30
-                                    onMoved: if (mission) mission.solarOverlap = value / 100
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-
-                                Text {
-                                    text: Math.round(solarOverlapSlider.value) + "%"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 9
-                                    font.family: "Consolas"
-                                    width: 42
-                                    horizontalAlignment: Text.AlignRight
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-
-                            Text {
-                                text: "Image overlap for stitching"
-                                color: "#94a3b8"
-                                font.pixelSize: 8
-                                font.italic: true
-                            }
-                        }
-                    }
-
-                    Rectangle { width: parent.width; height: 1; color: "#2d3748" }
-
-                    // Mission Statistics
-                    Rectangle {
-                        width: parent.width
-                        height: statsColumn.height + 16
-                        radius: 6
-                        color: "#0f172a"
-                        border.color: "#334155"
-                        border.width: 1
-
-                        Column {
-                            id: statsColumn
-                            width: parent.width - 16
-                            anchors.centerIn: parent
-                            spacing: 8
-
-                            Text {
-                                text: "Mission Statistics"
-                                color: "#94a3b8"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-
-                            Grid {
-                                width: parent.width
-                                columns: 2
-                                columnSpacing: 12
-                                rowSpacing: 4
-
-                                Text {
-                                    text: "Coverage Area:"
-                                    color: "#64748b"
-                                    font.pixelSize: 8
-                                }
-                                Text {
-                                    text: mission ? mission.solarCoverageArea.toFixed(1) + " m²" : "0 m²"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 8
-                                    font.family: "Consolas"
-                                }
-
-                                Text {
-                                    text: "Estimated Time:"
-                                    color: "#64748b"
-                                    font.pixelSize: 8
-                                }
-                                Text {
-                                    text: mission ? (mission.solarMissionTime / 60).toFixed(1) + " min" : "0 min"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 8
-                                    font.family: "Consolas"
-                                }
-
-                                Text {
-                                    text: "Waypoints:"
-                                    color: "#64748b"
-                                    font.pixelSize: 8
-                                }
-                                Text {
-                                    text: mission ? mission.solarWaypointCount : "0"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 8
-                                    font.family: "Consolas"
-                                }
-
-                                Text {
-                                    text: "Photo Count:"
-                                    color: "#64748b"
-                                    font.pixelSize: 8
-                                }
-                                Text {
-                                    text: mission ? mission.solarPhotoCount : "0"
-                                    color: "#e2e8f0"
-                                    font.pixelSize: 8
-                                    font.family: "Consolas"
-                                }
-                            }
-                        }
-                    }
-
+                active: mission && mission.missionMode === 2
+                visible: active
+                source: "SolarInspectionPanel.qml"
+                onLoaded: {
+                    console.log("[MissionPanel] Solar Wizard loaded successfully")
                 }
             }
+
+            // ── SEEDING WIZARD ────────────────────────────────────────────
+            Loader {
+                width: parent.width
+                active: mission && mission.missionMode === 1
+                visible: active
+                source: "SeedingPanel.qml"
+                onLoaded: {
+                    console.log("[MissionPanel] Seeding Wizard loaded successfully")
+                }
+            }
+
             
             // ── UNIFIED ACTION BUTTONS ────────────────────────────────────
+            // Only show for coverage mode (mode 0)
+            // Mode 1 = Seeding Wizard, Mode 2 = Solar Wizard
             Rectangle {
                 width: parent.width
                 height: 120
@@ -2089,6 +1594,7 @@ Rectangle {
                 radius: 8
                 border.color: "#334155"
                 border.width: 1
+                visible: mission && mission.missionMode === 0
 
                 Column {
                     width: parent.width - 24

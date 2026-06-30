@@ -155,6 +155,8 @@ class TestPiServerRequestLimits:
     
     def test_oversized_request_rejected(self):
         """Verify requests exceeding max body size are rejected."""
+        orig_token = pi_server._api_token
+        orig_body_size = pi_server._max_body_size
         pi_server._api_token = ""  # Disable auth for this test
         pi_server._max_body_size = 100  # Set small limit for testing
         
@@ -167,10 +169,13 @@ class TestPiServerRequestLimits:
         handler.wfile = Mock()
         handler.wfile.write = Mock()
         
-        handler.do_POST()
-        
-        # Should return 413 Payload Too Large
-        handler.send_response.assert_called_with(413)
+        try:
+            handler.do_POST()
+            # Should return 413 Payload Too Large
+            handler.send_response.assert_called_with(413)
+        finally:
+            pi_server._api_token = orig_token
+            pi_server._max_body_size = orig_body_size
 
 
 class TestPiServerSecurityConfiguration:

@@ -209,16 +209,16 @@ class ExperimentContext(QObject):
         Raises:
             ValueError: If filename is invalid or attempts path traversal
         """
+        # Reject absolute paths before any other processing
+        if Path(filename).is_absolute():
+            raise ValueError(f"Absolute paths not allowed: {filename}")
+
         # Extract basename only - prevents directory traversal
         safe_name = Path(filename).name
-        
+
         # Reject empty, hidden, or suspicious names
         if not safe_name or safe_name.startswith('.') or '..' in safe_name:
             raise ValueError(f"Invalid script filename: {filename}")
-        
-        # Reject absolute paths
-        if Path(filename).is_absolute():
-            raise ValueError(f"Absolute paths not allowed: {filename}")
         
         # Build and resolve full path
         filepath = (self._scripts_dir / safe_name).resolve()

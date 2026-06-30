@@ -69,6 +69,55 @@ class InspectionConfig:
             raise ValueError("Trigger distance must be positive")
 
 
+@dataclass
+class CameraTriggerPoint:
+    """Camera trigger point with footprint metadata for mission preview."""
+    lat: float
+    lon: float
+    alt: float
+    gimbal_angle: float
+    footprint: List[dict]
+    expected_image_id: str
+
+
+@dataclass
+class SolarMissionPreview:
+    """Complete solar inspection preview data for UI and validation."""
+    waypoints: List[Waypoint]
+    waypoint_list: List[dict]
+    trigger_points: List[CameraTriggerPoint]
+    flight_path: List[dict]
+    estimated_duration: float
+    estimated_battery_usage: float
+    total_images: int
+    storage_required: float
+    coverage_area: float
+    warnings: List[str]
+
+    def to_dict(self) -> dict:
+        return {
+            "waypoints": self.waypoint_list,
+            "triggerPoints": [
+                {
+                    "lat": point.lat,
+                    "lon": point.lon,
+                    "alt": point.alt,
+                    "gimbalAngle": point.gimbal_angle,
+                    "footprint": point.footprint,
+                    "expectedImageId": point.expected_image_id,
+                }
+                for point in self.trigger_points
+            ],
+            "flightPath": self.flight_path,
+            "estimatedDuration": self.estimated_duration,
+            "estimatedBatteryUsage": self.estimated_battery_usage,
+            "totalImages": self.total_images,
+            "storageRequired": self.storage_required,
+            "coverageArea": self.coverage_area,
+            "warnings": list(self.warnings),
+        }
+
+
 class SolarParkInspectionPlanner:
     """
     Generate waypoint patterns for solar park inspection.
@@ -182,6 +231,111 @@ class SolarParkInspectionPlanner:
             waypoints.append(rtl_wp)
         
         return waypoints
+
+    def generate_solar_mission_with_preview(
+        self,
+        panel_rows: List[PanelRow],
+        config: InspectionConfig,
+        add_rtl: bool = True,
+        thermal_enabled: bool = False,
+    ) -> SolarMissionPreview:
+        """
+        Generate inspection waypoints plus UI-ready preview metadata.
+
+        The preview is hardware-free and does not upload or execute a mission.
+        """
+        waypoints = self.plan_inspection(panel_rows, config, add_rtl=add_rtl)
+        from pymavlink.dialects.v20.ardupilotmega import MAV_CMD_NAV_WAYPOINT
+        nav_waypoints = [wp for wp in waypoints if wp.cmd == MAV_CMD_NAV_WAYPOINT]
+        trigger_points = self._build_trigger_points(panel_rows, config)
+        mission_time = self.estimate_mission_time(panel_rows, config)
+        coverage_area = self.calculate_coverage_area(panel_rows, config)
+        warnings = self.validate_solar_mission(
+            panel_rows,
+            config,
+            thermal_enabled=thermal_enabled,
+        )["warnings"]
+        distance = self._total_row_distance(panel_rows)
+        battery_required = self._estimate_battery_usage(mission_time, distance)
+
+        return SolarMissionPreview(
+            waypoints=waypoints,
+            waypoint_list=[
+                {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt, "cmd": wp.cmd}
+                for wp in waypoints
+            ],
+            trigger_points=trigger_points,
+            flight_path=[
+                {"lat": wp.lat, "lon": wp.lon, "alt": wp.alt}
+                for wp in nav_waypoints
+            ],
+            estimated_duration=mission_time,
+            estimated_battery_usage=battery_required,
+            total_images=len(trigger_points),
+            storage_required=self._estimate_storage_mb(len(trigger_points), thermal_enabled),
+            coverage_area=coverage_area,
+            warnings=warnings,
+        )
+
+    def validate_solar_mission(
+        self,
+        panel_rows: List[PanelRow],
+        config: InspectionConfig,
+        thermal_enabled: bool = False,
+        battery_available_percent: float = 100.0,
+    ) -> dict:
+        """Validate solar mission parameters and return actionable warnings."""
+        warnings: List[str] = []
+        errors: List[str] = []
+
+        if not panel_rows:
+            errors.append("At least one panel row required")
+            return {"valid": False, "warnings": warnings, "errors": errors}
+
+        footprint_width, footprint_height = self._camera_footprint_m(config)
+        if footprint_width <= 0 or footprint_height <= 0:
+            errors.append("Camera footprint is invalid")
+
+        if config.trigger_distance > footprint_height * max(0.1, 1.0 - config.overlap):
+            warnings.append(
+                "Trigger distance may leave image gaps for the configured vertical FOV and overlap"
+            )
+
+        max_row_width = max(row.width for row in panel_rows)
+        if footprint_width < max_row_width:
+            warnings.append(
+                "Camera footprint is narrower than at least one panel row"
+            )
+
+        if config.altitude < 5.0:
+            warnings.append("Low altitude - verify obstacle clearance above panels")
+        elif config.altitude > 120.0:
+            warnings.append("High altitude - image detail may be insufficient")
+
+        gsd_cm = self._estimate_gsd_cm(config)
+        if gsd_cm > 5.0:
+            warnings.append("Ground sample distance is coarse for detailed defect inspection")
+
+        mission_time = self.estimate_mission_time(panel_rows, config)
+        distance = self._total_row_distance(panel_rows)
+        battery_required = self._estimate_battery_usage(mission_time, distance)
+        if battery_required > battery_available_percent:
+            warnings.append("Estimated battery requirement exceeds available battery")
+        elif battery_required > 80.0:
+            warnings.append("Mission may require high battery usage - consider splitting rows")
+
+        if not thermal_enabled:
+            warnings.append("Thermal camera disabled - hotspot detection will be limited")
+
+        return {
+            "valid": not errors,
+            "warnings": warnings,
+            "errors": errors,
+            "estimatedBatteryUsage": battery_required,
+            "gsdCm": gsd_cm,
+            "footprintWidthM": footprint_width,
+            "footprintHeightM": footprint_height,
+        }
     
     def _interpolate_row(
         self,
@@ -220,6 +374,89 @@ class SolarParkInspectionPlanner:
             waypoints.append((lat, lon))
         
         return waypoints
+
+    def _build_trigger_points(
+        self,
+        panel_rows: List[PanelRow],
+        config: InspectionConfig,
+    ) -> List[CameraTriggerPoint]:
+        points: List[CameraTriggerPoint] = []
+        for row_idx, row in enumerate(panel_rows, start=1):
+            for point_idx, (lat, lon) in enumerate(self._interpolate_row(row, config), start=1):
+                points.append(
+                    CameraTriggerPoint(
+                        lat=lat,
+                        lon=lon,
+                        alt=config.altitude,
+                        gimbal_angle=config.gimbal_pitch,
+                        footprint=self._footprint_polygon(lat, lon, config),
+                        expected_image_id=f"solar-r{row_idx:02d}-{point_idx:03d}",
+                    )
+                )
+        return points
+
+    def _footprint_polygon(
+        self,
+        lat: float,
+        lon: float,
+        config: InspectionConfig,
+    ) -> List[dict]:
+        width_m, height_m = self._camera_footprint_m(config)
+        half_w = width_m / 2.0
+        half_h = height_m / 2.0
+        corners_ne = [
+            (-half_h, -half_w),
+            (-half_h, half_w),
+            (half_h, half_w),
+            (half_h, -half_w),
+        ]
+        return [
+            self._offset_coord(lat, lon, north_m, east_m)
+            for north_m, east_m in corners_ne
+        ]
+
+    def _camera_footprint_m(self, config: InspectionConfig) -> Tuple[float, float]:
+        width = 2.0 * config.altitude * math.tan(
+            math.radians(config.camera_fov_horizontal / 2.0)
+        )
+        height = 2.0 * config.altitude * math.tan(
+            math.radians(config.camera_fov_vertical / 2.0)
+        )
+        return width, height
+
+    def _offset_coord(self, lat: float, lon: float, north_m: float, east_m: float) -> dict:
+        dlat = north_m / 111_320.0
+        dlon = east_m / (
+            111_320.0 * max(0.1, math.cos(math.radians(lat)))
+        )
+        return {"lat": lat + dlat, "lon": lon + dlon}
+
+    def _estimate_gsd_cm(self, config: InspectionConfig) -> float:
+        footprint_width, _ = self._camera_footprint_m(config)
+        assumed_image_width_px = 1920.0
+        return (footprint_width * 100.0) / assumed_image_width_px
+
+    def _total_row_distance(self, panel_rows: List[PanelRow]) -> float:
+        return sum(
+            self._haversine_distance(
+                row.start[0],
+                row.start[1],
+                row.end[0],
+                row.end[1],
+            )
+            for row in panel_rows
+        )
+
+    def _estimate_battery_usage(self, mission_time_s: float, distance_m: float) -> float:
+        # Conservative first-order estimate for preview warnings only.
+        time_component = mission_time_s / 60.0 * 3.0
+        distance_component = distance_m / 1000.0 * 8.0
+        return min(100.0, max(5.0, time_component + distance_component + 10.0))
+
+    def _estimate_storage_mb(self, image_count: int, thermal_enabled: bool) -> float:
+        rgb_mb = image_count * 5.0
+        thermal_mb = image_count * 2.5 if thermal_enabled else 0.0
+        return rgb_mb + thermal_mb
     
     def _haversine_distance(
         self,

@@ -298,6 +298,101 @@ class TestSolarParkInspectionPlanner:
         # Row is ~111m, with 20m spacing should have ~6 triggers
         assert 4 <= len(camera_triggers) <= 8
 
+    def test_generate_solar_mission_with_preview(self):
+        """Preview generation should return mission metadata without upload."""
+        planner = SolarParkInspectionPlanner()
+        rows = [
+            PanelRow(start=(48.137, 11.575), end=(48.138, 11.575))
+        ]
+        config = InspectionConfig(trigger_distance=20.0, altitude=20.0)
+
+        preview = planner.generate_solar_mission_with_preview(
+            rows,
+            config,
+            add_rtl=True,
+            thermal_enabled=True,
+        )
+
+        assert len(preview.waypoints) > 0
+        assert len(preview.waypoint_list) == len(preview.waypoints)
+        assert len(preview.trigger_points) > 0
+        assert len(preview.flight_path) > 0
+        assert preview.estimated_duration > 0
+        assert preview.estimated_battery_usage > 0
+        assert preview.total_images == len(preview.trigger_points)
+        assert preview.storage_required > preview.total_images * 5.0
+        assert preview.coverage_area > 0
+
+    def test_preview_to_dict_matches_qml_contract(self):
+        """Preview dict should use QML-friendly field names."""
+        planner = SolarParkInspectionPlanner()
+        rows = [PanelRow(start=(48.137, 11.575), end=(48.138, 11.575))]
+        config = InspectionConfig(trigger_distance=50.0)
+
+        data = planner.generate_solar_mission_with_preview(rows, config).to_dict()
+
+        assert "waypoints" in data
+        assert "triggerPoints" in data
+        assert "flightPath" in data
+        assert "estimatedDuration" in data
+        assert "estimatedBatteryUsage" in data
+        assert "totalImages" in data
+        assert "storageRequired" in data
+        assert "warnings" in data
+        assert len(data["triggerPoints"][0]["footprint"]) == 4
+        assert data["triggerPoints"][0]["expectedImageId"].startswith("solar-r")
+
+    def test_validate_solar_mission_warnings(self):
+        """Validation should flag risky but non-fatal solar settings."""
+        planner = SolarParkInspectionPlanner()
+        rows = [PanelRow(start=(48.137, 11.575), end=(48.138, 11.575), width=20.0)]
+        config = InspectionConfig(
+            altitude=3.0,
+            trigger_distance=100.0,
+            camera_fov_horizontal=30.0,
+            camera_fov_vertical=20.0,
+        )
+
+        result = planner.validate_solar_mission(rows, config, thermal_enabled=False)
+
+        assert result["valid"] is True
+        assert result["warnings"]
+        assert any("Low altitude" in warning for warning in result["warnings"])
+        assert any("Thermal camera disabled" in warning for warning in result["warnings"])
+        assert result["footprintWidthM"] > 0
+        assert result["gsdCm"] > 0
+
+    def test_validate_solar_mission_empty_rows(self):
+        """Validation should return errors for empty row list."""
+        planner = SolarParkInspectionPlanner()
+        result = planner.validate_solar_mission([], InspectionConfig())
+
+        assert result["valid"] is False
+        assert result["errors"] == ["At least one panel row required"]
+
+    def test_footprint_polygon_generation(self):
+        """Footprint polygons should surround the trigger coordinate."""
+        planner = SolarParkInspectionPlanner()
+        footprint = planner._footprint_polygon(48.137, 11.575, InspectionConfig(altitude=20.0))
+
+        assert len(footprint) == 4
+        assert all("lat" in corner and "lon" in corner for corner in footprint)
+        assert min(corner["lat"] for corner in footprint) < 48.137
+        assert max(corner["lat"] for corner in footprint) > 48.137
+
+    def test_thermal_preview_removes_thermal_disabled_warning(self):
+        """Thermal-enabled preview should not warn that thermal is disabled."""
+        planner = SolarParkInspectionPlanner()
+        rows = [PanelRow(start=(48.137, 11.575), end=(48.138, 11.575))]
+
+        preview = planner.generate_solar_mission_with_preview(
+            rows,
+            InspectionConfig(),
+            thermal_enabled=True,
+        )
+
+        assert not any("Thermal camera disabled" in warning for warning in preview.warnings)
+
 
 class TestIntegration:
     """Integration tests for complete inspection workflow."""

@@ -726,6 +726,7 @@ class SafetyContext(QObject):
             
             # Shutdown auto-save thread and perform final save
             self._battery_monitor.shutdown()
+        if self._battery_history_path:
             self.apfLogMessage.emit(f"[Battery] History saved to {self._battery_history_path.name}")
         
         self._battery_monitor = None

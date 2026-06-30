@@ -73,7 +73,7 @@ Item {
                 width: leftScroll.availableWidth
                 spacing: 8
 
-                // ── DRONE AUSWAHL ─────────────────────────────────────────
+                // ── DRONE SELECTION ─────────────────────────────────────────
                 Text { text: qsTr("DRONE SELECTION"); color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
 
                 Rectangle {
@@ -585,8 +585,8 @@ Item {
                 width: rightScroll.availableWidth
                 spacing: 8
 
-                // ── SWARM BEFEHLE ─────────────────────────────────────────
-                Text { text: "SWARM BEFEHLE"; color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
+                // ── SWARM COMMANDS ─────────────────────────────────────────
+                Text { text: qsTr("SWARM COMMANDS"); color: "#64748b"; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1 }
 
                 Rectangle {
                     width: parent.width; height: swarmCmdCol.implicitHeight + 20; radius: 8
