@@ -531,7 +531,16 @@ class _Handler(BaseHTTPRequestHandler):
             # body; read at most _max_body_size+1 bytes and reject if exceeded.
             length_hdr = self.headers.get("Content-Length")
             if length_hdr is not None:
-                length = int(length_hdr)
+                try:
+                    length = int(length_hdr)
+                except ValueError:
+                    self._send(400, "application/json",
+                              json.dumps({"ok": False, "error": "Invalid Content-Length"}).encode())
+                    return
+                if length < 0:
+                    self._send(400, "application/json",
+                              json.dumps({"ok": False, "error": "Negative Content-Length"}).encode())
+                    return
                 if length > _max_body_size:
                     self._send(413, "application/json",
                               json.dumps({"ok": False, "error": f"Body too large (max {_max_body_size} bytes)"}).encode())

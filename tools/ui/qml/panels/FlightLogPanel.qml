@@ -15,7 +15,13 @@ Item {
             path = path.substring(8)
         else if (path.indexOf("file://") === 0)
             path = path.substring(7)
-        return decodeURIComponent(path)
+        var decoded = decodeURIComponent(path)
+        // Reject any path that contains traversal sequences after decoding
+        if (decoded.indexOf("..") !== -1) {
+            console.warn("FlightLogPanel: rejected path with traversal:", decoded)
+            return ""
+        }
+        return decoded
     }
 
     function showError(message) {

@@ -47,7 +47,8 @@ import time
 from typing import Dict, Optional
 
 from PySide6.QtCore import QObject, Property, Signal, Slot, QTimer, QMetaObject, Qt
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QColor, QImage
+from PySide6.QtCore import QSize
 from PySide6.QtQuick import QQuickImageProvider
 
 # Video status constants
@@ -383,7 +384,11 @@ class VideoStreamContext(QObject):
                 if not ok or frame is None:
                     if state.status == STATUS_RECEIVING and now - state.last_frame_ts > _STALL_TIMEOUT:
                         state.status = STATUS_STALLED
-                        self._emit_status(drone_id)
+                        QMetaObject.invokeMethod(
+                            self, "_emit_status_queued",
+                            Qt.ConnectionType.QueuedConnection,
+                            drone_id,
+                        )
                     state.decoder_stop.wait(timeout=0.03)
                     continue
 
@@ -423,7 +428,15 @@ class VideoStreamContext(QObject):
                     frame_url,
                 )
         except Exception as exc:
-            self._set_error(drone_id, state, str(exc))
+            err_msg = str(exc)
+            state.status = STATUS_ERROR
+            state.last_error = err_msg
+            QMetaObject.invokeMethod(
+                self, "_set_error_from_main",
+                Qt.ConnectionType.QueuedConnection,
+                drone_id,
+                err_msg,
+            )
         finally:
             try:
                 cap.release()
@@ -435,6 +448,23 @@ class VideoStreamContext(QObject):
         """Relay frameChanged and status update on the main thread."""
         self.frameChanged.emit(drone_id, frame_url)
         self._emit_status(drone_id)
+
+    @Slot(str)
+    def _emit_status_queued(self, drone_id: str) -> None:
+        """Relay _emit_status to the main thread (safe to call from any thread)."""
+        self._emit_status(drone_id)
+
+    @Slot(str, str)
+    def _log_queued(self, level: str, message: str) -> None:
+        """Relay logMessage to the main thread (safe to call from any thread)."""
+        self.logMessage.emit(level, message)
+
+    @Slot(str, str)
+    def _set_error_from_main(self, drone_id: str, message: str) -> None:
+        """Relay error signal to the main thread."""
+        self._emit_status(drone_id)
+        self.streamError.emit(drone_id, message)
+        self.logMessage.emit("WARN", f"[VIDEO] {drone_id}: {message}")
 
     def _set_error(self, drone_id: str, state: _DroneVideoState, message: str) -> None:
         state.status = STATUS_ERROR
@@ -468,8 +498,16 @@ class VideoStreamContext(QObject):
                     # Do NOT update last_frame_ts here — stall detection must
                     # remain able to transition to STATUS_STALLED if no real
                     # frames arrive after the port-in-use assumption.
-                    self._emit_status(drone_id)
-                    self.logMessage.emit("INFO", f"[VIDEO] {drone_id}: port {state.port} in use — assuming stream active")
+                    QMetaObject.invokeMethod(
+                        self, "_emit_status_queued",
+                        Qt.ConnectionType.QueuedConnection,
+                        drone_id,
+                    )
+                    QMetaObject.invokeMethod(
+                        self, "_log_queued",
+                        Qt.ConnectionType.QueuedConnection,
+                        "INFO", f"[VIDEO] {drone_id}: port {state.port} in use — assuming stream active",
+                    )
                     state.probe_stop.wait(timeout=3.0)
                     continue
 
@@ -480,8 +518,16 @@ class VideoStreamContext(QObject):
                 state.status = STATUS_RECEIVING
                 state.last_frame_ts = time.monotonic()
                 state.fps = 0.0   # Phase 2 will decode and measure fps
-                self._emit_status(drone_id)
-                self.logMessage.emit("INFO", f"[VIDEO] {drone_id}: stream receiving on port {state.port}")
+                QMetaObject.invokeMethod(
+                    self, "_emit_status_queued",
+                    Qt.ConnectionType.QueuedConnection,
+                    drone_id,
+                )
+                QMetaObject.invokeMethod(
+                    self, "_log_queued",
+                    Qt.ConnectionType.QueuedConnection,
+                    "INFO", f"[VIDEO] {drone_id}: stream receiving on port {state.port}",
+                )
 
                 # Keep checking every 3s to detect stalls
                 state.probe_stop.wait(timeout=3.0)
@@ -489,7 +535,11 @@ class VideoStreamContext(QObject):
             except socket.timeout:
                 if state.status != STATUS_WAITING:
                     state.status = STATUS_WAITING
-                    self._emit_status(drone_id)
+                    QMetaObject.invokeMethod(
+                        self, "_emit_status_queued",
+                        Qt.ConnectionType.QueuedConnection,
+                        drone_id,
+                    )
                 state.probe_stop.wait(timeout=1.0)
 
             except Exception as exc:
@@ -500,10 +550,19 @@ class VideoStreamContext(QObject):
                     except Exception:
                         pass
                     sock = None
+                exc_msg = str(exc)
                 state.status = STATUS_ERROR
-                self._emit_status(drone_id)
-                self.streamError.emit(drone_id, str(exc))
-                self.logMessage.emit("WARN", f"[VIDEO] {drone_id}: probe error — {exc}")
+                QMetaObject.invokeMethod(
+                    self, "_set_error_from_main",
+                    Qt.ConnectionType.QueuedConnection,
+                    drone_id,
+                    exc_msg,
+                )
+                QMetaObject.invokeMethod(
+                    self, "_log_queued",
+                    Qt.ConnectionType.QueuedConnection,
+                    "WARN", f"[VIDEO] {drone_id}: probe error — {exc_msg}",
+                )
                 state.probe_stop.wait(timeout=3.0)
 
     def _check_stalls(self) -> None:

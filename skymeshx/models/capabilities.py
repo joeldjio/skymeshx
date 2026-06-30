@@ -86,16 +86,20 @@ def check_mode_requirements(mode: str, capabilities: DroneCapabilities) -> Dict[
     {"satisfied": bool, "missing": list[str], "warnings": list[str]}
     """
     requirements = _resolve_mode(mode)
-    missing = [
-        message
-        for attr, message in requirements["required"].items()
-        if not bool(getattr(capabilities, attr))
-    ]
-    warnings = [
-        message
-        for attr, message in requirements["recommended"].items()
-        if not bool(getattr(capabilities, attr))
-    ]
+    missing = []
+    for attr, message in requirements["required"].items():
+        try:
+            if not bool(getattr(capabilities, attr)):
+                missing.append(message)
+        except AttributeError:
+            missing.append(message)
+    warnings = []
+    for attr, message in requirements["recommended"].items():
+        try:
+            if not bool(getattr(capabilities, attr)):
+                warnings.append(message)
+        except AttributeError:
+            warnings.append(message)
     return {
         "satisfied": not missing,
         "missing": missing,
@@ -137,7 +141,13 @@ def detect_capabilities(source: Any = None, overrides: Optional[Dict[str, Any]] 
 def apply_manual_overrides(capabilities: DroneCapabilities, overrides: Dict[str, Any]) -> DroneCapabilities:
     """Apply manual capability overrides in-place and return capabilities."""
     for key, value in overrides.items():
-        attr = _camel_to_snake(key)
+        # Only convert keys that actually contain upper-case camelCase letters.
+        # Already-snake_case keys (e.g. "has_dispenser") must not be passed
+        # through _camel_to_snake, which would double the underscores.
+        if any(c.isupper() for c in key):
+            attr = _camel_to_snake(key)
+        else:
+            attr = key
         if hasattr(capabilities, attr):
             setattr(capabilities, attr, value)
             capabilities.manual_overrides[attr] = value

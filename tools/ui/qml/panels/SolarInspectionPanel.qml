@@ -162,14 +162,18 @@ Rectangle {
             uploadError = "Cannot upload invalid mission"
             return
         }
-        
+        if (typeof mission === 'undefined' || !mission) {
+            uploadError = "Mission context not available"
+            return
+        }
+
         uploadInProgress = true
         uploadError = ""
-        
+
         console.log("Uploading solar mission...")
         try {
             mission.uploadSolarMission()
-            uploadInProgress = false
+            // uploadInProgress cleared via missionUploadFinished signal — not here.
         } catch (e) {
             uploadInProgress = false
             uploadError = "Upload failed: " + e.toString()
@@ -232,7 +236,8 @@ Rectangle {
                     }
 
                     Text {
-                        text: stepTitles[currentStep]
+                        text: (currentStep >= 0 && currentStep < stepTitles.length)
+                              ? stepTitles[currentStep] : ""
                         color: "#94a3b8"
                         font.pixelSize: 11
                     }

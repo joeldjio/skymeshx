@@ -166,11 +166,6 @@ class FieldCoveragePlanner:
         min_n, max_n = min(north_vals), max(north_vals)
         min_e, max_e = min(east_vals), max(east_vals)
         
-        # Rotate heading to align with field
-        heading_rad = math.radians(config.heading)
-        cos_h = math.cos(heading_rad)
-        sin_h = math.sin(heading_rad)
-        
         # Calculate number of lines needed
         field_width = max_e - min_e
         num_lines = int(field_width / config.line_spacing) + 1

@@ -526,7 +526,8 @@ class BatteryMonitor:
         """Internal method to save history (called by auto-save thread or update)."""
         try:
             if self.save_history():
-                self._last_save_time = time.time()
+                with self._lock:
+                    self._last_save_time = time.time()
         except Exception as e:
             print(f"[BatteryMonitor] Auto-save failed: {e}")
     

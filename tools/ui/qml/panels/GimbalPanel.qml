@@ -1077,8 +1077,8 @@ Item {
                                 fpsText.text = status.fps ? status.fps + " fps" : "—"
                                 frameAgeText.text = status.frameAgeMs ? status.frameAgeMs + " ms" : "—"
                                 droppedText.text = status.droppedFrames !== undefined ? status.droppedFrames.toString() : "—"
-                                errorText.text = status.lastError || qsTr("No errors")
-                                errorText.color = status.lastError ? "#ef4444" : "#10b981"
+                                gimbalErrorText.text = status.lastError || qsTr("No errors")
+                                gimbalErrorText.color = status.lastError ? "#ef4444" : "#10b981"
                             }
                         }
                     }
@@ -1116,7 +1116,7 @@ Item {
                     Row {
                         width: parent.width; spacing: 8
                         Text { text: qsTr("Status:"); color: "#64748b"; font.pixelSize: 10; width: 100 }
-                        Text { id: errorText; text: qsTr("No errors"); color: "#10b981"; font.pixelSize: 10; font.family: "Consolas" }
+                        Text { id: gimbalErrorText; text: qsTr("No errors"); color: "#10b981"; font.pixelSize: 10; font.family: "Consolas" }
                     }
                 }
             }

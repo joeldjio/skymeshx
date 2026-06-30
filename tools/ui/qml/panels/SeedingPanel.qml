@@ -111,15 +111,19 @@ Rectangle {
             uploadError = "Cannot upload invalid mission"
             return
         }
-        
+        if (typeof mission === 'undefined' || !mission) {
+            uploadError = "Mission context not available"
+            return
+        }
+
         uploadInProgress = true
         uploadError = ""
-        
+
         console.log("Uploading seeding mission...")
         try {
             mission.uploadSeedingMission()
-            uploadInProgress = false
-            currentStep = 6
+            // uploadInProgress is cleared by the missionUploadFinished signal
+            // wired in main.qml — do NOT set it to false here synchronously.
         } catch (e) {
             uploadInProgress = false
             uploadError = "Upload failed: " + e.toString()
@@ -300,13 +304,19 @@ Rectangle {
                 
                 MouseArea {
                     anchors.fill: parent
+                    enabled: {
+                        if (currentStep === 5) return !uploadInProgress
+                        if (currentStep === 6) return !uploadInProgress && uploadError === ""
+                        return true
+                    }
                     onClicked: {
                         if (currentStep === 5) {
-                            // Upload Mission
+                            // Upload Mission — never auto-starts execution.
                             uploadMission()
                         } else if (currentStep === 6) {
-                            // Start Mission
-                            if (typeof mission !== 'undefined') {
+                            // Start Mission — separate step, upload must have
+                            // completed without error first (enforced by enabled above).
+                            if (typeof mission !== 'undefined' && mission) {
                                 mission.startMission()
                             }
                         } else if (currentStep < totalSteps) {

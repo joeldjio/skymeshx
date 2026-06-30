@@ -2,7 +2,11 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
@@ -101,11 +105,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install pytest-cov PyQt6 PyQt6-WebEngine pyqtgraph
+        pip install pytest-cov PySide6
     
     - name: Run UI tests with Xvfb
       run: |
         xvfb-run -a pytest tests/test_ui_*.py \
+          -m "ui" \
           --cov=tools.ui \
           --cov-report=xml \
           --cov-report=term \
@@ -179,7 +184,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install playwright pytest-playwright PyQt6 PyQt6-WebEngine pyqtgraph
+        pip install playwright pytest-playwright PySide6
     
     - name: Install Playwright browsers
       run: playwright install --with-deps chromium
@@ -262,7 +267,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install PyQt6 PyQt6-WebEngine pyqtgraph
+        pip install PySide6
     
     - name: Run license tests
       run: pytest tests/test_license.py -v

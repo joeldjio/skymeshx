@@ -148,9 +148,12 @@ class CameraContext(QObject):
         if backend is not None and hasattr(backend, "camera_start_stream"):
             delegated = bool(backend.camera_start_stream(source))
 
+        # Delegation failed for a real source — do NOT mark the stream as active.
         if backend is not None and not delegated and source != "Test Source":
             return self._fail("Selected drone has no available camera stream")
 
+        # For "Test Source" with no backend, delegation is skipped intentionally.
+        # Only mark active after a successful delegation or when using Test Source.
         self._current_source = source
         self._stream_active = True
         self._frame_age = 0

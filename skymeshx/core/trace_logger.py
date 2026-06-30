@@ -256,7 +256,17 @@ class TraceLogger:
             if not self._active or self._session_path is None:
                 return str(self._last_session_path or "")
 
-            self.log_ui_event("app/session", {"action": "stopped", "scenario": self._scenario})
+            # Snapshot values needed for log_ui_event before releasing the lock.
+            scenario = self._scenario
+            session_path = self._session_path
+
+        # Call log_ui_event OUTSIDE the lock to avoid deadlock (it acquires
+        # _lock internally via _append_jsonl).
+        self.log_ui_event("app/session", {"action": "stopped", "scenario": scenario})
+
+        with self._lock:
+            if not self._active or self._session_path is None:
+                return str(self._last_session_path or "")
             self._manifest["stoppedAt"] = _now_iso()
             self._write_manifest()
             self._write_topic_health()
