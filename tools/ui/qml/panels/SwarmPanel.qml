@@ -138,7 +138,7 @@ Item {
                                     }
                                 }
                                 ToolTip {
-                                    visible: genericTypeHover.containsMouse
+                                    visible: genericTypeHover.hovered
                                     delay: 500; timeout: 6000
                                     text: qsTr("Generic drone — standard MAVLink vehicle.\n\nFeatures:\n• Arm / Disarm / Takeoff / Land / RTL\n• Manual waypoint missions\n• Field coverage & seeding missions\n• Formation flying\n• Battery & collision monitoring\n\nUse this type for all standard flight and mission workflows.")
                                 }
@@ -167,7 +167,7 @@ Item {
                                     }
                                 }
                                 ToolTip {
-                                    visible: obsTypeHover.containsMouse
+                                    visible: obsTypeHover.hovered
                                     delay: 500; timeout: 8000
                                     text: qsTr("Observation drone — camera & gimbal payload vehicle.\n\nAdditional features:\n• Gimbal / Camera panel (pitch, roll, yaw control)\n• Solar Inspection Wizard ← requires this type!\n• Live video stream (UDP/RTSP/MJPEG)\n• Camera trigger commands in missions\n• Thermal camera settings\n• ROS2 depth / thermal sensor topics\n\n⚠  Set this type BEFORE opening the Solar Inspection\nor Gimbal panel — camera detection uses this flag.")
                                 }
