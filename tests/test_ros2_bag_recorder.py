@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.ui.context.ros2_context import ROS2Context
+import pytest
+
+pytest.importorskip("rclpy", reason="ROS2/rclpy not available in this environment")
+
+from tools.ui.context.ros2_context import ROS2Context  # noqa: E402
 
 
 class FakeBagRecorder:
