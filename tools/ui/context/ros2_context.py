@@ -231,12 +231,20 @@ class ROS2Context(QObject):
     bagRecordStopped = Signal(str, float, arguments=["path", "sizeMb"])
     bagRecordError = Signal(str, arguments=["message"])
     
-    # Confirmation signals for immediate UI feedback (Improvement 8)
-    armConfirmed = Signal(str, arguments=["droneId"])
-    disarmConfirmed = Signal(str, arguments=["droneId"])
-    takeoffConfirmed = Signal(str, float, arguments=["droneId", "altitude"])
-    landConfirmed = Signal(str, arguments=["droneId"])
-    rtlConfirmed = Signal(str, arguments=["droneId"])
+    # Command-sent signals — emitted immediately after command dispatch
+    # (NOT after vehicle ACK; use bridge telemetry state for that).
+    armCommandSent = Signal(str, arguments=["droneId"])
+    disarmCommandSent = Signal(str, arguments=["droneId"])
+    takeoffCommandSent = Signal(str, float, arguments=["droneId", "altitude"])
+    landCommandSent = Signal(str, arguments=["droneId"])
+    rtlCommandSent = Signal(str, arguments=["droneId"])
+
+    # Aliases kept for backward compatibility — will be removed in v0.5
+    armConfirmed = armCommandSent
+    disarmConfirmed = disarmCommandSent
+    takeoffConfirmed = takeoffCommandSent
+    landConfirmed = landCommandSent
+    rtlConfirmed = rtlCommandSent
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -860,8 +868,7 @@ class ROS2Context(QObject):
         if b:
             b.arm()
             self.ros2LogMessage.emit("INFO", f"[ROS2] {drone_id} ARM sent via uXRCE-DDS")
-            # Emit confirmation signal for immediate UI feedback
-            self.armConfirmed.emit(drone_id)
+            self.armCommandSent.emit(drone_id)
 
     @Slot(str)
     def disarmBridge(self, drone_id: str) -> None:
@@ -869,8 +876,7 @@ class ROS2Context(QObject):
         if b:
             b.disarm()
             self.ros2LogMessage.emit("INFO", f"[ROS2] {drone_id} DISARM sent via uXRCE-DDS")
-            # Emit confirmation signal for immediate UI feedback
-            self.disarmConfirmed.emit(drone_id)
+            self.disarmCommandSent.emit(drone_id)
 
     @Slot(str, float)
     def takeoffBridge(self, drone_id: str, altitude: float) -> None:
@@ -878,8 +884,7 @@ class ROS2Context(QObject):
         if b:
             b.takeoff(altitude)
             self.ros2LogMessage.emit("INFO", f"[ROS2] {drone_id} TAKEOFF {altitude}m via uXRCE-DDS")
-            # Emit confirmation signal for immediate UI feedback
-            self.takeoffConfirmed.emit(drone_id, altitude)
+            self.takeoffCommandSent.emit(drone_id, altitude)
 
     @Slot(str)
     def landBridge(self, drone_id: str) -> None:
@@ -887,8 +892,7 @@ class ROS2Context(QObject):
         if b:
             b.land()
             self.ros2LogMessage.emit("INFO", f"[ROS2] {drone_id} LAND via uXRCE-DDS")
-            # Emit confirmation signal for immediate UI feedback
-            self.landConfirmed.emit(drone_id)
+            self.landCommandSent.emit(drone_id)
 
     @Slot(str)
     def rtlBridge(self, drone_id: str) -> None:
@@ -897,8 +901,7 @@ class ROS2Context(QObject):
             b.rtl()
             self.ros2LogMessage.emit("INFO", f"[ROS2] {drone_id} RTL via uXRCE-DDS")
             self._trace_mission_event("mission_abort", {"droneId": drone_id, "action": "rtl", "status": "sent"})
-            # Emit confirmation signal for immediate UI feedback
-            self.rtlConfirmed.emit(drone_id)
+            self.rtlCommandSent.emit(drone_id)
 
     # ── Topic snapshot ────────────────────────────────────────────────────
 

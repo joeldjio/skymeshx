@@ -9,6 +9,8 @@ Automatically starts:
 
 from __future__ import annotations
 
+import re
+import shlex
 import subprocess
 import time
 import os
@@ -80,7 +82,18 @@ class PX4GazeboCluster:
         """
         if num_drones < 1 or num_drones > 10:
             raise ValueError("num_drones must be between 1 and 10")
-        
+
+        # Validate model/world/namespace_prefix to prevent shell injection.
+        # These values end up in a shell command string (shell=True is required
+        # for `source setup.bash && make` chaining on Linux).
+        _SAFE_IDENT = re.compile(r"^[a-zA-Z0-9_\-]+$")
+        if not _SAFE_IDENT.match(model):
+            raise ValueError(f"Invalid model name '{model}' — only [a-zA-Z0-9_-] allowed")
+        if not _SAFE_IDENT.match(world):
+            raise ValueError(f"Invalid world name '{world}' — only [a-zA-Z0-9_-] allowed")
+        if not _SAFE_IDENT.match(namespace_prefix):
+            raise ValueError(f"Invalid namespace_prefix '{namespace_prefix}' — only [a-zA-Z0-9_-] allowed")
+
         self.num_drones = num_drones
         self.px4_dir = os.path.expanduser(px4_dir)
         self.model = model
@@ -165,10 +178,19 @@ class PX4GazeboCluster:
                 # Build command with ROS2 sourcing
                 existing_setups = [setup for setup in self.ros2_setups if setup and os.path.isfile(setup)]
                 if existing_setups and sys.platform != "win32":
-                    # Linux/Mac: source ROS2 setups in the same shell
-                    source_cmds = " && ".join([f"source {setup}" for setup in existing_setups])
-                    cmd = f"{source_cmds} && cd {self.px4_dir} && make px4_sitl gz_{self.model}"
-                    
+                    # Linux/Mac: source ROS2 setups in the same shell.
+                    # shell=True is required because `source` is a shell built-in.
+                    # Setup file paths are quoted with shlex to prevent injection.
+                    source_cmds = " && ".join(
+                        [f"source {shlex.quote(s)}" for s in existing_setups]
+                    )
+                    # model is already validated to [a-zA-Z0-9_-] in __init__
+                    cmd = (
+                        f"{source_cmds} && "
+                        f"cd {shlex.quote(self.px4_dir)} && "
+                        f"make px4_sitl gz_{self.model}"
+                    )
+
                     sitl_proc = subprocess.Popen(
                         cmd,
                         shell=True,

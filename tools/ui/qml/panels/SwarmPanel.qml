@@ -117,6 +117,7 @@ Item {
                             property string currentType: "generic"
 
                             Rectangle {
+                                id: genericTypeBtn
                                 width: (parent.width - 6) / 2; height: 36; radius: 5
                                 color: typeRow.currentType === "generic" ? "#1e3a5f" : "#1e2535"
                                 border.color: typeRow.currentType === "generic" ? "#2563eb" : "#2d3748"; border.width: 1
@@ -128,10 +129,24 @@ Item {
                                         }
                                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "FSM · Mission"; color: "#475569"; font.pixelSize: 7 }
                                 }
-                                MouseArea { anchors.fill: parent; onClicked: { typeRow.currentType = "generic"; if (droneSelCombo.currentText && typeof swarm !== "undefined") swarm.setDroneType(droneSelCombo.currentText, "generic") } }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        typeRow.currentType = "generic"
+                                        if (droneSelCombo.currentText && typeof swarm !== "undefined") swarm.setDroneType(droneSelCombo.currentText, "generic")
+                                    }
+                                }
+                                ToolTip {
+                                    visible: genericTypeHover.hovered
+                                    delay: 500; timeout: 6000
+                                    text: qsTr("Generic drone — standard MAVLink vehicle.\n\nFeatures:\n• Arm / Disarm / Takeoff / Land / RTL\n• Manual waypoint missions\n• Field coverage & seeding missions\n• Formation flying\n• Battery & collision monitoring\n\nUse this type for all standard flight and mission workflows.")
+                                }
+                                HoverHandler { id: genericTypeHover }
                             }
 
                             Rectangle {
+                                id: obsTypeBtn
                                 width: (parent.width - 6) / 2; height: 36; radius: 5
                                 color: typeRow.currentType === "observation" ? "#1e3a5f" : "#1e2535"
                                 border.color: typeRow.currentType === "observation" ? "#8b5cf6" : "#2d3748"; border.width: 1
@@ -141,9 +156,22 @@ Item {
                                             Cmp.Icon { name: "camera"; size: 11; color: typeRow.currentType === "observation" ? "#c4b5fd" : "#64748b"; anchors.verticalCenter: parent.verticalCenter }
                                             Text { text: "Obs."; color: typeRow.currentType === "observation" ? "#c4b5fd" : "#64748b"; font.pixelSize: 10; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                                         }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Gimbal · ROS2"; color: "#475569"; font.pixelSize: 7 }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Gimbal · Camera"; color: "#475569"; font.pixelSize: 7 }
                                 }
-                                MouseArea { anchors.fill: parent; onClicked: { typeRow.currentType = "observation"; if (droneSelCombo.currentText && typeof swarm !== "undefined") swarm.setDroneType(droneSelCombo.currentText, "observation") } }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        typeRow.currentType = "observation"
+                                        if (droneSelCombo.currentText && typeof swarm !== "undefined") swarm.setDroneType(droneSelCombo.currentText, "observation")
+                                    }
+                                }
+                                ToolTip {
+                                    visible: obsTypeHover.hovered
+                                    delay: 500; timeout: 8000
+                                    text: qsTr("Observation drone — camera & gimbal payload vehicle.\n\nAdditional features:\n• Gimbal / Camera panel (pitch, roll, yaw control)\n• Solar Inspection Wizard ← requires this type!\n• Live video stream (UDP/RTSP/MJPEG)\n• Camera trigger commands in missions\n• Thermal camera settings\n• ROS2 depth / thermal sensor topics\n\n⚠  Set this type BEFORE opening the Solar Inspection\nor Gimbal panel — camera detection uses this flag.")
+                                }
+                                HoverHandler { id: obsTypeHover }
                             }
                         }
                     }

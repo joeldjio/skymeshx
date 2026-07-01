@@ -45,14 +45,22 @@ class SwarmContext(QObject):
         str, bool, str, arguments=["droneId", "success", "reason"]
     )
 
-    # State Confirmation Signals (Improvement 8)
-    # Emitted when critical operations complete successfully
-    armConfirmed = Signal(str, arguments=["droneId"])
-    disarmConfirmed = Signal(str, arguments=["droneId"])
-    takeoffConfirmed = Signal(str, float, arguments=["droneId", "altitude"])
-    landConfirmed = Signal(str, arguments=["droneId"])
-    rtlConfirmed = Signal(str, arguments=["droneId"])
-    modeChangeConfirmed = Signal(str, str, arguments=["droneId", "mode"])
+    # Command-sent signals — emitted immediately after the command is dispatched
+    # to the flight stack (NOT after vehicle ACK; use fsmStateChanged for that).
+    armCommandSent = Signal(str, arguments=["droneId"])
+    disarmCommandSent = Signal(str, arguments=["droneId"])
+    takeoffCommandSent = Signal(str, float, arguments=["droneId", "altitude"])
+    landCommandSent = Signal(str, arguments=["droneId"])
+    rtlCommandSent = Signal(str, arguments=["droneId"])
+    modeChangeCommandSent = Signal(str, str, arguments=["droneId", "mode"])
+
+    # Aliases kept for backward compatibility — will be removed in v0.5
+    armConfirmed = armCommandSent
+    disarmConfirmed = disarmCommandSent
+    takeoffConfirmed = takeoffCommandSent
+    landConfirmed = landCommandSent
+    rtlConfirmed = rtlCommandSent
+    modeChangeConfirmed = modeChangeCommandSent
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -197,41 +205,36 @@ class SwarmContext(QObject):
         b = self._backend.get_backend(drone_id)
         if b:
             b.arm()
-            # Emit confirmation signal immediately (UI feedback)
-            # Actual state change will be reflected via fsmStateChanged signal
-            self.armConfirmed.emit(drone_id)
+            # Emit command-sent signal (NOT an ACK — actual state arrives via fsmStateChanged)
+            self.armCommandSent.emit(drone_id)
 
     @Slot(str)
     def disarmDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.disarm()
-            # Emit confirmation signal immediately (UI feedback)
-            self.disarmConfirmed.emit(drone_id)
+            self.disarmCommandSent.emit(drone_id)
 
     @Slot(str, float)
     def takeoffDrone(self, drone_id: str, altitude: float) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.takeoff(altitude)
-            # Emit confirmation signal immediately (UI feedback)
-            self.takeoffConfirmed.emit(drone_id, altitude)
+            self.takeoffCommandSent.emit(drone_id, altitude)
 
     @Slot(str)
     def landDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.land()
-            # Emit confirmation signal immediately (UI feedback)
-            self.landConfirmed.emit(drone_id)
+            self.landCommandSent.emit(drone_id)
 
     @Slot(str)
     def rtlDrone(self, drone_id: str) -> None:
         b = self._backend.get_backend(drone_id)
         if b:
             b.rtl()
-            # Emit confirmation signal immediately (UI feedback)
-            self.rtlConfirmed.emit(drone_id)
+            self.rtlCommandSent.emit(drone_id)
 
     @Slot(str, float, float, float)
     def gotoDrone(self, drone_id: str, lat: float, lon: float, alt: float) -> None:
@@ -824,20 +827,42 @@ class SwarmContext(QObject):
         return bool(b and b.is_connected)
 
     @Slot(str, result=str)
-    def readFile(self, path: str) -> str:
-        """Read a local file and return its contents as a string (for QML CSV loading)."""
+    def readCsvFile(self, path: str) -> str:
+        """Read a CSV/text file selected via FileDialog and return its contents.
+
+        Only .csv and .txt extensions are accepted to limit the scope of this
+        bridge.  The path should come from a QML FileDialog to ensure the user
+        explicitly chose it.
+        """
         try:
-            # Strip file:/// prefix if present
+            # Strip file:/// URI prefix
             clean = path
             if clean.startswith("file:///"):
                 clean = clean[8:]
             elif clean.startswith("file://"):
                 clean = clean[7:]
-            with open(clean, "r", encoding="utf-8", errors="replace") as f:
+            from pathlib import Path as _Path
+            p = _Path(clean)
+            if p.suffix.lower() not in {".csv", ".txt", ".log"}:
+                self.logMessage.emit(
+                    "WARN",
+                    f"[SWARM] readCsvFile: unsupported extension '{p.suffix}' — only .csv/.txt/.log allowed",
+                )
+                return ""
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
                 return f.read()
         except Exception as exc:
-            self.logMessage.emit("ERROR", f"[SWARM] readFile failed for '{path}': {exc}")
+            self.logMessage.emit("ERROR", f"[SWARM] readCsvFile failed for '{path}': {exc}")
             return ""
+
+    @Slot(str, result=str)
+    def readFile(self, path: str) -> str:
+        """Read a local file and return its contents as a string.
+
+        Deprecated: prefer readCsvFile() which enforces extension allowlisting.
+        Kept for backward compatibility with existing QML call-sites.
+        """
+        return self.readCsvFile(path)
 
     @Slot(str, str, result=str)
     def openFileDialog(self, title: str, name_filter: str) -> str:
@@ -861,24 +886,40 @@ class SwarmContext(QObject):
     def appendFile(self, path: str, line: str) -> bool:
         """Append a single line to a file, creating it (and parent dirs) if needed.
 
-        Used by GlobalLogHandler for crash-safe, incremental syslog writing
-        instead of rewriting the entire log buffer every second.
+        Used by GlobalLogHandler for crash-safe, incremental syslog writing.
+        Writes are restricted to the logs/ directory tree to prevent writing
+        arbitrary files.
         """
         try:
             import os
+            from pathlib import Path as _Path
 
             clean = path
             if clean.startswith("file:///"):
                 clean = clean[8:]
             elif clean.startswith("file://"):
                 clean = clean[7:]
-            parent = os.path.dirname(clean)
+
+            resolved = _Path(clean).resolve()
+            logs_root = _Path(self.syslogsDir()).resolve().parent  # logs/
+            try:
+                resolved.relative_to(logs_root)
+            except ValueError:
+                # Fall back: allow writes to the home .skymeshx_gcs syslogs dir
+                fallback_root = _Path.home() / ".skymeshx_gcs"
+                try:
+                    resolved.relative_to(fallback_root)
+                except ValueError:
+                    # Do not emit logMessage — would cause infinite recursion
+                    return False
+
+            parent = os.path.dirname(str(resolved))
             if parent and not os.path.isdir(parent):
                 os.makedirs(parent, exist_ok=True)
-            with open(clean, "a", encoding="utf-8") as f:
+            with open(resolved, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
             return True
-        except Exception as exc:
+        except Exception:
             # Do not emit logMessage here — would cause infinite recursion
             return False
 

@@ -62,7 +62,6 @@ jobs:
           -m "not slow and not sitl and not e2e and not ui" \
           --ignore=tests/test_ros2_bag_recorder.py \
           --ignore=tests/test_ros2_sitl_launcher.py \
-          --ignore=tests/security \
           --ignore=tests/test_depth_camera_subscriber.py \
           --cov=skymeshx \
           --cov-report=xml \
