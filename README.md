@@ -482,7 +482,6 @@ The core project is licensed under MIT. The graphical GCS uses PySide6/Qt for Py
 - [LICENSE](LICENSE)
 - [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt)
 - [NOTICE.txt](NOTICE.txt)
-- [docs/security/LICENSE_AUDIT_2026-06.md](docs/security/LICENSE_AUDIT_2026-06.md)
 
 ---
 
