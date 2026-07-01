@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 560" font-family="'Segoe UI',system-ui,sans-serif" font-size="12">
+
+  <!-- Background -->
+  <rect width="820" height="560" fill="#0f1117" rx="10"/>
+
+  <!-- ── Row 0: User-facing applications ── -->
+  <text x="410" y="26" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold" letter-spacing="2">USER-FACING APPLICATIONS</text>
+  <rect x="20"  y="34" width="220" height="44" rx="6" fill="#1e2535" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="130" y="52" text-anchor="middle" fill="#93c5fd" font-weight="bold">QML GCS</text>
+  <text x="130" y="68" text-anchor="middle" fill="#64748b" font-size="10">PySide6 / QML ground station</text>
+
+  <rect x="260" y="34" width="220" height="44" rx="6" fill="#1e2535" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="370" y="52" text-anchor="middle" fill="#93c5fd" font-weight="bold">Python SDK</text>
+  <text x="370" y="68" text-anchor="middle" fill="#64748b" font-size="10">Drone / Swarm API · examples</text>
+
+  <rect x="500" y="34" width="220" height="44" rx="6" fill="#1e2535" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="610" y="52" text-anchor="middle" fill="#93c5fd" font-weight="bold">CLI</text>
+  <text x="610" y="68" text-anchor="middle" fill="#64748b" font-size="10">skymeshx connect / arm / status</text>
+
+  <!-- arrows down -->
+  <line x1="130" y1="78" x2="130" y2="100" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="370" y1="78" x2="370" y2="100" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="610" y1="78" x2="610" y2="100" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="130" y1="100" x2="610" y2="100" stroke="#334155" stroke-width="1.5"/>
+  <line x1="370" y1="100" x2="370" y2="114" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── Row 1: Adapters ── -->
+  <text x="410" y="128" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold" letter-spacing="2">APPLICATION ADAPTERS</text>
+
+  <rect x="20"  y="136" width="240" height="44" rx="6" fill="#1e2535" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="140" y="154" text-anchor="middle" fill="#c4b5fd" font-weight="bold">UI Context Layer</text>
+  <text x="140" y="170" text-anchor="middle" fill="#64748b" font-size="10">tools/ui/context/*_context.py</text>
+
+  <rect x="280" y="136" width="240" height="44" rx="6" fill="#1e2535" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="400" y="154" text-anchor="middle" fill="#c4b5fd" font-weight="bold">SDK Facade</text>
+  <text x="400" y="170" text-anchor="middle" fill="#64748b" font-size="10">skymeshx.sdk.Drone / Swarm</text>
+
+  <rect x="540" y="136" width="240" height="44" rx="6" fill="#1e2535" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="660" y="154" text-anchor="middle" fill="#c4b5fd" font-weight="bold">CLI Handlers</text>
+  <text x="660" y="170" text-anchor="middle" fill="#64748b" font-size="10">skymeshx.cli.main</text>
+
+  <!-- arrows down -->
+  <line x1="400" y1="180" x2="400" y2="200" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── Row 2: Domain services ── -->
+  <text x="410" y="215" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold" letter-spacing="2">DOMAIN SERVICES</text>
+
+  <rect x="20"  y="224" width="174" height="56" rx="6" fill="#1e2535" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="107" y="244" text-anchor="middle" fill="#5eead4" font-weight="bold">Mission Engine</text>
+  <text x="107" y="260" text-anchor="middle" fill="#64748b" font-size="10">upload protocol</text>
+  <text x="107" y="273" text-anchor="middle" fill="#64748b" font-size="10">waypoints · MAV_CMDs</text>
+
+  <rect x="204" y="224" width="174" height="56" rx="6" fill="#1e2535" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="291" y="244" text-anchor="middle" fill="#5eead4" font-weight="bold">Mission Planners</text>
+  <text x="291" y="260" text-anchor="middle" fill="#64748b" font-size="10">coverage · seeding</text>
+  <text x="291" y="273" text-anchor="middle" fill="#64748b" font-size="10">solar inspection</text>
+
+  <rect x="388" y="224" width="174" height="56" rx="6" fill="#1e2535" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="475" y="244" text-anchor="middle" fill="#5eead4" font-weight="bold">Safety Services</text>
+  <text x="475" y="260" text-anchor="middle" fill="#64748b" font-size="10">APF · collision predict.</text>
+  <text x="475" y="273" text-anchor="middle" fill="#64748b" font-size="10">battery · geofence</text>
+
+  <rect x="572" y="224" width="228" height="56" rx="6" fill="#1e2535" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="686" y="244" text-anchor="middle" fill="#5eead4" font-weight="bold">Trace &amp; Log Services</text>
+  <text x="686" y="260" text-anchor="middle" fill="#64748b" font-size="10">TraceLogger · JSONL/CSV</text>
+  <text x="686" y="273" text-anchor="middle" fill="#64748b" font-size="10">ROS2 bags · flight logs</text>
+
+  <!-- arrows down -->
+  <line x1="400" y1="280" x2="400" y2="300" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── Row 3: Core state & protocol ── -->
+  <text x="410" y="315" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold" letter-spacing="2">CORE STATE &amp; PROTOCOL</text>
+
+  <rect x="20"  y="323" width="186" height="56" rx="6" fill="#1e2535" stroke="#b45309" stroke-width="1.5"/>
+  <text x="113" y="343" text-anchor="middle" fill="#fcd34d" font-weight="bold">MAVLinkConnection</text>
+  <text x="113" y="359" text-anchor="middle" fill="#64748b" font-size="10">TCP · UDP · serial · COM</text>
+  <text x="113" y="372" text-anchor="middle" fill="#64748b" font-size="10">heartbeat · streams</text>
+
+  <rect x="216" y="323" width="186" height="56" rx="6" fill="#1e2535" stroke="#b45309" stroke-width="1.5"/>
+  <text x="309" y="343" text-anchor="middle" fill="#fcd34d" font-weight="bold">TelemetryState</text>
+  <text x="309" y="359" text-anchor="middle" fill="#64748b" font-size="10">GPS · attitude · battery</text>
+  <text x="309" y="372" text-anchor="middle" fill="#64748b" font-size="10">mode · armed · altitude</text>
+
+  <rect x="412" y="323" width="186" height="56" rx="6" fill="#1e2535" stroke="#b45309" stroke-width="1.5"/>
+  <text x="505" y="343" text-anchor="middle" fill="#fcd34d" font-weight="bold">FSM (StateMachine)</text>
+  <text x="505" y="359" text-anchor="middle" fill="#64748b" font-size="10">IDLE→ARMED→FLYING</text>
+  <text x="505" y="372" text-anchor="middle" fill="#64748b" font-size="10">MISSION · EMERGENCY</text>
+
+  <rect x="608" y="323" width="192" height="56" rx="6" fill="#1e2535" stroke="#b45309" stroke-width="1.5"/>
+  <text x="704" y="343" text-anchor="middle" fill="#fcd34d" font-weight="bold">Validation Module</text>
+  <text x="704" y="359" text-anchor="middle" fill="#64748b" font-size="10">coords · altitude · speed</text>
+  <text x="704" y="372" text-anchor="middle" fill="#64748b" font-size="10">security boundaries</text>
+
+  <!-- arrows down -->
+  <line x1="400" y1="379" x2="400" y2="400" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── Row 4: Vehicle integrations ── -->
+  <text x="410" y="415" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold" letter-spacing="2">VEHICLE &amp; SIMULATION INTEGRATIONS</text>
+
+  <rect x="20"  y="424" width="220" height="56" rx="6" fill="#1e2535" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="130" y="444" text-anchor="middle" fill="#fca5a5" font-weight="bold">ArduPilot / PX4 MAVLink</text>
+  <text x="130" y="460" text-anchor="middle" fill="#64748b" font-size="10">SITL · hardware vehicles</text>
+  <text x="130" y="473" text-anchor="middle" fill="#64748b" font-size="10">tcp:127.0.0.1:5762</text>
+
+  <rect x="260" y="424" width="220" height="56" rx="6" fill="#1e2535" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="370" y="444" text-anchor="middle" fill="#fca5a5" font-weight="bold">PX4 ROS2 / uXRCE-DDS</text>
+  <text x="370" y="460" text-anchor="middle" fill="#64748b" font-size="10">/fmu/out/* → /fmu/in/*</text>
+  <text x="370" y="473" text-anchor="middle" fill="#64748b" font-size="10">NED↔ENU frame conv.</text>
+
+  <rect x="500" y="424" width="220" height="56" rx="6" fill="#1e2535" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="610" y="444" text-anchor="middle" fill="#fca5a5" font-weight="bold">Gazebo / SITL Launcher</text>
+  <text x="610" y="460" text-anchor="middle" fill="#64748b" font-size="10">PX4GazeboCluster</text>
+  <text x="610" y="473" text-anchor="middle" fill="#64748b" font-size="10">multi-vehicle · worlds</text>
+
+  <!-- arrows down -->
+  <line x1="130" y1="480" x2="130" y2="500" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="370" y1="480" x2="370" y2="500" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="610" y1="480" x2="610" y2="500" stroke="#334155" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="130" y1="500" x2="610" y2="500" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- ── Row 5: Hardware ── -->
+  <rect x="240" y="508" width="340" height="36" rx="6" fill="#1a1a2e" stroke="#475569" stroke-width="1"/>
+  <text x="410" y="531" text-anchor="middle" fill="#475569" font-weight="bold">Real drones · simulators · logs · offline analysis</text>
+
+  <!-- ── Side: Pi server ── -->
+  <rect x="730" y="424" width="80" height="56" rx="6" fill="#1e2535" stroke="#475569" stroke-width="1"/>
+  <text x="770" y="448" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">Pi Server</text>
+  <text x="770" y="462" text-anchor="middle" fill="#64748b" font-size="9">stdlib HTTP</text>
+  <text x="770" y="475" text-anchor="middle" fill="#64748b" font-size="9">token auth</text>
+
+  <!-- arrowhead marker -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#334155"/>
+    </marker>
+  </defs>
+</svg>
