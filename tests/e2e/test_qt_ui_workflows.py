@@ -5,8 +5,12 @@ End-to-end tests for PySide6/QML UI workflows.
 Uses pytest-qt for Qt application testing.
 """
 import pytest
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtTest import QTest
+
+# Guard: skip collection entirely if Qt libs are unavailable (headless CI
+# without libegl1 / libGL, or PySide6 not installed).
+PySide6 = pytest.importorskip("PySide6", reason="PySide6 required for E2E Qt tests")
+from PySide6.QtCore import Qt, QTimer  # noqa: E402
+from PySide6.QtTest import QTest  # noqa: E402
 
 
 @pytest.mark.e2e
