@@ -123,7 +123,8 @@ def test_activate_expired_key_rejected(manager):
     key = lic.generate_key(yesterday)
     assert manager.activate(key) is False
     assert manager.state in ("trial", "expired")
-    assert "abgelaufen" in manager.lastError.lower()
+    # LicenseManager returns English: "Key expired on YYYY-MM-DD."
+    assert "expired" in manager.lastError.lower()
 
 
 def test_state_persists_across_instances(tmp_path, monkeypatch):

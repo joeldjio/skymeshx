@@ -42,7 +42,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install pytest-cov
+        pip install pytest-cov PySide6 numpy
     
     - name: Run unit tests with coverage
       run: |
@@ -143,7 +143,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install pexpect pytest-timeout
+        pip install pexpect pytest-timeout PySide6 numpy
     
     - name: Install ArduPilot SITL
       run: |
@@ -161,7 +161,7 @@ jobs:
     - name: Run system tests
       run: |
         export PATH=/tmp/ardupilot/Tools/autotest:$PATH
-        pytest tests/ -m sitl --timeout=300 -v
+        xvfb-run -a pytest tests/ -m sitl --timeout=300 -v
       timeout-minutes: 10
 
   # ============================================================================
@@ -184,7 +184,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install playwright pytest-playwright PySide6
+        pip install playwright pytest-playwright PySide6 numpy pytest-qt
     
     - name: Install Playwright browsers
       run: playwright install --with-deps chromium
@@ -200,7 +200,8 @@ jobs:
     
     - name: Run E2E tests
       run: |
-        xvfb-run -a pytest tests/e2e/ -m e2e --video=retain-on-failure -v
+        export QT_QPA_PLATFORM=offscreen
+        xvfb-run -a pytest tests/e2e/ -m e2e -v
       timeout-minutes: 15
     
     - name: Upload E2E artifacts
@@ -267,7 +268,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-        pip install PySide6
+        pip install PySide6 numpy
     
     - name: Run license tests
       run: pytest tests/test_license.py -v
