@@ -199,36 +199,42 @@ class ExperimentContext(QObject):
     
     def _validate_script_path(self, filename: str) -> Path:
         """Validate script filename and return safe path within uploads directory.
-        
+
         Args:
             filename: User-provided filename
-            
+
         Returns:
             Validated Path object within uploads directory
-            
+
         Raises:
             ValueError: If filename is invalid or attempts path traversal
         """
-        # Reject absolute paths before any other processing
-        if Path(filename).is_absolute():
+        # Reject absolute paths — check both Path.is_absolute() (Windows-aware)
+        # and a leading '/' which Path.is_absolute() misses on Windows.
+        raw = str(filename)
+        if Path(filename).is_absolute() or raw.startswith('/') or raw.startswith('\\'):
             raise ValueError(f"Absolute paths not allowed: {filename}")
 
-        # Extract basename only - prevents directory traversal
+        # Reject traversal sequences in the raw input before extracting basename
+        if '..' in raw or '\x00' in raw:
+            raise ValueError(f"Invalid script filename: {filename}")
+
+        # Extract basename only - prevents directory traversal via subdirs
         safe_name = Path(filename).name
 
-        # Reject empty, hidden, or suspicious names
-        if not safe_name or safe_name.startswith('.') or '..' in safe_name:
+        # Reject empty or hidden names
+        if not safe_name or safe_name.startswith('.'):
             raise ValueError(f"Invalid script filename: {filename}")
-        
+
         # Build and resolve full path
         filepath = (self._scripts_dir / safe_name).resolve()
-        
-        # Ensure path is within uploads directory (prevents traversal)
+
+        # Ensure path is within uploads directory (defence-in-depth)
         try:
             filepath.relative_to(self._scripts_dir)
         except ValueError:
             raise ValueError(f"Path traversal attempt detected: {filename}")
-        
+
         return filepath
         
     # ── Properties ─────────────────────────────────────────────────────────
@@ -415,6 +421,9 @@ class ExperimentContext(QObject):
         try:
             # Validate filename to prevent path traversal
             filepath = self._validate_script_path(filename)
+        except ValueError:
+            return ""  # Security rejection — return empty, not an error string
+        try:
             if filepath.exists():
                 with open(filepath, 'r', encoding='utf-8') as f:
                     return f.read()

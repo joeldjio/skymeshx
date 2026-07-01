@@ -31,7 +31,7 @@ Item {
 
     function setMapType(typeName) {
         currentMapType = typeName
-        webView.runJavaScript("setMapType('" + typeName + "')")
+        webView.runJavaScript("setMapType(" + JSON.stringify(typeName) + ")")
     }
 
     function setPickMode(enabled) {
@@ -186,8 +186,13 @@ Item {
                 if (index >= 0) {
                     root.boundaryPointMoved(index, lat, lon)
                 }
-            } else {
+            } else if (url === "about:blank" || url.startsWith("qrc:/") || url.startsWith("data:")) {
+                // Allow the initial blank page load and qrc/data URIs
                 req.accept()
+            } else {
+                // Reject navigation to external URLs — map content is self-contained
+                req.reject()
+                console.warn("[MapView] Blocked external navigation to: " + url)
             }
         }
     }

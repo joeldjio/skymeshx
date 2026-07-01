@@ -54,11 +54,11 @@ def test_load_bag_info(mock_run):
     )
     
     ctx = BagPlaybackContext()
-    
-    # Create a temporary bag path
+
+    # Use loadBagFromDialog to bypass path restriction (simulates FileDialog selection)
     with patch('pathlib.Path.exists', return_value=True):
-        ctx.loadBag("/fake/path/test.mcap")
-    
+        ctx.loadBagFromDialog("/fake/path/test.mcap")
+
     # Verify duration was extracted
     assert ctx.duration == 123.45
 

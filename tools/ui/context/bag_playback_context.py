@@ -32,6 +32,10 @@ class BagPlaybackContext(QObject):
     playbackRateChanged = Signal(float)  # playback speed
     errorOccurred = Signal(str)
     
+    # Default allowed bag directories. FileDialog-selected paths are always
+    # permitted regardless of this list (see _validate_bag_path).
+    _DEFAULT_BAG_DIRS = ("bags",)
+
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
         self._state = "stopped"
@@ -42,6 +46,9 @@ class BagPlaybackContext(QObject):
         self._process: Optional[subprocess.Popen] = None
         self._monitor_thread: Optional[threading.Thread] = None
         self._stop_monitoring = False
+        # Set to True for the *next* loadBag call when the path came from a
+        # FileDialog (user explicitly chose it) so we skip the bags/ restriction.
+        self._dialog_selected: bool = False
     
     @Property(str, notify=stateChanged)
     def state(self) -> str:
@@ -71,29 +78,80 @@ class BagPlaybackContext(QObject):
             self._playback_rate = new_rate
             self.playbackRateChanged.emit(self._playback_rate)
     
+    def _validate_bag_path(self, path: str) -> Optional[Path]:
+        """Return a validated Path or None with an error emitted.
+
+        Paths that come from a FileDialog call (self._dialog_selected is True)
+        are accepted without restriction.  All other paths must resolve inside
+        one of _DEFAULT_BAG_DIRS relative to the current working directory.
+        """
+        # Strip file:// URI prefix
+        raw = path.strip()
+        if raw.startswith("file:///"):
+            raw = raw[8:]
+        elif raw.startswith("file://"):
+            raw = raw[7:]
+
+        bag_path = Path(raw).resolve()
+
+        if self._dialog_selected:
+            # Path explicitly chosen by the user via FileDialog — allow it.
+            self._dialog_selected = False
+            return bag_path
+
+        # Non-dialog path: must be inside an allowed directory.
+        cwd = Path.cwd().resolve()
+        allowed_roots = [
+            (cwd / d).resolve() for d in self._DEFAULT_BAG_DIRS
+        ]
+        for root in allowed_roots:
+            try:
+                bag_path.relative_to(root)
+                return bag_path
+            except ValueError:
+                pass
+
+        self.errorOccurred.emit(
+            f"Bag path '{path}' is outside the allowed bags/ directory. "
+            "Use the file picker to open bags from other locations."
+        )
+        return None
+
+    @Slot(str)
+    def loadBagFromDialog(self, path: str) -> None:
+        """Load a bag file that was selected via a FileDialog (no path restriction)."""
+        self._dialog_selected = True
+        self.loadBag(path)
+
     @Slot(str)
     def loadBag(self, path: str) -> None:
         """
         Load a ROS2 bag file.
-        
+
+        The path must be inside the bags/ directory unless this call was
+        triggered via loadBagFromDialog() (FileDialog-selected path).
+
         Args:
             path: Path to .mcap or bag directory
         """
         try:
-            bag_path = Path(path)
+            bag_path = self._validate_bag_path(path)
+            if bag_path is None:
+                return  # Error already emitted
+
             if not bag_path.exists():
                 self.errorOccurred.emit(f"Bag file not found: {path}")
                 return
-            
+
             # Stop any existing playback
             if self._state != "stopped":
                 self.stop()
-            
+
             self._bag_path = bag_path
-            
+
             # Get bag info to determine duration
             self._get_bag_info()
-            
+
         except Exception as e:
             self.errorOccurred.emit(f"Failed to load bag: {e}")
     
